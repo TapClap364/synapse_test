@@ -10,15 +10,15 @@ interface Task {
   status: string;
   epic_id: number | null;
   estimated_hours: number | null;
-  blocked_by: number[] | null; // Зависимости: какие задачи должны быть сделаны перед этой
+  blocked_by: number[] | null;
   created_at: string;
-  // Виртуальные поля для CPM (рассчитываются в памяти)
-  es?: number; // Early Start
-  ef?: number; // Early Finish
-  ls?: number; // Late Start
-  lf?: number; // Late Finish
-  slack?: number; // Резерв времени
-  isCritical?: boolean; // Флаг критического пути
+  // Поля CPM (рассчитываются в памяти)
+  es?: number;
+  ef?: number;
+  ls?: number;
+  lf?: number;
+  slack?: number;
+  isCritical?: boolean;
 }
 
 interface EpicGroup {
@@ -34,25 +34,22 @@ function App() {
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
 
-  // --- ЗАГРУЗКА ДАННЫХ (в стиле { data, error }) ---
+  // --- ЗАГРУЗКА ДАННЫХ ---
   const fetchData = async () => {
     console.log("🔄 Fetching data...");
 
-    // 1. Загрузка эпиков
-    const { data: epicsData, error: epicsError } = await supabase
+    const {  epicsData, error: epicsError } = await supabase
       .from('epics')
       .select('id, title');
     
     if (epicsError) console.error("Epics error:", epicsError);
-    
     if (epicsData) {
       const map: Record<number, string> = {};
       epicsData.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
 
-    // 2. Загрузка задач (с полем blocked_by для зависимостей)
-    const { data: tasksData, error: tasksError } = await supabase
+    const {  tasksData, error: tasksError } = await supabase
       .from('tasks')
       .select('*')
       .order('created_at', { ascending: true });
@@ -67,15 +64,12 @@ function App() {
 
   useEffect(() => {
     fetchData();
-    
-    // Realtime подписка на изменения
     const channel = supabase.channel('public-tasks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         console.log("📡 Realtime update detected");
         fetchData();
       })
       .subscribe();
-    
     return () => { supabase.removeChannel(channel); };
   }, []);
 
@@ -99,7 +93,7 @@ function App() {
     }
   };
 
-  // --- DRAG AND DROP ЛОГИКА (для Kanban) ---
+  // --- DRAG AND DROP ---
   const onDragStart = (e: React.DragEvent, taskId: number) => {
     e.dataTransfer.setData("taskId", taskId.toString());
     e.dataTransfer.effectAllowed = "move";
@@ -118,10 +112,8 @@ function App() {
     const taskId = parseInt(taskIdStr);
     console.log(`🖱️ Moving task ${taskId} to ${newStatus}`);
 
-    // Оптимистичное обновление UI
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
 
-    // Обновление в БД
     const { error } = await supabase
       .from('tasks')
       .update({ status: newStatus })
@@ -130,15 +122,15 @@ function App() {
     if (error) {
       console.error("❌ Failed to update:", error);
       alert("Не удалось сохранить статус");
-      fetchData(); // Откат при ошибке
+      fetchData();
     }
   };
 
-  // --- АЛГОРИТМ КРИТИЧЕСКОГО ПУТИ (CPM) ---
+  // --- АЛГОРИТМ КРИТИЧЕСКОГО ПУТИ (CPM) — ИСПРАВЛЕННЫЙ ---
   const cpmData = useMemo(() => {
-    if (!tasks.length) return { epics: [], projectDuration: 0 };
+    if (!tasks.length) return { epics: [], projectDuration: 0, criticalCount: 0 };
 
-    // 1. Создаем копию задач с инициализацией полей CPM
+    // 1. Инициализация карты задач
     const taskMap = new Map<number, Task>();
     tasks.forEach(t => {
       taskMap.set(t.id, {
@@ -148,8 +140,7 @@ function App() {
       });
     });
 
-    // 2. ПРЯМОЙ ПРОХОД: Расчет раннего старта (ES) и раннего финиша (EF)
-    // ES = max(EF всех предшественников), EF = ES + duration
+    // 2. ПРЯМОЙ ПРОХОД (Early Start/Finish)
     const calculateEarly = (taskId: number, visited: Set<number>): number => {
       if (visited.has(taskId)) return taskMap.get(taskId)?.ef || 0;
       visited.add(taskId);
@@ -160,7 +151,6 @@ function App() {
       const duration = task.estimated_hours || 4;
       let maxPrevEF = 0;
 
-      // Находим максимальный EF среди всех задач, которые блокируют текущую
       task.blocked_by?.forEach(prevId => {
         if (taskMap.has(prevId)) {
           const prevEF = calculateEarly(prevId, visited);
@@ -173,56 +163,66 @@ function App() {
       return task.ef;
     };
 
-    // Запускаем прямой проход для всех задач
-    const visited = new Set<number>();
-    tasks.forEach(t => calculateEarly(t.id, visited));
+    const visitedEarly = new Set<number>();
+    tasks.forEach(t => calculateEarly(t.id, visitedEarly));
 
-    // 3. Находим общую длительность проекта (максимальный EF)
-    const projectDuration = Math.max(...Array.from(taskMap.values()).map(t => t.ef || 0));
+    // 3. Длительность проекта
+    const projectDuration = Math.max(...Array.from(taskMap.values()).map(t => t.ef || 0), 1);
 
-    // 4. ОБРАТНЫЙ ПРОХОД: Расчет позднего старта (LS) и позднего финиша (LF)
-    // LF = min(LS всех преемников), LS = LF - duration
-    const calculateLate = (taskId: number): number => {
+    // 4. ОБРАТНЫЙ ПРОХОД (Late Start/Finish) — ИСПРАВЛЕНО
+    const calculateLate = (taskId: number, visited: Set<number>): number => {
+      if (visited.has(taskId)) {
+        return taskMap.get(taskId)?.ls ?? 0;
+      }
+      
       const task = taskMap.get(taskId);
       if (!task) return projectDuration;
-
+      
+      visited.add(taskId);
       const duration = task.estimated_hours || 4;
 
-      // Находим задачи, которые зависят от текущей (преемники)
       const successors = Array.from(taskMap.values()).filter(t => 
         t.blocked_by?.includes(taskId)
       );
 
       if (successors.length === 0) {
-        // Если нет преемников, это конечная задача: LF = projectDuration
         task.lf = projectDuration;
       } else {
-        // LF = минимальный LS среди всех преемников
-        task.lf = Math.min(...successors.map(s => s.ls !== undefined ? s.ls : projectDuration));
+        // Сначала рекурсивно считаем все преемники
+        for (const succ of successors) {
+          calculateLate(succ.id, visited);
+        }
+        const validLS = successors
+          .map(s => s.ls)
+          .filter((ls): ls is number => ls !== undefined && !isNaN(ls));
+        
+        task.lf = validLS.length > 0 ? Math.min(...validLS) : projectDuration;
       }
 
       task.ls = task.lf - duration;
-      task.slack = task.ls - (task.es || 0);
-      // Критический путь = задачи с нулевым резервом (slack === 0)
+      task.slack = task.ls - (task.es ?? 0);
       task.isCritical = Math.abs(task.slack) < 0.01;
+      
+      console.log(`CPM: ${task.title} | ES:${task.es} EF:${task.ef} LS:${task.ls} LF:${task.lf} Slack:${task.slack} 🔥${task.isCritical}`);
       
       return task.ls;
     };
 
-    // Запускаем обратный проход с конечных задач (у которых нет преемников)
+    const visitedLate = new Set<number>();
     const endTasks = tasks.filter(t => 
       !tasks.some(other => other.blocked_by?.includes(t.id))
     );
-    endTasks.forEach(t => calculateLate(t.id));
+    const startTasks = endTasks.length > 0 ? endTasks : tasks;
+    startTasks.forEach(t => calculateLate(t.id, visitedLate));
 
-    // Для задач, которые не попали в обход (изолированные), ставим критичность
+    // Фоллбэк для изолированных задач
     taskMap.forEach(t => {
-      if (t.slack === 0 && t.isCritical === undefined) {
+      if (t.isCritical === undefined || (t.slack === 0 && !t.isCritical)) {
         t.isCritical = true;
       }
     });
 
-    // 5. Группировка по эпикам для отображения
+    // 5. Группировка по эпикам
     const groups: Record<string, EpicGroup> = {};
     tasks.forEach(task => {
       const enriched = taskMap.get(task.id)!;
@@ -238,16 +238,14 @@ function App() {
       groups[key].tasks.push(enriched);
     });
 
-    return { 
-      epics: Object.values(groups), 
-      projectDuration,
-      criticalCount: Array.from(taskMap.values()).filter(t => t.isCritical).length
-    };
+    const criticalCount = Array.from(taskMap.values()).filter(t => t.isCritical).length;
+    console.log(`🔥 Critical Path: ${criticalCount} tasks`);
+
+    return { epics: Object.values(groups), projectDuration, criticalCount };
   }, [tasks, epics]);
 
   // --- UI КОМПОНЕНТЫ ---
 
-  // Карточка задачи для Kanban
   const TaskCard = ({ task }: { task: Task }) => (
     <div 
       draggable 
@@ -273,10 +271,8 @@ function App() {
     </div>
   );
 
-  // Колонка для Kanban
   const Column = ({ title, status, color }: { title: string, status: string, color: string }) => {
     const columnTasks = tasks.filter(t => t.status === status);
-    
     return (
       <div 
         onDragOver={onDragOver} 
@@ -293,7 +289,6 @@ function App() {
             {columnTasks.length}
           </span>
         </h3>
-        
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {columnTasks.map(task => <TaskCard key={task.id} task={task} />)}
           {columnTasks.length === 0 && (
@@ -304,11 +299,9 @@ function App() {
     );
   };
 
-  // Полоса задачи для Gantt
   const GanttBar = ({ task }: { task: Task }) => {
     const duration = task.estimated_hours || 4;
-    const es = task.es || 0;
-    // Масштаб: 1 час = 15px ширины
+    const es = task.es ?? 0;
     const width = duration * 15;
     const marginLeft = es * 15;
     
@@ -337,7 +330,6 @@ function App() {
           position: 'relative'
         }}>
           {duration}ч
-          {/* Стрелка зависимости, если есть предшественник */}
           {task.blocked_by && task.blocked_by.length > 0 && (
             <div style={{ 
               position: 'absolute', left: '-8px', top: '50%', transform: 'translateY(-50%)',
@@ -358,7 +350,6 @@ function App() {
       {/* Header */}
       <header style={{ padding: '15px 30px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ margin: 0, fontSize: '20px', color: '#1890ff' }}>🧠 Synapse AI</h1>
-        
         <div style={{ display: 'flex', gap: '10px', background: '#f0f2f5', padding: '4px', borderRadius: '8px' }}>
           <button 
             onClick={() => setView('board')} 
@@ -412,20 +403,18 @@ function App() {
       <main style={{ flex: 1, padding: '30px', overflow: 'hidden' }}>
         
         {view === 'board' ? (
-          // KANBAN VIEW
           <div style={{ display: 'flex', gap: '20px', height: '100%', alignItems: 'flex-start' }}>
             <Column title="📥 Бэклог" status="backlog" color="#8c8c8c" />
             <Column title="🔄 В работе" status="in_progress" color="#1890ff" />
             <Column title="✅ Готово" status="done" color="#52c41a" />
           </div>
         ) : (
-          // GANTT VIEW
           <div style={{ overflow: 'auto', height: '100%' }}>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0 }}>📅 Диаграмма Ганта</h2>
               <div style={{ fontSize: '13px', color: '#666' }}>
-                Длительность проекта: <strong>{cpmData.projectDuration} часов</strong> | 
-                Критических задач: <strong style={{ color: '#ff4d4f' }}>{cpmData.criticalCount} 🔥</strong>
+                Длительность: <strong>{cpmData.projectDuration}ч</strong> | 
+                Критических: <strong style={{ color: '#ff4d4f' }}>{cpmData.criticalCount} 🔥</strong>
               </div>
             </div>
 
@@ -449,7 +438,6 @@ function App() {
                   <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#333' }}>
                     📁 {epic.title}
                   </h3>
-                  
                   <div style={{ marginLeft: '10px' }}>
                     {epic.tasks.map(task => (
                       <GanttBar key={task.id} task={task} />
@@ -474,7 +462,6 @@ function App() {
             </div>
           </div>
         )}
-
       </main>
     </div>
   );
