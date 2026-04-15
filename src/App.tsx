@@ -12,12 +12,7 @@ interface Task {
   estimated_hours: number | null;
   blocked_by: number[] | null;
   created_at: string;
-  es?: number;
-  ef?: number;
-  ls?: number;
-  lf?: number;
-  slack?: number;
-  isCritical?: boolean;
+  es?: number; ef?: number; ls?: number; lf?: number; slack?: number; isCritical?: boolean;
 }
 
 interface EpicGroup {
@@ -31,227 +26,153 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [epics, setEpics] = useState<Record<number, string>>({});
   
-  // Input State
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
 
-  // Meeting Recording State
   const [isRecordingMeeting, setIsRecordingMeeting] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [lastMeetingResult, setLastMeetingResult] = useState<any>(null);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [isProcessingMeeting, setIsProcessingMeeting] = useState(false);
 
-  // --- ЗАГРУЗКА ДАННЫХ ---
+  // --- DATA FETCHING ---
   const fetchData = async () => {
-    console.log("🔄 Fetching data...");
-
-    const responseEpics = await supabase.from('epics').select('id, title') as any;
-    const epicsData = responseEpics.data;
-    
-    if (epicsData) {
+    const resEpics = await supabase.from('epics').select('id, title') as any;
+    if (resEpics.data) {
       const map: Record<number, string> = {};
-      epicsData.forEach((e: any) => map[e.id] = e.title);
+      resEpics.data.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
 
-    const responseTasks = await supabase
-      .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: true }) as any;
-    
-    const tasksData = responseTasks.data;
-
-    if (tasksData) {
-      setTasks(tasksData as Task[]);
-    }
+    const resTasks = await supabase.from('tasks').select('*').order('created_at', { ascending: true }) as any;
+    if (resTasks.data) setTasks(resTasks.data as Task[]);
   };
 
   useEffect(() => {
     fetchData();
     const channel = supabase.channel('public-tasks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        fetchData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => supabase.removeChannel(channel);
   }, []);
 
-  // --- СОЗДАНИЕ ЗАДАЧИ (ГОЛОС/ТЕКСТ) ---
+  // --- CREATE TASK ---
   const handleCreate = async () => {
     if (!inputText.trim()) return;
     setIsRecording(true);
-    
     try {
       const res = await fetch('/api/create-task-from-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice_text: inputText }),
       });
-      
       if (!res.ok) throw new Error('API Error');
       setInputText('');
-      await fetchData(); 
-
-    } catch (e: any) { 
-      alert(`Ошибка: ${e.message}`);
-    } finally { 
-      setIsRecording(false); 
-    }
+      await fetchData();
+    } catch (e: any) { alert(`Ошибка: ${e.message}`); }
+    finally { setIsRecording(false); }
   };
 
-  // --- ЗАПИСЬ ВСТРЕЧИ ---
+  // --- MEETING RECORDING ---
   const startMeetingRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
-
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      
-      recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        await processMeetingRecording(blob);
-      };
-
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = async () => await processMeetingRecording(new Blob(chunks, { type: 'audio/webm' }));
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecordingMeeting(true);
-    } catch (err) {
-      alert("Ошибка доступа к микрофону. Проверьте разрешения.");
-      console.error(err);
-    }
+    } catch { alert("Нет доступа к микрофону"); }
   };
 
   const stopMeetingRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    if (mediaRecorder?.state !== 'inactive') {
       mediaRecorder.stop();
       setIsRecordingMeeting(false);
-      setIsProcessingMeeting(true); // Показываем процессинг
+      setIsProcessingMeeting(true);
     }
   };
 
   const processMeetingRecording = async (blob: Blob) => {
-    const formData = new FormData();
-    formData.append('audio', blob, 'meeting.webm');
-    formData.append('title', `Meeting ${new Date().toLocaleString()}`);
-
+    const fd = new FormData();
+    fd.append('audio', blob, 'meeting.webm');
+    fd.append('title', `Meeting ${new Date().toLocaleTimeString()}`);
     try {
-      const res = await fetch('/api/process-meeting', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to process meeting');
-      }
-
+      const res = await fetch('/api/process-meeting', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
       const data = await res.json();
       setLastMeetingResult(data);
       setShowMeetingModal(true);
-      await fetchData(); // Обновляем задачи, созданные из встречи
-
-    } catch (e: any) {
-      alert(`Ошибка обработки встречи: ${e.message}`);
-    } finally {
-      setIsProcessingMeeting(false);
-    }
+      await fetchData();
+    } catch (e: any) { alert(`Ошибка: ${e.message}`); }
+    finally { setIsProcessingMeeting(false); }
   };
 
-  // --- DRAG AND DROP ---
-  const onDragStart = (e: React.DragEvent, taskId: number) => {
-    e.dataTransfer.setData("taskId", taskId.toString());
-  };
-
+  // --- DRAG & DROP ---
+  const onDragStart = (e: React.DragEvent, id: number) => e.dataTransfer.setData('id', id.toString());
   const onDragOver = (e: React.DragEvent) => e.preventDefault();
-
-  const onDrop = async (e: React.DragEvent, newStatus: string) => {
+  const onDrop = async (e: React.DragEvent, status: string) => {
     e.preventDefault();
-    const taskId = parseInt(e.dataTransfer.getData("taskId"));
-    
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-    await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId);
+    const id = parseInt(e.dataTransfer.getData('id'));
+    setTasks(p => p.map(t => t.id === id ? { ...t, status } : t));
+    const { error } = await supabase.from('tasks').update({ status }).eq('id', id);
+    if (error) { alert('Не удалось сохранить'); fetchData(); }
   };
 
-  // --- CPM ALGORITHM ---
+  // --- CPM ---
   const cpmData = useMemo(() => {
     if (!tasks.length) return { epics: [], projectDuration: 0, criticalCount: 0 };
-
-    const taskMap = new Map<number, Task>();
-    tasks.forEach(t => {
-      taskMap.set(t.id, { ...t, blocked_by: t.blocked_by || [], es: 0, ef: 0, ls: 0, lf: 0, slack: 0, isCritical: false });
-    });
-
-    const calculateEarly = (id: number, visited: Set<number>): number => {
-      if (visited.has(id)) return taskMap.get(id)?.ef || 0;
-      visited.add(id);
-      const task = taskMap.get(id);
-      if (!task) return 0;
-      let maxPrev = 0;
-      task.blocked_by?.forEach(pid => {
-        if (taskMap.has(pid)) maxPrev = Math.max(maxPrev, calculateEarly(pid, visited));
-      });
-      task.es = maxPrev;
-      task.ef = task.es + (task.estimated_hours || 4);
-      return task.ef;
+    const map = new Map<number, Task>();
+    tasks.forEach(t => map.set(t.id, { ...t, blocked_by: t.blocked_by || [], es: 0, ef: 0, ls: 0, lf: 0, slack: 0, isCritical: false }));
+    
+    const calcEarly = (id: number, v: Set<number>): number => {
+      if (v.has(id)) return map.get(id)?.ef || 0;
+      v.add(id); const t = map.get(id); if (!t) return 0;
+      let mx = 0;
+      t.blocked_by?.forEach(p => { if (map.has(p)) mx = Math.max(mx, calcEarly(p, v)); });
+      t.es = mx; t.ef = mx + (t.estimated_hours || 4); return t.ef;
     };
+    const v1 = new Set<number>(); tasks.forEach(t => calcEarly(t.id, v1));
+    const dur = Math.max(...Array.from(map.values()).map(t => t.ef || 0), 1);
 
-    const visited = new Set<number>();
-    tasks.forEach(t => calculateEarly(t.id, visited));
-    const duration = Math.max(...Array.from(taskMap.values()).map(t => t.ef || 0), 1);
-
-    const calculateLate = (id: number, visited: Set<number>): number => {
-      if (visited.has(id)) return taskMap.get(id)?.ls ?? 0;
-      visited.add(id);
-      const task = taskMap.get(id);
-      if (!task) return duration;
-      
-      const successors = Array.from(taskMap.values()).filter(t => t.blocked_by?.includes(id));
-      if (successors.length === 0) {
-        task.lf = duration;
-      } else {
-        successors.forEach(s => calculateLate(s.id, visited));
-        const minLS = Math.min(...successors.map(s => s.ls ?? duration));
-        task.lf = minLS;
-      }
-      task.ls = task.lf - (task.estimated_hours || 4);
-      task.slack = task.ls - (task.es || 0);
-      task.isCritical = Math.abs(task.slack) < 0.01;
-      return task.ls;
+    const calcLate = (id: number, v: Set<number>): number => {
+      if (v.has(id)) return map.get(id)?.ls ?? 0;
+      v.add(id); const t = map.get(id); if (!t) return dur;
+      const succ = Array.from(map.values()).filter(s => s.blocked_by?.includes(id));
+      if (succ.length === 0) t.lf = dur;
+      else { succ.forEach(s => calcLate(s.id, v)); t.lf = Math.min(...succ.map(s => s.ls ?? dur)); }
+      t.ls = t.lf - (t.estimated_hours || 4);
+      t.slack = t.ls - (t.es || 0); t.isCritical = Math.abs(t.slack) < 0.01;
+      return t.ls;
     };
-
-    const endTasks = tasks.filter(t => !tasks.some(o => o.blocked_by?.includes(t.id)));
-    (endTasks.length ? endTasks : tasks).forEach(t => calculateLate(t.id, new Set()));
+    const ends = tasks.filter(t => !tasks.some(o => o.blocked_by?.includes(t.id)));
+    (ends.length ? ends : tasks).forEach(t => calcLate(t.id, new Set()));
 
     const groups: Record<string, EpicGroup> = {};
     tasks.forEach(t => {
-      const key = t.epic_id ? `epic_${t.epic_id}` : 'no_epic';
-      if (!groups[key]) groups[key] = { id: t.epic_id, title: t.epic_id ? (epics[t.epic_id] || 'General') : 'General', tasks: [] };
-      groups[key].tasks.push(taskMap.get(t.id)!);
+      const k = t.epic_id ? `epic_${t.epic_id}` : 'no_epic';
+      if (!groups[k]) groups[k] = { id: t.epic_id, title: t.epic_id ? (epics[t.epic_id] || 'General') : 'General', tasks: [] };
+      groups[k].tasks.push(map.get(t.id)!);
     });
-
-    return { 
-      epics: Object.values(groups), 
-      projectDuration: duration, 
-      criticalCount: Array.from(taskMap.values()).filter(t => t.isCritical).length 
-    };
+    return { epics: Object.values(groups), projectDuration: dur, criticalCount: Array.from(map.values()).filter(t => t.isCritical).length };
   }, [tasks, epics]);
 
   // --- UI COMPONENTS ---
-
   const GanttBar = ({ task }: { task: Task }) => {
-    const w = (task.estimated_hours || 4) * 20;
-    const ml = (task.es || 0) * 20;
+    const w = (task.estimated_hours || 4) * 24;
+    const ml = (task.es || 0) * 24;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-        <div style={{ width: '180px', fontSize: '12px', fontWeight: 500 }}>
-          {task.title} {task.isCritical && '🔥'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+        <div style={{ width: '180px', fontSize: '13px', fontWeight: 500, color: '#1e293b' }}>
+          {task.title} {task.isCritical && <span style={{ color: '#ef4444' }}>🔥</span>}
         </div>
         <div style={{ 
-          height: '24px', width: `${Math.max(w, 5)}px`, marginLeft: `${ml}px`,
-          background: task.isCritical ? '#ff4d4f' : (task.status === 'done' ? '#52c41a' : '#1890ff'),
-          borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px'
+          height: '26px', width: `${Math.max(w, 8)}px`, marginLeft: `${ml}px`,
+          background: task.isCritical ? 'linear-gradient(135deg, #ef4444, #f87171)' : task.status === 'done' ? '#10b981' : '#3b82f6',
+          borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '11px', fontWeight: 600,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
           {task.estimated_hours}ч
         </div>
@@ -260,102 +181,117 @@ function App() {
   };
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc', color: '#0f172a' }}>
       
       {/* Header */}
-      <header style={{ padding: '15px 30px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0, fontSize: '20px', color: '#1890ff' }}>🧠 Synapse AI</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setView('board')} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: view === 'board' ? '#1890ff' : '#eee', color: view === 'board' ? '#fff' : '#000' }}>Kanban</button>
-          <button onClick={() => setView('gantt')} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: view === 'gantt' ? '#1890ff' : '#eee', color: view === 'gantt' ? '#fff' : '#000' }}>Gantt</button>
+      <header style={{ padding: '16px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '32px', height: '32px', background: '#3b82f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px' }}>🧠</div>
+          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Synapse AI</h1>
+        </div>
+        <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
+          <button onClick={() => setView('board')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'board' ? '#fff' : 'transparent', boxShadow: view === 'board' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'board' ? '#3b82f6' : '#64748b' }}>📋 Kanban</button>
+          <button onClick={() => setView('gantt')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'gantt' ? '#fff' : 'transparent', boxShadow: view === 'gantt' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'gantt' ? '#3b82f6' : '#64748b' }}>📊 Gantt</button>
         </div>
       </header>
 
       {/* Controls */}
-      <div style={{ padding: '15px 30px', background: '#fafafa', borderBottom: '1px solid #eee', display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <div style={{ padding: '20px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <input 
           value={inputText} onChange={e => setInputText(e.target.value)}
-          placeholder="🎤 Голосовая задача..."
-          style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
+          placeholder="Введи задачу или скажи голосом..."
+          style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}
           onKeyDown={e => e.key === 'Enter' && handleCreate()}
         />
-        <button onClick={handleCreate} disabled={isRecording} style={{ padding: '10px 20px', background: '#1890ff', color: '#fff', border: 'none', borderRadius: '6px' }}>
-          {isRecording ? '...' : 'Создать'}
+        <button onClick={handleCreate} disabled={isRecording} style={{ padding: '12px 24px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', opacity: isRecording ? 0.7 : 1 }}>
+          {isRecording ? '⏳ Создание...' : '➕ Создать'}
         </button>
-        
-        <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 10px' }}></div>
-
+        <div style={{ width: '1px', height: '28px', background: '#e2e8f0' }} />
         <button 
           onClick={isRecordingMeeting ? stopMeetingRecording : startMeetingRecording}
           disabled={isProcessingMeeting}
           style={{ 
-            padding: '10px 20px', borderRadius: '6px', border: '1px solid #ddd',
-            background: isRecordingMeeting ? '#ff4d4f' : '#fff',
-            color: isRecordingMeeting ? '#fff' : '#333',
+            padding: '12px 20px', borderRadius: '10px', border: '1px solid #e2e8f0',
+            background: isRecordingMeeting ? '#fef2f2' : isProcessingMeeting ? '#f8fafc' : '#fff',
+            color: isRecordingMeeting ? '#dc2626' : '#334155',
             cursor: isProcessingMeeting ? 'wait' : 'pointer',
-            display: 'flex', alignItems: 'center', gap: '5px'
+            display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500
           }}
         >
-          {isProcessingMeeting ? '⏳ Обработка...' : (isRecordingMeeting ? '⏹ Стоп' : '🔴 Встреча')}
+          {isProcessingMeeting ? '⏳ Анализ...' : (isRecordingMeeting ? '⏹ Остановить' : '🎙 Запись встречи')}
         </button>
       </div>
 
-      {/* Main View */}
-      <main style={{ flex: 1, padding: '30px', overflow: 'hidden' }}>
+      {/* Main Content */}
+      <main style={{ flex: 1, padding: '24px 32px', overflow: 'hidden' }}>
         {view === 'board' ? (
-          <div style={{ display: 'flex', gap: '20px', height: '100%' }}>
+          <div style={{ display: 'flex', gap: '24px', height: '100%' }}>
             {['backlog', 'in_progress', 'done'].map(status => (
-              <div key={status} onDragOver={onDragOver} onDrop={e => onDrop(e, status)} style={{ flex: 1, background: '#f4f5f7', padding: '15px', borderRadius: '10px' }}>
-                <h3 style={{ textTransform: 'uppercase', fontSize: '12px', color: '#666' }}>{status}</h3>
-                {tasks.filter(t => t.status === status).map(t => (
-                  <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} style={{ background: '#fff', padding: '10px', marginBottom: '10px', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)', cursor: 'grab' }}>
-                    <div style={{ fontWeight: 'bold' }}>{t.title}</div>
-                    <div style={{ fontSize: '11px', color: '#888' }}>{epics[t.epic_id || 0]}</div>
-                  </div>
-                ))}
+              <div key={status} onDragOver={onDragOver} onDrop={e => onDrop(e, status)} style={{ flex: 1, background: '#f1f5f9', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ textAlign: 'center', fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', marginBottom: '16px' }}>
+                  {status === 'backlog' ? '📥 Бэклог' : status === 'in_progress' ? '🔄 В работе' : '✅ Готово'}
+                </h3>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {tasks.filter(t => t.status === status).map(t => (
+                    <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} style={{ background: '#fff', padding: '14px', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: 'grab', borderLeft: `3px solid ${t.priority === 'critical' ? '#ef4444' : t.priority === 'high' ? '#f59e0b' : '#3b82f6'}` }}>
+                      <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{t.title}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>{epics[t.epic_id || 0]}</div>
+                    </div>
+                  ))}
+                  {tasks.filter(t => t.status === status).length === 0 && (
+                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '20px' }}>Перетащи сюда</div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ overflow: 'auto', height: '100%' }}>
-            <h2>📅 Gantt Chart (Duration: {cpmData.projectDuration}h)</h2>
-            <div style={{ minWidth: '1000px', padding: '20px' }}>
-              {cpmData.epics.map(epic => (
-                <div key={epic.title} style={{ marginBottom: '20px', background: '#fff', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #1890ff' }}>
-                  <h3>{epic.title}</h3>
-                  {epic.tasks.map(t => <GanttBar key={t.id} task={t} />)}
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>📅 Диаграмма Ганта</h2>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>
+                Длительность: <strong>{cpmData.projectDuration}ч</strong> | Критических: <strong style={{ color: '#ef4444' }}>{cpmData.criticalCount} 🔥</strong>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px' }}>
+              <div style={{ minWidth: '1100px' }}>
+                <div style={{ display: 'flex', marginLeft: '190px', marginBottom: '12px', fontSize: '12px', color: '#64748b', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                  {Array.from({ length: Math.ceil(cpmData.projectDuration / 8) + 2 }).map((_, i) => (
+                    <div key={i} style={{ width: '192px', flexShrink: 0, borderLeft: '1px dashed #cbd5e1', paddingLeft: '8px' }}>День {i + 1}</div>
+                  ))}
                 </div>
-              ))}
+                {cpmData.epics.map(epic => (
+                  <div key={epic.title} style={{ marginBottom: '24px', background: '#f8fafc', borderRadius: '12px', padding: '16px', borderLeft: '3px solid #3b82f6' }}>
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600 }}>📁 {epic.title}</h3>
+                    {epic.tasks.map(t => <GanttBar key={t.id} task={t} />)}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* Meeting Result Modal */}
+      {/* Meeting Modal */}
       {showMeetingModal && lastMeetingResult && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', maxWidth: '600px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
-            <h2 style={{ marginTop: 0 }}>📝 Протокол встречи</h2>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ margin: '0 0 5px 0' }}>Резюме:</h4>
-              <p style={{ margin: 0, color: '#555', lineHeight: '1.5' }}>{lastMeetingResult.summary}</p>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '560px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>📝 Протокол встречи</h2>
+              <button onClick={() => setShowMeetingModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', color: '#64748b' }}>✕</button>
             </div>
-
-            <div style={{ marginBottom: '20px', padding: '10px', background: '#f0f9eb', borderRadius: '6px', color: '#52c41a' }}>
+            <div style={{ marginBottom: '20px', padding: '16px', background: '#f0fdf4', borderRadius: '10px', color: '#166534' }}>
               ✅ Создано задач: <strong>{lastMeetingResult.tasksCreated}</strong>
             </div>
-
-            <details>
-              <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '10px' }}>🧠 Mind Map Data (JSON)</summary>
-              <pre style={{ background: '#f5f5f5', padding: '10px', fontSize: '11px', overflow: 'auto', borderRadius: '4px' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '15px' }}>Резюме:</h4>
+            <p style={{ margin: '0 0 20px 0', color: '#475569', lineHeight: '1.6' }}>{lastMeetingResult.summary}</p>
+            <details style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#3b82f6' }}>🧠 Mind Map Data (JSON)</summary>
+              <pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '12px', fontSize: '12px', overflow: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 {JSON.stringify(lastMeetingResult.mindMap, null, 2)}
               </pre>
             </details>
-
-            <button onClick={() => setShowMeetingModal(false)} style={{ marginTop: '20px', width: '100%', padding: '10px', background: '#1890ff', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-              Закрыть
-            </button>
+            <button onClick={() => setShowMeetingModal(false)} style={{ marginTop: '24px', width: '100%', padding: '14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Закрыть</button>
           </div>
         </div>
       )}
