@@ -21,6 +21,11 @@ interface EpicGroup {
   tasks: Task[];
 }
 
+interface MindMapNode {
+  label: string;
+  children?: MindMapNode[];
+}
+
 function App() {
   const [view, setView] = useState<'board' | 'gantt'>('board');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -35,6 +40,7 @@ function App() {
   const [lastMeetingResult, setLastMeetingResult] = useState<any>(null);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [isProcessingMeeting, setIsProcessingMeeting] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const recognitionRef = useRef<any>(null);
 
   // --- DATA FETCHING ---
@@ -202,6 +208,79 @@ function App() {
     return { epics: Object.values(groups), projectDuration: dur, criticalCount: Array.from(map.values()).filter(t => t.isCritical).length };
   }, [tasks, epics]);
 
+  // --- MIND MAP VISUALIZATION ---
+  const toggleNode = (path: string) => {
+    const newExpanded = new Set(expandedNodes);
+    if (newExpanded.has(path)) {
+      newExpanded.delete(path);
+    } else {
+      newExpanded.add(path);
+    }
+    setExpandedNodes(newExpanded);
+  };
+
+  const MindMapNode: React.FC<{ node: MindMapNode; depth: number; path: string }> = ({ node, depth, path }) => {
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expandedNodes.has(path);
+    
+    // Цвета по уровню вложенности
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    const nodeColor = colors[depth % colors.length];
+    
+    return (
+      <div style={{ marginLeft: depth > 0 ? '24px' : '0' }}>
+        <div 
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
+            background: depth === 0 ? '#f1f5f9' : 'transparent',
+            borderRadius: '8px', cursor: hasChildren ? 'pointer' : 'default',
+            borderLeft: `3px solid ${nodeColor}`,
+            transition: 'background 0.2s'
+          }}
+          onClick={() => hasChildren && toggleNode(path)}
+        >
+          {hasChildren && (
+            <span style={{ 
+              width: '16px', height: '16px', borderRadius: '4px', 
+              background: isExpanded ? '#ef4444' : '#3b82f6',
+              color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'transform 0.2s',
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+            }}>
+              ▶
+            </span>
+          )}
+          <span style={{ fontWeight: depth === 0 ? 700 : 500, fontSize: depth === 0 ? '15px' : '13px', color: '#1e293b' }}>
+            {node.label}
+          </span>
+          {hasChildren && (
+            <span style={{ fontSize: '11px', color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
+              {node.children?.length}
+            </span>
+          )}
+        </div>
+        
+        {hasChildren && isExpanded && (
+          <div style={{ 
+            borderLeft: `1px dashed #cbd5e1`, marginLeft: '8px', paddingLeft: '16px',
+            transition: 'all 0.3s ease',
+            maxHeight: isExpanded ? '1000px' : '0',
+            overflow: 'hidden'
+          }}>
+            {node.children!.map((child, idx) => (
+              <MindMapNode 
+                key={`${path}-${idx}`} 
+                node={child} 
+                depth={depth + 1} 
+                path={`${path}-${idx}`} 
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // --- UI COMPONENTS ---
   const GanttBar = ({ task }: { task: Task }) => {
     const w = (task.estimated_hours || 4) * 24;
@@ -315,25 +394,50 @@ function App() {
         )}
       </main>
 
-      {/* Meeting Modal */}
+      {/* Meeting Modal with Mind Map Visualization */}
       {showMeetingModal && lastMeetingResult && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '560px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '85vh', overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '700px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>📝 Протокол встречи</h2>
               <button onClick={() => setShowMeetingModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', color: '#64748b' }}>✕</button>
             </div>
+            
             <div style={{ marginBottom: '20px', padding: '16px', background: '#f0fdf4', borderRadius: '10px', color: '#166534' }}>
               ✅ Создано задач: <strong>{lastMeetingResult.tasksCreated}</strong>
             </div>
+            
             <h4 style={{ margin: '0 0 8px 0', fontSize: '15px' }}>Резюме:</h4>
             <p style={{ margin: '0 0 20px 0', color: '#475569', lineHeight: '1.6' }}>{lastMeetingResult.summary}</p>
-            <details style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#3b82f6' }}>🧠 Mind Map Data (JSON)</summary>
-              <pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '12px', fontSize: '12px', overflow: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            
+            {/* Mind Map Visualization */}
+            <details open style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#3b82f6', fontSize: '16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🧠 Mind Map
+                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>(кликай для сворачивания)</span>
+              </summary>
+              
+              {lastMeetingResult.mindMap ? (
+                <div style={{ padding: '8px 0' }}>
+                  <MindMapNode 
+                    node={lastMeetingResult.mindMap} 
+                    depth={0} 
+                    path="root" 
+                  />
+                </div>
+              ) : (
+                <p style={{ color: '#64748b', fontStyle: 'italic' }}>Данные карты не доступны</p>
+              )}
+            </details>
+            
+            {/* Raw JSON (for debug) */}
+            <details style={{ marginTop: '16px', background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#64748b', fontSize: '13px' }}>🔧 Raw JSON (для отладки)</summary>
+              <pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '12px', fontSize: '11px', overflow: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0', maxHeight: '200px' }}>
                 {JSON.stringify(lastMeetingResult.mindMap, null, 2)}
               </pre>
             </details>
+            
             <button onClick={() => setShowMeetingModal(false)} style={{ marginTop: '24px', width: '100%', padding: '14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Закрыть</button>
           </div>
         </div>
