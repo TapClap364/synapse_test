@@ -38,7 +38,7 @@ function App() {
   const fetchData = async () => {
     console.log("🔄 Fetching data...");
 
-    // 1. Эпики: используем 'as any' чтобы избежать ошибок типов
+    // 1. Эпики
     const responseEpics = await supabase.from('epics').select('id, title') as any;
     const epicsData = responseEpics.data;
     const epicsError = responseEpics.error;
@@ -51,7 +51,7 @@ function App() {
       setEpics(map);
     }
 
-    // 2. Задачи: используем 'as any' чтобы избежать ошибок типов
+    // 2. Задачи
     const responseTasks = await supabase
       .from('tasks')
       .select('*')
@@ -209,8 +209,6 @@ function App() {
       task.slack = task.ls - (task.es ?? 0);
       task.isCritical = Math.abs(task.slack) < 0.01;
       
-      // console.log(`CPM: ${task.title} | Slack:${task.slack} 🔥${task.isCritical}`);
-      
       return task.ls;
     };
 
@@ -307,39 +305,59 @@ function App() {
   const GanttBar = ({ task }: { task: Task }) => {
     const duration = task.estimated_hours || 4;
     const es = task.es ?? 0;
-    const width = duration * 15;
-    const marginLeft = es * 15;
+    
+    // МАСШТАБ: 30 пикселей = 1 час
+    const PIXELS_PER_HOUR = 30; 
+    
+    const width = duration * PIXELS_PER_HOUR;
+    const marginLeft = es * PIXELS_PER_HOUR;
     
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-        <div style={{ width: '180px', fontSize: '12px', color: '#333', fontWeight: 500 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', position: 'relative' }}>
+        {/* Название задачи */}
+        <div style={{ 
+          width: '200px', 
+          flexShrink: 0,
+          fontSize: '13px', 
+          color: '#333', 
+          fontWeight: 500,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
           {task.title}
           {task.isCritical && <span style={{ marginLeft: '5px', color: '#ff4d4f' }}>🔥</span>}
         </div>
+
+        {/* Полоса задачи */}
         <div style={{ 
-          height: '28px', 
-          width: `${Math.max(width, 30)}px`, 
+          height: '32px', 
+          width: `${Math.max(width, 10)}px`,
           marginLeft: `${marginLeft}px`,
           background: task.isCritical 
             ? 'linear-gradient(135deg, #ff4d4f, #ff7875)' 
             : task.status === 'done' 
               ? '#52c41a' 
               : '#1890ff',
-          borderRadius: '4px',
+          borderRadius: '6px',
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
           color: 'white', 
-          fontSize: '10px',
+          fontSize: '11px',
+          fontWeight: 'bold',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          position: 'relative'
+          position: 'relative',
+          transition: 'all 0.3s ease'
         }}>
           {duration}ч
+          
+          {/* Стрелка зависимости */}
           {task.blocked_by && task.blocked_by.length > 0 && (
             <div style={{ 
-              position: 'absolute', left: '-8px', top: '50%', transform: 'translateY(-50%)',
+              position: 'absolute', left: '-6px', top: '50%', transform: 'translateY(-50%)',
               width: 0, height: 0,
-              borderLeft: '8px solid #999',
+              borderLeft: '6px solid #999',
               borderTop: '4px solid transparent',
               borderBottom: '4px solid transparent'
             }} />
@@ -414,9 +432,11 @@ function App() {
             <Column title="✅ Готово" status="done" color="#52c41a" />
           </div>
         ) : (
-          // GANTT VIEW — ИСПРАВЛЕННАЯ ВЕРСТКА
-          <div style={{ overflow: 'auto', height: '100%', width: '100%' }}>
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: '800px' }}>
+          // GANTT VIEW — ИСПРАВЛЕННЫЙ МАСШТАБ И СКРОЛЛ
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            
+            {/* Header with Stats */}
+            <div style={{ padding: '0 0 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0 }}>📅 Диаграмма Ганта</h2>
               <div style={{ fontSize: '13px', color: '#666' }}>
                 Длительность: <strong>{cpmData.projectDuration}ч</strong> | 
@@ -424,35 +444,43 @@ function App() {
               </div>
             </div>
 
-            {/* Контейнер с прокруткой */}
-            <div style={{ overflowX: 'auto', paddingBottom: '20px' }}>
+            {/* Scrollable Container */}
+            <div style={{ flex: 1, overflow: 'auto', border: '1px solid #eee', borderRadius: '12px', background: '#fafafa' }}>
               
-              {/* Внутренний контейнер с минимальной шириной, чтобы ничего не сжималось */}
-              <div style={{ minWidth: '1000px', position: 'relative' }}>
-
-                {/* Timeline Header */}
-                <div style={{ marginLeft: '190px', marginBottom: '15px', display: 'flex', fontSize: '11px', color: '#999' }}>
-                  {Array.from({ length: Math.ceil(cpmData.projectDuration / 8) + 1 }).map((_, i) => (
-                    <div key={i} style={{ width: '120px', flexShrink: 0, borderLeft: '1px dashed #eee', paddingLeft: '5px' }}>
+              {/* Inner Container with Min-Width to prevent squashing */}
+              <div style={{ minWidth: '1200px', padding: '20px' }}>
+                
+                {/* Timeline Ruler (Days) */}
+                <div style={{ display: 'flex', marginLeft: '210px', marginBottom: '10px', borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>
+                  {Array.from({ length: Math.ceil(cpmData.projectDuration / 8) + 2 }).map((_, i) => (
+                    <div key={i} style={{ 
+                      width: '240px', // 8 часов * 30px = 240px на день
+                      flexShrink: 0, 
+                      fontSize: '11px', 
+                      color: '#999', 
+                      borderLeft: '1px solid #e0e0e0',
+                      paddingLeft: '5px'
+                    }}>
                       День {i + 1}
                     </div>
                   ))}
                 </div>
 
                 {/* Epics & Tasks */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                   {cpmData.epics.map(epic => (
                     <div key={epic.title} style={{ 
-                      background: 'white', borderRadius: '12px', padding: '20px', 
+                      background: 'white', 
+                      borderRadius: '12px', 
+                      padding: '20px', 
                       boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                      borderLeft: '4px solid #1890ff',
-                      minWidth: '1000px' // Гарантируем ширину карточки эпика
+                      borderLeft: '4px solid #1890ff'
                     }}>
-                      <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#333' }}>
+                      <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', color: '#333' }}>
                         📁 {epic.title}
                       </h3>
                       
-                      <div style={{ marginLeft: '10px' }}>
+                      <div style={{ position: 'relative' }}>
                         {epic.tasks.map(task => (
                           <GanttBar key={task.id} task={task} />
                         ))}
@@ -465,15 +493,14 @@ function App() {
             </div>
 
             {/* Legend */}
-            <div style={{ marginTop: '30px', padding: '15px', background: '#f9f9f9', borderRadius: '8px', fontSize: '12px', color: '#666' }}>
-              <strong>Легенда:</strong> 
-              <span style={{ marginLeft: '15px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ marginTop: '20px', padding: '15px', background: '#f9f9f9', borderRadius: '8px', fontSize: '12px', color: '#666', display: 'flex', gap: '20px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: '12px', height: '12px', background: '#ff4d4f', borderRadius: '3px' }}></span> Критический путь 🔥
               </span>
-              <span style={{ marginLeft: '15px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: '12px', height: '12px', background: '#1890ff', borderRadius: '3px' }}></span> Обычная задача
               </span>
-              <span style={{ marginLeft: '15px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: '12px', height: '12px', background: '#52c41a', borderRadius: '3px' }}></span> Выполнено
               </span>
             </div>
