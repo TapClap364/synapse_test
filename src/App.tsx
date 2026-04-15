@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 
 interface Task {
@@ -7,17 +7,14 @@ interface Task {
   title: string;
   description: string;
   priority: string;
-  status: string;
+  status: string; 
   epic_id: number | null;
   estimated_hours: number | null;
-  blocked_by: number[] | null;
   created_at: string;
-  // Поля для CPM (добавляются в памяти)
-  es?: number; ef?: number; ls?: number; lf?: number; slack?: number; isCritical?: boolean;
 }
 
 function App() {
-  const [view, setView] = useState<'board' | 'gantt'>('board');
+  const [view, setView] = useState<'list' | 'board'>('board');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [epics, setEpics] = useState<Record<number, string>>({});
   const [inputText, setInputText] = useState('');
@@ -25,172 +22,202 @@ function App() {
 
   // --- ЗАГРУЗКА ДАННЫХ ---
   const fetchData = async () => {
-    const {  epicsData } = await supabase.from('epics').select('id, title');
+    console.log("🔄 Fetching data...");
+    
+    // 1. Эпики
+    const { data: epicsData, error: epicsError } = await supabase.from('epics').select('id, title');
+    if (epicsError) console.error("Epics error:", epicsError);
+    
     if (epicsData) {
       const map: Record<number, string> = {};
       epicsData.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
-    const {  tasksData } = await supabase.from('tasks').select('*').order('created_at', { ascending: true });
-    if (tasksData) setTasks(tasksData as Task[]);
+
+    // 2. Задачи
+    const { data: tasksData, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (tasksError) {
+      console.error("Tasks error:", tasksError);
+    } else if (tasksData) {
+      console.log(`✅ Loaded ${tasksData.length} tasks`);
+      setTasks(tasksData as Task[]);
+    }
   };
 
   useEffect(() => {
     fetchData();
     const channel = supabase.channel('public-tasks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+        console.log("📡 Realtime update:", payload);
+        fetchData(); // Перезагружаем всё для синхронизации
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // --- АЛГОРИТМ КРИТИЧЕСКОГО ПУТИ (CPM) ---
-  const cpmData = useMemo(() => {
-    if (!tasks.length) return { epics: [], maxDuration: 0 };
-
-    // 1. Инициализация карты задач
-    const taskMap = new Map<number, Task>();
-    tasks.forEach(t => taskMap.set(t.id, { ...t, blocked_by: t.blocked_by || [] }));
-
-    // 2. Прямой проход (Early Start / Early Finish)
-    const calculateEF = (id: number, visited: Set<number>): number => {
-      if (visited.has(id)) return taskMap.get(id)?.ef || 0;
-      visited.add(id);
-
-      const task = taskMap.get(id);
-      if (!task) return 0;
-
-      let maxPrevEF = 0;
-      task.blocked_by?.forEach(prevId => {
-        if (taskMap.has(prevId)) {
-          const prevEF = calculateEF(prevId, visited);
-          if (prevEF > maxPrevEF) maxPrevEF = prevEF;
-        }
+  // --- СОЗДАНИЕ ЗАДАЧИ ---
+  const handleCreate = async () => {
+    if (!inputText.trim()) return;
+    setIsRecording(true);
+    try {
+      const res = await fetch('/api/create-task-from-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice_text: inputText }),
       });
-
-      task.es = maxPrevEF;
-      task.ef = task.es + (task.estimated_hours || 4);
-      return task.ef;
-    };
-
-    // Запускаем для всех задач
-    const visited = new Set<number>();
-    tasks.forEach(t => calculateEF(t.id, visited));
-
-    // 3. Обратный проход (Late Start / Late Finish)
-    const projectDuration = Math.max(...Array.from(taskMap.values()).map(t => t.ef || 0));
-    
-    const calculateLS = (id: number): number => {
-      const task = taskMap.get(id);
-      if (!task) return projectDuration;
-
-      // Находим преемников (кто зависит от этой задачи)
-      const successors = Array.from(taskMap.values()).filter(t => t.blocked_by?.includes(id));
-
-      if (successors.length === 0) {
-        task.lf = projectDuration;
-      } else {
-        task.lf = Math.min(...successors.map(s => s.ls !== undefined ? s.ls : projectDuration));
-      }
-
-      task.ls = task.lf - (task.estimated_hours || 4);
-      task.slack = task.ls - (task.es || 0);
-      task.isCritical = (task.slack || 0) === 0;
-      return task.ls;
-    };
-
-    // Запускаем с конца (задачи без преемников)
-    const endTasks = tasks.filter(t => !tasks.some(other => other.blocked_by?.includes(t.id)));
-    endTasks.forEach(t => calculateLS(t.id));
-    
-    // Для изолированных задач (циклы или ошибки) ставим критичность по умолчанию
-    taskMap.forEach(t => {
-        if (t.slack === undefined) {
-            t.slack = 0; 
-            t.isCritical = true;
-        }
-    });
-
-    // 4. Группировка по эпикам
-    const groups: Record<string, any> = {};
-    tasks.forEach(task => {
-      const enriched = taskMap.get(task.id)!;
-      const key = task.epic_id ? `epic_${task.epic_id}` : 'no_epic';
-      if (!groups[key]) groups[key] = { id: task.epic_id, title: task.epic_id ? epics[task.epic_id] : 'General', tasks: [] };
-      groups[key].tasks.push(enriched);
-    });
-
-    return { epics: Object.values(groups), maxDuration: projectDuration };
-  }, [tasks, epics]);
-
-  // --- DRAG & DROP ---
-  const onDragStart = (e: React.DragEvent, id: number) => e.dataTransfer.setData("id", id.toString());
-  const onDrop = async (e: React.DragEvent, status: string) => {
-    e.preventDefault();
-    const id = parseInt(e.dataTransfer.getData("id"));
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-    await supabase.from('tasks').update({ status }).eq('id', id);
+      if (!res.ok) throw new Error('API Error');
+      setInputText('');
+    } catch (e) { console.error(e); alert('Ошибка создания'); } 
+    finally { setIsRecording(false); }
   };
 
-  // --- UI ---
+  // --- DRAG AND DROP ЛОГИКА ---
+  const onDragStart = (e: React.DragEvent, taskId: number) => {
+    e.dataTransfer.setData("taskId", taskId.toString());
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); 
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const onDrop = async (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault();
+    const taskIdStr = e.dataTransfer.getData("taskId");
+    if (!taskIdStr) return;
+    
+    const taskId = parseInt(taskIdStr);
+    console.log(`🖱️ Dropping task ${taskId} to ${newStatus}`);
+
+    // 1. Оптимистичное обновление UI
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+
+    // 2. Запрос в БД
+    const { error } = await supabase
+      .from('tasks')
+      .update({ status: newStatus })
+      .eq('id', taskId);
+
+    if (error) {
+      console.error("❌ Failed to update status:", error);
+      alert("Не удалось сохранить статус.");
+      fetchData(); // Откат при ошибке
+    } else {
+      console.log("✅ Status updated in DB");
+    }
+  };
+
+  // --- КОМПОНЕНТЫ UI ---
+  const TaskCard = ({ task }: { task: Task }) => (
+    <div 
+      draggable 
+      onDragStart={(e) => onDragStart(e, task.id)}
+      style={{ 
+        background: 'white', padding: '12px', borderRadius: '8px', 
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '10px', cursor: 'grab',
+        borderLeft: `4px solid ${task.priority === 'critical' ? '#ff4d4f' : task.priority === 'high' ? '#faad14' : '#1890ff'}`,
+        transition: 'transform 0.1s'
+      }}
+    >
+      <div style={{ fontSize: '11px', color: '#8c8c8c', marginBottom: '4px', textTransform: 'uppercase' }}>
+        {task.epic_id && epics[task.epic_id]}
+      </div>
+      <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: '#262626' }}>{task.title}</div>
+      <div style={{ fontSize: '12px', color: '#595959', lineHeight: '1.4' }}>
+        {task.description.length > 50 ? task.description.substring(0, 50) + '...' : task.description}
+      </div>
+    </div>
+  );
+
+  const Column = ({ title, status, color }: { title: string, status: string, color: string }) => {
+    const columnTasks = tasks.filter(t => t.status === status);
+    
+    return (
+      <div 
+        onDragOver={onDragOver} 
+        onDrop={(e) => onDrop(e, status)}
+        style={{ 
+          flex: 1, background: '#f4f5f7', borderRadius: '12px', padding: '12px', 
+          minHeight: '200px', display: 'flex', flexDirection: 'column',
+          border: '2px dashed transparent',
+          transition: 'border-color 0.2s'
+        }}
+      >
+        <h3 style={{ textAlign: 'center', color: '#5e6c84', fontSize: '13px', textTransform: 'uppercase', marginBottom: '15px', fontWeight: 700 }}>
+          {title} 
+          <span style={{ background: color, color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', marginLeft: '8px' }}>
+            {columnTasks.length}
+          </span>
+        </h3>
+        
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {columnTasks.map(task => (
+            <TaskCard key={task.id} task={task} />
+          ))}
+          {columnTasks.length === 0 && (
+            <div style={{ textAlign: 'center', color: '#bfbfbf', fontSize: '12px', marginTop: '20px' }}>
+              Пусто
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div style={{ fontFamily: 'system-ui', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <header style={{ padding: '15px 30px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' }}>
-        <h1 style={{ margin: 0 }}>🧠 Synapse AI</h1>
-        <div>
-          <button onClick={() => setView('board')} style={{ marginRight: '10px', padding: '8px 16px', background: view === 'board' ? '#1890ff' : '#eee', border: 'none', borderRadius: '6px', color: view === 'board' ? '#fff' : '#000' }}>Kanban</button>
-          <button onClick={() => setView('gantt')} style={{ padding: '8px 16px', background: view === 'gantt' ? '#1890ff' : '#eee', border: 'none', borderRadius: '6px', color: view === 'gantt' ? '#fff' : '#000' }}>Gantt & Critical Path</button>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+      
+      {/* Header */}
+      <header style={{ padding: '15px 30px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ margin: 0, fontSize: '20px', color: '#1890ff' }}>🧠 Synapse AI</h1>
+        
+        <div style={{ display: 'flex', gap: '10px', background: '#f0f2f5', padding: '4px', borderRadius: '8px' }}>
+          <button onClick={() => setView('list')} style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', background: view === 'list' ? 'white' : 'transparent', boxShadow: view === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 500 }}>Список</button>
+          <button onClick={() => setView('board')} style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', background: view === 'board' ? 'white' : 'transparent', boxShadow: view === 'board' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 500 }}>Доска</button>
         </div>
       </header>
 
-      <div style={{ padding: '15px 30px', background: '#fafafa', borderBottom: '1px solid #eee' }}>
-        <div style={{ maxWidth: '600px', display: 'flex', gap: '10px' }}>
-          <input value={inputText} onChange={e => setInputText(e.target.value)} placeholder="🎤 Голосовая задача..." style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} onKeyDown={e => e.key === 'Enter' && fetch('/api/create-task-from-voice', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ voice_text: inputText }) }).then(() => { setInputText(''); fetchData(); })} />
-          <button onClick={() => { fetch('/api/create-task-from-voice', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ voice_text: inputText }) }).then(() => { setInputText(''); fetchData(); }); }} style={{ padding: '10px 20px', background: '#1890ff', color: '#fff', border: 'none', borderRadius: '6px' }}>Создать</button>
+      {/* Input Area */}
+      <div style={{ padding: '20px 30px', background: '#fafafa', borderBottom: '1px solid #eee' }}>
+        <div style={{ maxWidth: '600px', display: 'flex', gap: '10px', margin: '0 auto' }}>
+          <input 
+            value={inputText} 
+            onChange={e => setInputText(e.target.value)} 
+            placeholder="🎤 Введи задачу..."
+            style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #d9d9d9', outline: 'none' }}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+          />
+          <button onClick={handleCreate} disabled={isRecording} style={{ padding: '0 24px', background: '#1890ff', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
+            {isRecording ? '...' : 'Создать'}
+          </button>
         </div>
       </div>
 
-      <main style={{ flex: 1, padding: '30px', overflow: 'auto' }}>
+      {/* Main Content */}
+      <main style={{ flex: 1, padding: '30px', overflow: 'hidden' }}>
+        
         {view === 'board' ? (
-          <div style={{ display: 'flex', gap: '20px', height: '100%' }}>
-            {['backlog', 'in_progress', 'done'].map(status => (
-              <div key={status} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, status)} style={{ flex: 1, background: '#f4f5f7', padding: '15px', borderRadius: '10px' }}>
-                <h3 style={{ textTransform: 'uppercase', fontSize: '12px', color: '#666' }}>{status}</h3>
-                {tasks.filter(t => t.status === status).map(t => (
-                  <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} style={{ background: '#fff', padding: '10px', marginBottom: '10px', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)', cursor: 'grab' }}>
-                    <div style={{ fontWeight: 'bold' }}>{t.title}</div>
-                    <div style={{ fontSize: '11px', color: '#888' }}>{epics[t.epic_id || 0]}</div>
-                  </div>
-                ))}
-              </div>
-            ))}
+          <div style={{ display: 'flex', gap: '20px', height: '100%', alignItems: 'flex-start' }}>
+            <Column title="Бэклог" status="backlog" color="#8c8c8c" />
+            <Column title="В работе" status="in_progress" color="#1890ff" />
+            <Column title="Готово" status="done" color="#52c41a" />
           </div>
         ) : (
-          <div>
-            <h2>📅 Диаграмма Ганта (Критический путь выделен красным 🔥)</h2>
-            {cpmData.epics.map((epic: any) => (
-              <div key={epic.title} style={{ marginBottom: '20px', padding: '15px', border: '1px solid #eee', borderRadius: '8px' }}>
-                <h3>{epic.title}</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  {epic.tasks.map((t: Task) => (
-                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '150px', fontSize: '12px', textAlign: 'right' }}>{t.title}</div>
-                      <div style={{ 
-                        height: '24px', 
-                        width: `${(t.estimated_hours || 4) * 10}px`, 
-                        background: t.isCritical ? '#ff4d4f' : (t.status === 'done' ? '#52c41a' : '#1890ff'),
-                        borderRadius: '4px',
-                        marginLeft: `${(t.es || 0) * 10}px`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px'
-                      }}>
-                        {t.isCritical && '🔥'} {t.estimated_hours}ч
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div style={{ maxWidth: '800px', margin: '0 auto', overflowY: 'auto', height: '100%' }}>
+             <h2>Список задач</h2>
+             {tasks.map(t => (
+               <div key={t.id} style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
+                 <b>{t.title}</b> - {t.status}
+               </div>
+             ))}
           </div>
         )}
+
       </main>
     </div>
   );
