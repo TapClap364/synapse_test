@@ -34,11 +34,11 @@ function App() {
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
 
-  // --- ЗАГРУЗКА ДАННЫХ (с исправлением типов TS2339) ---
+  // --- ЗАГРУЗКА ДАННЫХ ---
   const fetchData = async () => {
     console.log("🔄 Fetching data...");
 
-    // 1. Эпики: используем 'as any' чтобы избежать ошибок типов
+    // 1. Эпики
     const responseEpics = await supabase.from('epics').select('id, title') as any;
     const epicsData = responseEpics.data;
     const epicsError = responseEpics.error;
@@ -51,7 +51,7 @@ function App() {
       setEpics(map);
     }
 
-    // 2. Задачи: используем 'as any' чтобы избежать ошибок типов
+    // 2. Задачи
     const responseTasks = await supabase
       .from('tasks')
       .select('*')
@@ -79,18 +79,33 @@ function App() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // --- СОЗДАНИЕ ЗАДАЧИ ---
+  // --- СОЗДАНИЕ ЗАДАЧИ — ИСПРАВЛЕНО ---
   const handleCreate = async () => {
     if (!inputText.trim()) return;
     setIsRecording(true);
+    
     try {
       const res = await fetch('/api/create-task-from-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice_text: inputText }),
       });
-      if (!res.ok) throw new Error('API Error');
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'API Error');
+      }
+
+      // Получаем созданную задачу (для отладки)
+      const newTask = await res.json();
+      console.log("✅ Task created:", newTask);
+      
       setInputText('');
+      
+      // 🔥 ГЛАВНОЕ ИСПРАВЛЕНИЕ: Явно обновляем данные после создания
+      // Это гарантирует мгновенное появление задачи в списке
+      await fetchData(); 
+
     } catch (e: any) { 
       console.error(e); 
       alert(`Ошибка: ${e.message}`);
@@ -136,7 +151,6 @@ function App() {
   const cpmData = useMemo(() => {
     if (!tasks.length) return { epics: [], projectDuration: 0, criticalCount: 0 };
 
-    // 1. Инициализация карты задач
     const taskMap = new Map<number, Task>();
     tasks.forEach(t => {
       taskMap.set(t.id, {
@@ -146,7 +160,7 @@ function App() {
       });
     });
 
-    // 2. ПРЯМОЙ ПРОХОД (Early Start/Finish)
+    // Прямой проход
     const calculateEarly = (taskId: number, visited: Set<number>): number => {
       if (visited.has(taskId)) return taskMap.get(taskId)?.ef || 0;
       visited.add(taskId);
@@ -172,14 +186,11 @@ function App() {
     const visitedEarly = new Set<number>();
     tasks.forEach(t => calculateEarly(t.id, visitedEarly));
 
-    // 3. Длительность проекта
     const projectDuration = Math.max(...Array.from(taskMap.values()).map(t => t.ef || 0), 1);
 
-    // 4. ОБРАТНЫЙ ПРОХОД (Late Start/Finish)
+    // Обратный проход
     const calculateLate = (taskId: number, visited: Set<number>): number => {
-      if (visited.has(taskId)) {
-        return taskMap.get(taskId)?.ls ?? 0;
-      }
+      if (visited.has(taskId)) return taskMap.get(taskId)?.ls ?? 0;
       
       const task = taskMap.get(taskId);
       if (!task) return projectDuration;
@@ -194,7 +205,6 @@ function App() {
       if (successors.length === 0) {
         task.lf = projectDuration;
       } else {
-        // Сначала рекурсивно считаем все преемники
         for (const succ of successors) {
           calculateLate(succ.id, visited);
         }
@@ -209,8 +219,6 @@ function App() {
       task.slack = task.ls - (task.es ?? 0);
       task.isCritical = Math.abs(task.slack) < 0.01;
       
-      // console.log(`CPM: ${task.title} | Slack:${task.slack} 🔥${task.isCritical}`);
-      
       return task.ls;
     };
 
@@ -221,14 +229,13 @@ function App() {
     const startTasks = endTasks.length > 0 ? endTasks : tasks;
     startTasks.forEach(t => calculateLate(t.id, visitedLate));
 
-    // Фоллбэк для изолированных задач
     taskMap.forEach(t => {
       if (t.isCritical === undefined || (t.slack === 0 && !t.isCritical)) {
         t.isCritical = true;
       }
     });
 
-    // 5. Группировка по эпикам
+    // Группировка по эпикам
     const groups: Record<string, EpicGroup> = {};
     tasks.forEach(task => {
       const enriched = taskMap.get(task.id)!;
@@ -307,8 +314,10 @@ function App() {
   const GanttBar = ({ task }: { task: Task }) => {
     const duration = task.estimated_hours || 4;
     const es = task.es ?? 0;
-    const width = duration * 15;
-    const marginLeft = es * 15;
+    const PIXELS_PER_HOUR = 20; // Масштаб: 20px = 1 час
+    
+    const width = duration * PIXELS_PER_HOUR;
+    const marginLeft = es * PIXELS_PER_HOUR;
     
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
@@ -318,7 +327,7 @@ function App() {
         </div>
         <div style={{ 
           height: '28px', 
-          width: `${Math.max(width, 30)}px`, 
+          width: `${Math.max(width, 10)}px`, 
           marginLeft: `${marginLeft}px`,
           background: task.isCritical 
             ? 'linear-gradient(135deg, #ff4d4f, #ff7875)' 
@@ -414,7 +423,7 @@ function App() {
             <Column title="✅ Готово" status="done" color="#52c41a" />
           </div>
         ) : (
-          // GANTT VIEW — ИСПРАВЛЕННАЯ ВЕРСТКА
+          // GANTT VIEW
           <div style={{ overflow: 'auto', height: '100%', width: '100%' }}>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: '800px' }}>
               <h2 style={{ margin: 0 }}>📅 Диаграмма Ганта</h2>
@@ -424,16 +433,13 @@ function App() {
               </div>
             </div>
 
-            {/* Контейнер с прокруткой */}
             <div style={{ overflowX: 'auto', paddingBottom: '20px' }}>
-              
-              {/* Внутренний контейнер с минимальной шириной, чтобы ничего не сжималось */}
               <div style={{ minWidth: '1000px', position: 'relative' }}>
 
                 {/* Timeline Header */}
                 <div style={{ marginLeft: '190px', marginBottom: '15px', display: 'flex', fontSize: '11px', color: '#999' }}>
                   {Array.from({ length: Math.ceil(cpmData.projectDuration / 8) + 1 }).map((_, i) => (
-                    <div key={i} style={{ width: '120px', flexShrink: 0, borderLeft: '1px dashed #eee', paddingLeft: '5px' }}>
+                    <div key={i} style={{ width: '160px', flexShrink: 0, borderLeft: '1px dashed #eee', paddingLeft: '5px' }}>
                       День {i + 1}
                     </div>
                   ))}
@@ -446,7 +452,7 @@ function App() {
                       background: 'white', borderRadius: '12px', padding: '20px', 
                       boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                       borderLeft: '4px solid #1890ff',
-                      minWidth: '1000px' // Гарантируем ширину карточки эпика
+                      minWidth: '1000px'
                     }}>
                       <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#333' }}>
                         📁 {epic.title}
