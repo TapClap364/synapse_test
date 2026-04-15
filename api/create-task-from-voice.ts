@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 
+// 1. Инициализация OpenRouter
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -12,58 +13,67 @@ const openai = new OpenAI({
   },
 });
 
+// 2. Инициализация Supabase
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  if (req.method !== 'POST') { return res.status(405).json({ error: 'Method not allowed' }); }
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const { voice_text } = req.body;
-  if (!voice_text) return res.status(400).json({ error: 'Voice text is required' });
+
+  if (!voice_text) {
+    return res.status(400).json({ error: 'Voice text is required' });
+  }
 
   try {
-    // 1. Получаем контекст: Эпики и последние задачи
-    const {  epics } = await supabase.from('epics').select('id, title');
-    const epicList = epics?.map(e => e.title).join(', ') || 'General';
+    // 1. Получаем список эпиков
+    // Используем стандартную деструктуризацию { data, error }
+    const { data: epics, error: epicsError } = await supabase
+      .from('epics')
+      .select('id, title');
     
-    // Берем последние 5 задач для анализа зависимостей
-    const {  recentTasks } = await supabase
-      .from('tasks')
-      .select('id, title, status, epic_id')
-      .order('created_at', { ascending: false })
-      .limit(5);
+    if (epicsError) throw epicsError;
 
-    const taskContext = recentTasks?.map(t => `ID:${t.id} [${t.status}] "${t.title}"`).join('\n') || 'Нет задач';
+    const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design';
 
-    // 2. AI Agent: Структурирование + Анализ зависимостей
+    // 2. Запрос к OpenRouter
     const completion = await openai.chat.completions.create({
-      model: "meta-llama/llama-3.3-70b-instruct",
+      model: "meta-llama/llama-3.3-70b-instruct", 
       messages: [
         {
           role: "system",
-          content: `Ты Lead Project Manager. 
-          1. Структурируй задачу из голоса.
-          2. Определи зависимости (blocked_by). Если новая задача логически не может начаться без выполнения одной из существующих задач (например, "Крыша" после "Стен"), укажи ID той задачи в массиве blocked_by.
+          content: `Ты опытный Project Manager (AI Agent). 
+          Твоя задача: проанализировать голосовое сообщение пользователя и превратить его в структурированную задачу.
           
-          Доступные Эпики: [${epicList}]
-          Существующие задачи:
-          ${taskContext}
-
-          Верни JSON:
+          Доступные Эпики (категории): [${epicList}]
+          
+          Правила:
+          1. Выбери наиболее подходящий эпик из списка. Если ничего не подходит, предложи новое название эпика.
+          2. Оцени приоритет: 'low' | 'medium' | 'high' | 'critical'.
+          3. Оцени время в часах (estimated_hours).
+          
+          Верни СТРОГО JSON объект без markdown-оберток:
           {
-            "title": "string",
-            "description": "string",
-            "priority": "low"|"medium"|"high"|"critical",
-            "epic_title": "string",
-            "estimated_hours": number,
-            "blocked_by": number[] // Массив ID задач, которые блокируют эту. Если нет, то []
+            "title": "Короткий заголовок",
+            "description": "Подробное описание",
+            "priority": "low" | "medium" | "high" | "critical",
+            "epic_title": "Название эпика",
+            "estimated_hours": number
           }`
         },
         { role: "user", content: voice_text }
@@ -71,20 +81,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       response_format: { type: "json_object" }
     });
 
-    const aiData = JSON.parse(completion.choices[0].message.content || '{}');
+    const content = completion.choices[0].message.content;
+    if (!content) throw new Error("Пустой ответ от ИИ");
 
-    // 3. Поиск/Создание Эпика
-    let epicId = null;
-    const existingEpic = epics?.find(e => e.title.toLowerCase() === aiData.epic_title.toLowerCase());
+    const aiData = JSON.parse(content);
+
+    // 3. Логика поиска или создания Эпика
+    let epicId: number | null = null;
+    
+    // Безопасный поиск эпика
+    const existingEpic = epics?.find(
+      (e: any) => e.title.toLowerCase().trim() === aiData.epic_title.toLowerCase().trim()
+    );
+
     if (existingEpic) {
       epicId = existingEpic.id;
     } else {
-      const {  newEpic } = await supabase.from('epics').insert({ title: aiData.epic_title }).select().single();
-      epicId = newEpic?.id;
+      // Создаем новый эпик
+      // Важно: используем { data: newEpic, error: epicError }
+      const { data: newEpic, error: epicError } = await supabase
+        .from('epics')
+        .insert({ title: aiData.epic_title })
+        .select()
+        .single();
+      
+      if (epicError || !newEpic) throw new Error(`Failed to create epic: ${epicError?.message}`);
+      epicId = newEpic.id;
     }
 
-    // 4. Создание задачи с зависимостями
-    const {  task, error } = await supabase
+    // 4. Создание задачи в Supabase
+    // Важно: используем { data: task, error: taskError }
+    const { data: task, error: taskError } = await supabase
       .from('tasks')
       .insert({
         title: aiData.title,
@@ -93,18 +120,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         estimated_hours: aiData.estimated_hours,
         epic_id: epicId,
         status: 'backlog',
-        blocked_by: aiData.blocked_by || [], // Сохраняем зависимости
         board_x: Math.random() * 800,
         board_y: Math.random() * 600
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (taskError || !task) throw new Error(`Failed to create task: ${taskError?.message}`);
+
     return res.status(200).json(task);
 
   } catch (error: any) {
-    console.error(error);
+    console.error('Synapse API Error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
