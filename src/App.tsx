@@ -34,13 +34,12 @@ function App() {
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
 
-  // Meeting Recording State (Web Speech API)
+  // Meeting State
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [lastMeetingResult, setLastMeetingResult] = useState<any>(null);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [isProcessingMeeting, setIsProcessingMeeting] = useState(false);
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const recognitionRef = useRef<any>(null);
 
   // --- DATA FETCHING ---
@@ -51,7 +50,6 @@ function App() {
       resEpics.data.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
-
     const resTasks = await supabase.from('tasks').select('*').order('created_at', { ascending: true }) as any;
     if (resTasks.data) setTasks(resTasks.data as Task[]);
   };
@@ -70,8 +68,7 @@ function App() {
     setIsRecording(true);
     try {
       const res = await fetch('/api/create-task-from-voice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice_text: inputText }),
       });
       if (!res.ok) throw new Error('API Error');
@@ -81,46 +78,23 @@ function App() {
     finally { setIsRecording(false); }
   };
 
-  // --- MEETING RECORDING (Web Speech API - FREE) ---
+  // --- MEETING RECORDING ---
   const startMeetingRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      alert("Ваш браузер не поддерживает распознавание речи. Используйте Chrome или Edge.");
-      return;
-    }
-
+    if (!SpeechRecognition) { alert("Используйте Chrome/Edge"); return; }
     const recognition = new SpeechRecognition();
     recognition.lang = 'ru-RU';
-    recognition.interimResults = true;
     recognition.continuous = true;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      setTranscript('');
-    };
-
+    recognition.interimResults = true;
+    recognition.onstart = () => { setIsListening(true); setTranscript(''); };
     recognition.onresult = (event: any) => {
       let final = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcriptPart = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          final += transcriptPart + ' ';
-        }
+        if (event.results[i].isFinal) final += event.results[i][0].transcript + ' ';
       }
       setTranscript(prev => prev + final);
     };
-
-    recognition.onerror = (event: any) => {
-      console.error("Speech recognition error", event.error);
-      alert(`Ошибка распознавания: ${event.error}`);
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
+    recognition.onend = () => setIsListening(false);
     recognitionRef.current = recognition;
     recognition.start();
   };
@@ -128,9 +102,7 @@ function App() {
   const stopMeetingRecording = async () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-      if (transcript.trim()) {
-        await processMeetingText(transcript.trim());
-      }
+      if (transcript.trim()) await processMeetingText(transcript.trim());
     }
   };
 
@@ -138,25 +110,16 @@ function App() {
     setIsProcessingMeeting(true);
     try {
       const res = await fetch('/api/process-meeting', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          text, 
-          title: `Meeting ${new Date().toLocaleTimeString()}` 
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, title: `Meeting ${new Date().toLocaleTimeString()}` }),
       });
-      
       if (!res.ok) throw new Error((await res.json()).error || 'Failed');
-      
       const data = await res.json();
       setLastMeetingResult(data);
       setShowMeetingModal(true);
       await fetchData();
-    } catch (e: any) {
-      alert(`Ошибка: ${e.message}`);
-    } finally {
-      setIsProcessingMeeting(false);
-    }
+    } catch (e: any) { alert(`Ошибка: ${e.message}`); }
+    finally { setIsProcessingMeeting(false); }
   };
 
   // --- DRAG & DROP ---
@@ -166,8 +129,7 @@ function App() {
     e.preventDefault();
     const id = parseInt(e.dataTransfer.getData('id'));
     setTasks(p => p.map(t => t.id === id ? { ...t, status } : t));
-    const { error } = await supabase.from('tasks').update({ status }).eq('id', id);
-    if (error) { alert('Не удалось сохранить'); fetchData(); }
+    await supabase.from('tasks').update({ status }).eq('id', id);
   };
 
   // --- CPM ---
@@ -208,72 +170,98 @@ function App() {
     return { epics: Object.values(groups), projectDuration: dur, criticalCount: Array.from(map.values()).filter(t => t.isCritical).length };
   }, [tasks, epics]);
 
-  // --- MIND MAP VISUALIZATION ---
-  const toggleNode = (path: string) => {
-    const newExpanded = new Set(expandedNodes);
-    if (newExpanded.has(path)) {
-      newExpanded.delete(path);
-    } else {
-      newExpanded.add(path);
-    }
-    setExpandedNodes(newExpanded);
-  };
+  // --- MIND MAP VISUALIZATION COMPONENT ---
+  const MindMapTree: React.FC<{ node: MindMapNode; isRoot?: boolean }> = ({ node, isRoot = false }) => {
+    const [expanded, setExpanded] = useState(true);
+    
+    // Генерация цвета на основе индекса корневых детей (для консистентности)
+    // Для простоты используем хэш строки или просто случайный, но стабильный цвет
+    const getColor = (str: string, level: number) => {
+      const colors = [
+        ['#3b82f6', '#dbeafe'], // Blue
+        ['#10b981', '#d1fae5'], // Green
+        ['#f59e0b', '#fef3c7'], // Amber
+        ['#ef4444', '#fee2e2'], // Red
+        ['#8b5cf6', '#ede9fe'], // Violet
+        ['#ec4899', '#fce7f3'], // Pink
+      ];
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      const index = Math.abs(hash) % colors.length;
+      return level === 0 ? colors[index][0] : colors[index][1]; // Темный для корня/ветвей, светлый для листьев
+    };
 
-  const MindMapNode: React.FC<{ node: MindMapNode; depth: number; path: string }> = ({ node, depth, path }) => {
     const hasChildren = node.children && node.children.length > 0;
-    const isExpanded = expandedNodes.has(path);
-    
-    // Цвета по уровню вложенности
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-    const nodeColor = colors[depth % colors.length];
-    
+    const borderColor = getColor(node.label, isRoot ? 0 : 1);
+    const bgColor = isRoot ? '#f8fafc' : '#fff';
+
     return (
-      <div style={{ marginLeft: depth > 0 ? '24px' : '0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {/* Узел */}
         <div 
-          style={{ 
-            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
-            background: depth === 0 ? '#f1f5f9' : 'transparent',
-            borderRadius: '8px', cursor: hasChildren ? 'pointer' : 'default',
-            borderLeft: `3px solid ${nodeColor}`,
-            transition: 'background 0.2s'
+          onClick={() => hasChildren && setExpanded(!expanded)}
+          style={{
+            padding: isRoot ? '12px 24px' : '8px 16px',
+            borderRadius: isRoot ? '12px' : '8px',
+            background: bgColor,
+            border: `2px solid ${borderColor}`,
+            color: isRoot ? '#1e293b' : '#334155',
+            fontWeight: isRoot ? 700 : 500,
+            fontSize: isRoot ? '16px' : '13px',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+            cursor: hasChildren ? 'pointer' : 'default',
+            zIndex: 10,
+            position: 'relative',
+            transition: 'all 0.2s',
+            maxWidth: '200px',
+            textAlign: 'center',
+            wordWrap: 'break-word'
           }}
-          onClick={() => hasChildren && toggleNode(path)}
         >
+          {node.label}
           {hasChildren && (
             <span style={{ 
-              width: '16px', height: '16px', borderRadius: '4px', 
-              background: isExpanded ? '#ef4444' : '#3b82f6',
-              color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'transform 0.2s',
-              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+              position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)',
+              background: borderColor, color: '#fff', borderRadius: '50%', width: '16px', height: '16px',
+              fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              ▶
-            </span>
-          )}
-          <span style={{ fontWeight: depth === 0 ? 700 : 500, fontSize: depth === 0 ? '15px' : '13px', color: '#1e293b' }}>
-            {node.label}
-          </span>
-          {hasChildren && (
-            <span style={{ fontSize: '11px', color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
-              {node.children?.length}
+              {expanded ? '−' : '+'}
             </span>
           )}
         </div>
-        
-        {hasChildren && isExpanded && (
+
+        {/* Дети и линии */}
+        {hasChildren && expanded && (
           <div style={{ 
-            borderLeft: `1px dashed #cbd5e1`, marginLeft: '8px', paddingLeft: '16px',
-            transition: 'all 0.3s ease',
-            maxHeight: isExpanded ? '1000px' : '0',
-            overflow: 'hidden'
+            display: 'flex', 
+            paddingTop: '24px', 
+            position: 'relative',
+            gap: '16px'
           }}>
+            {/* Вертикальная линия от родителя */}
+            <div style={{
+              position: 'absolute', top: 0, left: '50%', width: '2px', height: '24px',
+              background: borderColor, transform: 'translateX(-50%)'
+            }} />
+            
+            {/* Горизонтальная соединительная линия */}
+            <div style={{
+              position: 'absolute', top: 0, left: '0', right: '0', height: '2px',
+              background: borderColor,
+              // Обрезаем линию, чтобы она шла только между крайними детьми
+              marginLeft: node.children!.length > 1 ? `${100 / (node.children!.length * 2)}%` : '0',
+              marginRight: node.children!.length > 1 ? `${100 / (node.children!.length * 2)}%` : '0',
+            }} />
+
             {node.children!.map((child, idx) => (
-              <MindMapNode 
-                key={`${path}-${idx}`} 
-                node={child} 
-                depth={depth + 1} 
-                path={`${path}-${idx}`} 
-              />
+              <div key={idx} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {/* Вертикальная линия к ребенку */}
+                <div style={{
+                  width: '2px', height: '24px', background: getColor(child.label, 2),
+                  marginBottom: '0px' // Соединяется с родителем через абсолютные позиции выше
+                }} />
+                <MindMapTree node={child} />
+              </div>
             ))}
           </div>
         )}
@@ -322,7 +310,7 @@ function App() {
         <input 
           value={inputText} onChange={e => setInputText(e.target.value)}
           placeholder="Введи задачу или скажи голосом..."
-          style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}
+          style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
           onKeyDown={e => e.key === 'Enter' && handleCreate()}
         />
         <button onClick={handleCreate} disabled={isRecording} style={{ padding: '12px 24px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', opacity: isRecording ? 0.7 : 1 }}>
@@ -394,49 +382,48 @@ function App() {
         )}
       </main>
 
-      {/* Meeting Modal with Mind Map Visualization */}
+      {/* Meeting Modal with Visual Tree */}
       {showMeetingModal && lastMeetingResult && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '700px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '900px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>📝 Протокол встречи</h2>
               <button onClick={() => setShowMeetingModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', color: '#64748b' }}>✕</button>
             </div>
             
-            <div style={{ marginBottom: '20px', padding: '16px', background: '#f0fdf4', borderRadius: '10px', color: '#166534' }}>
-              ✅ Создано задач: <strong>{lastMeetingResult.tasksCreated}</strong>
-            </div>
-            
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '15px' }}>Резюме:</h4>
-            <p style={{ margin: '0 0 20px 0', color: '#475569', lineHeight: '1.6' }}>{lastMeetingResult.summary}</p>
-            
-            {/* Mind Map Visualization */}
-            <details open style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#3b82f6', fontSize: '16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                🧠 Mind Map
-                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>(кликай для сворачивания)</span>
-              </summary>
-              
-              {lastMeetingResult.mindMap ? (
-                <div style={{ padding: '8px 0' }}>
-                  <MindMapNode 
-                    node={lastMeetingResult.mindMap} 
-                    depth={0} 
-                    path="root" 
-                  />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', flex: 1 }}>
+              {/* Left Column: Summary & Stats */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '10px', color: '#166534' }}>
+                  ✅ Создано задач: <strong>{lastMeetingResult.tasksCreated}</strong>
                 </div>
-              ) : (
-                <p style={{ color: '#64748b', fontStyle: 'italic' }}>Данные карты не доступны</p>
-              )}
-            </details>
-            
-            {/* Raw JSON (for debug) */}
-            <details style={{ marginTop: '16px', background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#64748b', fontSize: '13px' }}>🔧 Raw JSON (для отладки)</summary>
-              <pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '12px', fontSize: '11px', overflow: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0', maxHeight: '200px' }}>
-                {JSON.stringify(lastMeetingResult.mindMap, null, 2)}
-              </pre>
-            </details>
+                
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '15px' }}>Резюме:</h4>
+                  <p style={{ margin: 0, color: '#475569', lineHeight: '1.6', fontSize: '14px' }}>{lastMeetingResult.summary}</p>
+                </div>
+
+                <details style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px', marginTop: 'auto' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#64748b', fontSize: '13px' }}>🔧 Raw JSON</summary>
+                  <pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '8px', fontSize: '10px', overflow: 'auto', borderRadius: '6px', border: '1px solid #e2e8f0', maxHeight: '150px' }}>
+                    {JSON.stringify(lastMeetingResult.mindMap, null, 2)}
+                  </pre>
+                </details>
+              </div>
+
+              {/* Right Column: Visual Mind Map Tree */}
+              <div style={{ 
+                background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', 
+                padding: '20px', minHeight: '300px', overflow: 'auto',
+                display: 'flex', justifyContent: 'center', alignItems: 'flex-start'
+              }}>
+                {lastMeetingResult.mindMap ? (
+                  <MindMapTree node={lastMeetingResult.mindMap} isRoot={true} />
+                ) : (
+                  <p style={{ color: '#94a3b8' }}>Нет данных для карты</p>
+                )}
+              </div>
+            </div>
             
             <button onClick={() => setShowMeetingModal(false)} style={{ marginTop: '24px', width: '100%', padding: '14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Закрыть</button>
           </div>
