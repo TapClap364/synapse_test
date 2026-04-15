@@ -34,26 +34,32 @@ function App() {
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
 
-  // --- ЗАГРУЗКА ДАННЫХ ---
+  // --- ЗАГРУЗКА ДАННЫХ (с исправлением типов TS2339) ---
   const fetchData = async () => {
     console.log("🔄 Fetching data...");
 
-    const {  epicsData, error: epicsError } = await supabase
-      .from('epics')
-      .select('id, title');
+    // 1. Эпики: используем 'as any' чтобы избежать ошибок типов
+    const responseEpics = await supabase.from('epics').select('id, title') as any;
+    const epicsData = responseEpics.data;
+    const epicsError = responseEpics.error;
     
     if (epicsError) console.error("Epics error:", epicsError);
+    
     if (epicsData) {
       const map: Record<number, string> = {};
       epicsData.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
 
-    const {  tasksData, error: tasksError } = await supabase
+    // 2. Задачи: используем 'as any' чтобы избежать ошибок типов
+    const responseTasks = await supabase
       .from('tasks')
       .select('*')
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true }) as any;
     
+    const tasksData = responseTasks.data;
+    const tasksError = responseTasks.error;
+
     if (tasksError) {
       console.error("Tasks error:", tasksError);
     } else if (tasksData) {
@@ -126,7 +132,7 @@ function App() {
     }
   };
 
-  // --- АЛГОРИТМ КРИТИЧЕСКОГО ПУТИ (CPM) — ИСПРАВЛЕННЫЙ ---
+  // --- АЛГОРИТМ КРИТИЧЕСКОГО ПУТИ (CPM) ---
   const cpmData = useMemo(() => {
     if (!tasks.length) return { epics: [], projectDuration: 0, criticalCount: 0 };
 
@@ -169,7 +175,7 @@ function App() {
     // 3. Длительность проекта
     const projectDuration = Math.max(...Array.from(taskMap.values()).map(t => t.ef || 0), 1);
 
-    // 4. ОБРАТНЫЙ ПРОХОД (Late Start/Finish) — ИСПРАВЛЕНО
+    // 4. ОБРАТНЫЙ ПРОХОД (Late Start/Finish)
     const calculateLate = (taskId: number, visited: Set<number>): number => {
       if (visited.has(taskId)) {
         return taskMap.get(taskId)?.ls ?? 0;
@@ -203,7 +209,7 @@ function App() {
       task.slack = task.ls - (task.es ?? 0);
       task.isCritical = Math.abs(task.slack) < 0.01;
       
-      console.log(`CPM: ${task.title} | ES:${task.es} EF:${task.ef} LS:${task.ls} LF:${task.lf} Slack:${task.slack} 🔥${task.isCritical}`);
+      // console.log(`CPM: ${task.title} | Slack:${task.slack} 🔥${task.isCritical}`);
       
       return task.ls;
     };
@@ -239,7 +245,6 @@ function App() {
     });
 
     const criticalCount = Array.from(taskMap.values()).filter(t => t.isCritical).length;
-    console.log(`🔥 Critical Path: ${criticalCount} tasks`);
 
     return { epics: Object.values(groups), projectDuration, criticalCount };
   }, [tasks, epics]);
@@ -382,7 +387,7 @@ function App() {
           <input 
             value={inputText} 
             onChange={e => setInputText(e.target.value)} 
-            placeholder="🎤 Введи задачу (например: 'Построить крышу после стен')..."
+            placeholder="🎤 Введи задачу..."
             style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #d9d9d9', outline: 'none' }}
             onKeyDown={e => e.key === 'Enter' && handleCreate()}
           />
