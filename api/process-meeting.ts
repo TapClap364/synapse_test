@@ -7,9 +7,17 @@ import fs from 'fs';
 
 export const config = {
   api: { bodyParser: false },
-};
+};// 1. Инициализация OpenRouter
+const openai = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    "HTTP-Referer": "https://synapse-app.vercel.app",
+    "X-Title": "Synapse AI Manager",
+  },
+});
 
-const openai = new OpenAI({ apiKey: process.env.OPENROUTER_API_KEY });
+
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
