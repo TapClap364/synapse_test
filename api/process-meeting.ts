@@ -81,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Если у тебя ЕСТЬ ключ OpenAI (для GPT-4o-mini анализ дешевле цента), оставь как было:
   
-const openai = new OpenAI({
+const openai = new openai({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
   defaultHeaders: {

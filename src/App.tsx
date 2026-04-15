@@ -3,23 +3,11 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from './lib/supabase';
 
 interface Task {
-  id: number;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  epic_id: number | null;
-  estimated_hours: number | null;
-  blocked_by: number[] | null;
-  created_at: string;
+  id: number; title: string; description: string; priority: string; status: string;
+  epic_id: number | null; estimated_hours: number | null; blocked_by: number[] | null; created_at: string;
   es?: number; ef?: number; ls?: number; lf?: number; slack?: number; isCritical?: boolean;
 }
-
-interface EpicGroup {
-  id: number | null;
-  title: string;
-  tasks: Task[];
-}
+interface EpicGroup { id: number | null; title: string; tasks: Task[]; }
 
 function App() {
   const [view, setView] = useState<'board' | 'gantt'>('board');
@@ -35,7 +23,6 @@ function App() {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [isProcessingMeeting, setIsProcessingMeeting] = useState(false);
 
-  // --- DATA FETCHING ---
   const fetchData = async () => {
     const resEpics = await supabase.from('epics').select('id, title') as any;
     if (resEpics.data) {
@@ -43,7 +30,6 @@ function App() {
       resEpics.data.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
-
     const resTasks = await supabase.from('tasks').select('*').order('created_at', { ascending: true }) as any;
     if (resTasks.data) setTasks(resTasks.data as Task[]);
   };
@@ -53,17 +39,19 @@ function App() {
     const channel = supabase.channel('public-tasks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+
+    // ИСПРАВЛЕНО TS2345: cleanup должен быть синхронным
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
-  // --- CREATE TASK ---
   const handleCreate = async () => {
     if (!inputText.trim()) return;
     setIsRecording(true);
     try {
       const res = await fetch('/api/create-task-from-voice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice_text: inputText }),
       });
       if (!res.ok) throw new Error('API Error');
@@ -73,7 +61,6 @@ function App() {
     finally { setIsRecording(false); }
   };
 
-  // --- MEETING RECORDING ---
   const startMeetingRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -87,8 +74,9 @@ function App() {
     } catch { alert("Нет доступа к микрофону"); }
   };
 
+  // ИСПРАВЛЕНО TS18047: явная проверка на null
   const stopMeetingRecording = () => {
-    if (mediaRecorder?.state !== 'inactive') {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
       setIsRecordingMeeting(false);
       setIsProcessingMeeting(true);
@@ -110,7 +98,6 @@ function App() {
     finally { setIsProcessingMeeting(false); }
   };
 
-  // --- DRAG & DROP ---
   const onDragStart = (e: React.DragEvent, id: number) => e.dataTransfer.setData('id', id.toString());
   const onDragOver = (e: React.DragEvent) => e.preventDefault();
   const onDrop = async (e: React.DragEvent, status: string) => {
@@ -121,7 +108,6 @@ function App() {
     if (error) { alert('Не удалось сохранить'); fetchData(); }
   };
 
-  // --- CPM ---
   const cpmData = useMemo(() => {
     if (!tasks.length) return { epics: [], projectDuration: 0, criticalCount: 0 };
     const map = new Map<number, Task>();
@@ -159,7 +145,6 @@ function App() {
     return { epics: Object.values(groups), projectDuration: dur, criticalCount: Array.from(map.values()).filter(t => t.isCritical).length };
   }, [tasks, epics]);
 
-  // --- UI COMPONENTS ---
   const GanttBar = ({ task }: { task: Task }) => {
     const w = (task.estimated_hours || 4) * 24;
     const ml = (task.es || 0) * 24;
@@ -182,8 +167,6 @@ function App() {
 
   return (
     <div style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc', color: '#0f172a' }}>
-      
-      {/* Header */}
       <header style={{ padding: '16px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '32px', height: '32px', background: '#3b82f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px' }}>🧠</div>
@@ -195,34 +178,22 @@ function App() {
         </div>
       </header>
 
-      {/* Controls */}
       <div style={{ padding: '20px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '12px', alignItems: 'center' }}>
-        <input 
-          value={inputText} onChange={e => setInputText(e.target.value)}
-          placeholder="Введи задачу или скажи голосом..."
-          style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}
-          onKeyDown={e => e.key === 'Enter' && handleCreate()}
-        />
+        <input value={inputText} onChange={e => setInputText(e.target.value)} placeholder="Введи задачу или скажи голосом..."
+          style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+          onKeyDown={e => e.key === 'Enter' && handleCreate()} />
         <button onClick={handleCreate} disabled={isRecording} style={{ padding: '12px 24px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', opacity: isRecording ? 0.7 : 1 }}>
           {isRecording ? '⏳ Создание...' : '➕ Создать'}
         </button>
         <div style={{ width: '1px', height: '28px', background: '#e2e8f0' }} />
-        <button 
-          onClick={isRecordingMeeting ? stopMeetingRecording : startMeetingRecording}
-          disabled={isProcessingMeeting}
-          style={{ 
-            padding: '12px 20px', borderRadius: '10px', border: '1px solid #e2e8f0',
+        <button onClick={isRecordingMeeting ? stopMeetingRecording : startMeetingRecording} disabled={isProcessingMeeting}
+          style={{ padding: '12px 20px', borderRadius: '10px', border: '1px solid #e2e8f0',
             background: isRecordingMeeting ? '#fef2f2' : isProcessingMeeting ? '#f8fafc' : '#fff',
-            color: isRecordingMeeting ? '#dc2626' : '#334155',
-            cursor: isProcessingMeeting ? 'wait' : 'pointer',
-            display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500
-          }}
-        >
+            color: isRecordingMeeting ? '#dc2626' : '#334155', cursor: isProcessingMeeting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
           {isProcessingMeeting ? '⏳ Анализ...' : (isRecordingMeeting ? '⏹ Остановить' : '🎙 Запись встречи')}
         </button>
       </div>
 
-      {/* Main Content */}
       <main style={{ flex: 1, padding: '24px 32px', overflow: 'hidden' }}>
         {view === 'board' ? (
           <div style={{ display: 'flex', gap: '24px', height: '100%' }}>
@@ -238,9 +209,7 @@ function App() {
                       <div style={{ fontSize: '12px', color: '#64748b' }}>{epics[t.epic_id || 0]}</div>
                     </div>
                   ))}
-                  {tasks.filter(t => t.status === status).length === 0 && (
-                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '20px' }}>Перетащи сюда</div>
-                  )}
+                  {tasks.filter(t => t.status === status).length === 0 && <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '20px' }}>Перетащи сюда</div>}
                 </div>
               </div>
             ))}
@@ -272,7 +241,6 @@ function App() {
         )}
       </main>
 
-      {/* Meeting Modal */}
       {showMeetingModal && lastMeetingResult && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '560px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '85vh', overflowY: 'auto' }}>
