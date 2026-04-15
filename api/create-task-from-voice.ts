@@ -30,17 +30,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // 1. Получаем контекст: Эпики и последние задачи
-    const {  epics } = await supabase.from('epics').select('id, title');
-    const epicList = epics?.map(e => e.title).join(', ') || 'General';
+    // Используем 'as any' чтобы избежать ошибок типов TS2339 в строгом режиме Vercel
+    const {  epics } = await supabase.from('epics').select('id, title') as any;
+    const epicList = epics?.map((e: any) => e.title).join(', ') || 'General';
     
-    // Берем последние 5 задач для анализа зависимостей
     const {  recentTasks } = await supabase
       .from('tasks')
       .select('id, title, status, epic_id')
       .order('created_at', { ascending: false })
-      .limit(5);
+      .limit(5) as any;
 
-    const taskContext = recentTasks?.map(t => `ID:${t.id} [${t.status}] "${t.title}"`).join('\n') || 'Нет задач';
+    const taskContext = recentTasks?.map((t: any) => `ID:${t.id} [${t.status}] "${t.title}"`).join('\n') || 'Нет задач';
 
     // 2. AI Agent: Структурирование + Анализ зависимостей
     const completion = await openai.chat.completions.create({
@@ -75,11 +75,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 3. Поиск/Создание Эпика
     let epicId = null;
-    const existingEpic = epics?.find(e => e.title.toLowerCase() === aiData.epic_title.toLowerCase());
+    const existingEpic = epics?.find((e: any) => e.title.toLowerCase() === aiData.epic_title.toLowerCase());
     if (existingEpic) {
       epicId = existingEpic.id;
     } else {
-      const {  newEpic } = await supabase.from('epics').insert({ title: aiData.epic_title }).select().single();
+      const {  newEpic } = await supabase.from('epics').insert({ title: aiData.epic_title }).select().single() as any;
       epicId = newEpic?.id;
     }
 
@@ -98,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         board_y: Math.random() * 600
       })
       .select()
-      .single();
+      .single() as any;
 
     if (error) throw error;
     return res.status(200).json(task);

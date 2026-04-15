@@ -25,13 +25,15 @@ function App() {
 
   // --- ЗАГРУЗКА ДАННЫХ ---
   const fetchData = async () => {
-    const {  epicsData } = await supabase.from('epics').select('id, title');
+    // Используем 'as any' чтобы избежать ошибок типов TS2339
+    const {  epicsData } = await supabase.from('epics').select('id, title') as any;
     if (epicsData) {
       const map: Record<number, string> = {};
       epicsData.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
-    const {  tasksData } = await supabase.from('tasks').select('*').order('created_at', { ascending: true });
+    
+    const {  tasksData } = await supabase.from('tasks').select('*').order('created_at', { ascending: true }) as any;
     if (tasksData) setTasks(tasksData as Task[]);
   };
 
