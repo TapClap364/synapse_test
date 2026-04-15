@@ -5,14 +5,14 @@ import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
 
-// Отключаем стандартный парсер body, чтобы работать с FormData (файлами)
+// Отключаем стандартный парсер body Vercel, чтобы Formidable мог обработать файл
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-const openai = new OpenAI({ apiKey: process.env.OPENROUTER_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -21,29 +21,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 1. Парсинг загруженного файла
+    // 1. Парсинг файла
     const form = formidable({});
-    const [fields, files] = await form.parse(req);
+    // formidable возвращает Promise<[fields, files]>
+    const [fields, files] = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        resolve([fields, files]);
+      });
+    });
+
+    const audioFile = Array.isArray(files.audio) ? files.audio[0] : files.audio;
     
-    // Получаем первый аудиофайл
-    const audioFile = files.audio?.[0];
-    if (!audioFile) {
+    if (!audioFile || !audioFile.filepath) {
       return res.status(400).json({ error: 'No audio file provided' });
     }
 
     console.log("🎤 Start transcription...");
 
-    // 2. Транскрибация через Whisper (OpenAI)
+    // 2. Транскрибация (Whisper)
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(audioFile.filepath),
       model: "whisper-1",
-      language: "ru" // Можно убрать, если встречи на разных языках
+      language: "ru"
     });
 
     const fullText = transcription.text;
-    console.log("✅ Transcription done. Length:", fullText.length);
+    console.log("✅ Transcription done.");
 
-    // 3. ИИ-Анализ: Summary + Mind Map + Tasks
+    // 3. ИИ-Анализ
     console.log("🧠 Analyzing content...");
     const analysisCompletion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -56,9 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             "summary": "Краткое резюме встречи (3-5 предложений)",
             "mind_map": {
               "label": "Главная тема",
-              "children": [
-                { "label": "Подтема 1", "children": [] }
-              ]
+              "children": []
             },
             "tasks": [
               {
@@ -77,27 +81,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const aiResult = JSON.parse(analysisCompletion.choices[0].message.content || '{}');
 
-    // 4. Сохранение Meeting Notes в БД
-    // ИСПРАВЛЕНО: используем { data: meeting }
-    const {  meeting, error: meetingError } = await supabase
+    // 4. Сохранение Meeting Notes (ИСПРАВЛЕНО: используем data и as any)
+    const responseMeeting = await supabase
       .from('meetings')
       .insert({
-        title: fields.title?.[0] || `Meeting ${new Date().toLocaleTimeString()}`,
+        title: (fields.title as string[])?.[0] || `Meeting ${new Date().toLocaleTimeString()}`,
         summary: aiResult.summary,
         mind_map_data: aiResult.mind_map
       })
       .select()
-      .single();
+      .single() as any;
+
+    const meeting = responseMeeting.data;
+    const meetingError = responseMeeting.error;
 
     if (meetingError) throw meetingError;
 
-    // 5. Создание задач в основном бэклоге
+    // 5. Создание задач
     let tasksCreatedCount = 0;
-    if (aiResult.tasks && aiResult.tasks.length > 0) {
+    if (aiResult.tasks && Array.isArray(aiResult.tasks)) {
       for (const task of aiResult.tasks) {
          await supabase.from('tasks').insert({
            title: task.title,
-           description: `${task.description} (Source: Meeting)`,
+           description: `${task.description} (Из встречи)`,
            priority: task.priority || 'medium',
            estimated_hours: task.estimated_hours || 2,
            status: 'backlog',
@@ -108,8 +114,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Удаляем временный файл
-    fs.unlinkSync(audioFile.filepath);
+    // Очистка временного файла
+    try {
+      fs.unlinkSync(audioFile.filepath);
+    } catch (e) {
+      console.warn("Could not delete temp file", e);
+    }
 
     return res.status(200).json({ 
       message: "Meeting processed", 
