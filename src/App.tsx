@@ -414,8 +414,9 @@ function App() {
             <Column title="✅ Готово" status="done" color="#52c41a" />
           </div>
         ) : (
-          <div style={{ overflow: 'auto', height: '100%' }}>
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          // GANTT VIEW — ИСПРАВЛЕННАЯ ВЕРСТКА
+          <div style={{ overflow: 'auto', height: '100%', width: '100%' }}>
+            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: '800px' }}>
               <h2 style={{ margin: 0 }}>📅 Диаграмма Ганта</h2>
               <div style={{ fontSize: '13px', color: '#666' }}>
                 Длительность: <strong>{cpmData.projectDuration}ч</strong> | 
@@ -423,33 +424,44 @@ function App() {
               </div>
             </div>
 
-            {/* Timeline Header */}
-            <div style={{ marginLeft: '190px', marginBottom: '15px', display: 'flex', gap: '15px', fontSize: '11px', color: '#999' }}>
-              {Array.from({ length: Math.ceil(cpmData.projectDuration / 8) + 1 }).map((_, i) => (
-                <div key={i} style={{ width: '120px', borderLeft: '1px dashed #eee', paddingLeft: '5px' }}>
-                  День {i + 1}
-                </div>
-              ))}
-            </div>
+            {/* Контейнер с прокруткой */}
+            <div style={{ overflowX: 'auto', paddingBottom: '20px' }}>
+              
+              {/* Внутренний контейнер с минимальной шириной, чтобы ничего не сжималось */}
+              <div style={{ minWidth: '1000px', position: 'relative' }}>
 
-            {/* Epics & Tasks */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {cpmData.epics.map(epic => (
-                <div key={epic.title} style={{ 
-                  background: 'white', borderRadius: '12px', padding: '20px', 
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                  borderLeft: '4px solid #1890ff'
-                }}>
-                  <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#333' }}>
-                    📁 {epic.title}
-                  </h3>
-                  <div style={{ marginLeft: '10px' }}>
-                    {epic.tasks.map(task => (
-                      <GanttBar key={task.id} task={task} />
-                    ))}
-                  </div>
+                {/* Timeline Header */}
+                <div style={{ marginLeft: '190px', marginBottom: '15px', display: 'flex', fontSize: '11px', color: '#999' }}>
+                  {Array.from({ length: Math.ceil(cpmData.projectDuration / 8) + 1 }).map((_, i) => (
+                    <div key={i} style={{ width: '120px', flexShrink: 0, borderLeft: '1px dashed #eee', paddingLeft: '5px' }}>
+                      День {i + 1}
+                    </div>
+                  ))}
                 </div>
-              ))}
+
+                {/* Epics & Tasks */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {cpmData.epics.map(epic => (
+                    <div key={epic.title} style={{ 
+                      background: 'white', borderRadius: '12px', padding: '20px', 
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                      borderLeft: '4px solid #1890ff',
+                      minWidth: '1000px' // Гарантируем ширину карточки эпика
+                    }}>
+                      <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#333' }}>
+                        📁 {epic.title}
+                      </h3>
+                      
+                      <div style={{ marginLeft: '10px' }}>
+                        {epic.tasks.map(task => (
+                          <GanttBar key={task.id} task={task} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
             </div>
 
             {/* Legend */}
