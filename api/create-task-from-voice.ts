@@ -41,39 +41,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 1. Получаем список эпиков
-    // Используем стандартную деструктуризацию { data, error }
-    const { data: epics, error: epicsError } = await supabase
-      .from('epics')
-      .select('id, title');
-    
-    if (epicsError) throw epicsError;
+    // 1. Получаем контекст: Эпики и последние задачи
+    // Используем as any для обхода строгих типов TS в Vercel для этого файла
+    const { data: epics } = await supabase.from('epics').select('id, title') as any;
+    const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend';
 
-    const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design';
+    // Берем последние 5 задач для анализа зависимостей
+    const { data: recentTasks } = await supabase
+      .from('tasks')
+      .select('id, title, status')
+      .order('created_at', { ascending: false })
+      .limit(5) as any;
 
-    // 2. Запрос к OpenRouter
+    const taskContext = recentTasks?.map((t: any) => `ID:${t.id} [${t.status}] "${t.title}"`).join('\n') || 'Нет существующих задач';
+
+    // 2. Запрос к OpenRouter (Структурирование + Зависимости)
     const completion = await openai.chat.completions.create({
       model: "meta-llama/llama-3.3-70b-instruct", 
       messages: [
         {
           role: "system",
-          content: `Ты опытный Project Manager (AI Agent). 
-          Твоя задача: проанализировать голосовое сообщение пользователя и превратить его в структурированную задачу.
+          content: `Ты Lead Project Manager. 
+          Твоя задача: проанализировать голосовое сообщение и создать задачу.
           
-          Доступные Эпики (категории): [${epicList}]
+          ВАЖНО: Определи зависимости (blocked_by). 
+          Если новая задача логически не может начаться БЕЗ завершения одной из существующих задач (например, "Крыша" не может быть сделана до "Стен"), укажи ID этой существующей задачи в массиве blocked_by.
           
-          Правила:
-          1. Выбери наиболее подходящий эпик из списка. Если ничего не подходит, предложи новое название эпика.
-          2. Оцени приоритет: 'low' | 'medium' | 'high' | 'critical'.
-          3. Оцени время в часах (estimated_hours).
-          
-          Верни СТРОГО JSON объект без markdown-оберток:
+          Доступные Эпики: [${epicList}]
+          Существующие задачи (контекст):
+          ${taskContext}
+
+          Верни СТРОГО JSON объект:
           {
             "title": "Короткий заголовок",
             "description": "Подробное описание",
             "priority": "low" | "medium" | "high" | "critical",
-            "epic_title": "Название эпика",
-            "estimated_hours": number
+            "epic_title": "Название эпика (выбери из списка или создай новый)",
+            "estimated_hours": number,
+            "blocked_by": number[] // Массив ID задач-предшественников. Если нет, верни []
           }`
         },
         { role: "user", content: voice_text }
@@ -89,7 +94,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 3. Логика поиска или создания Эпика
     let epicId: number | null = null;
     
-    // Безопасный поиск эпика
     const existingEpic = epics?.find(
       (e: any) => e.title.toLowerCase().trim() === aiData.epic_title.toLowerCase().trim()
     );
@@ -97,8 +101,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (existingEpic) {
       epicId = existingEpic.id;
     } else {
-      // Создаем новый эпик
-      // Важно: используем { data: newEpic, error: epicError }
       const { data: newEpic, error: epicError } = await supabase
         .from('epics')
         .insert({ title: aiData.epic_title })
@@ -109,8 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       epicId = newEpic.id;
     }
 
-    // 4. Создание задачи в Supabase
-    // Важно: используем { data: task, error: taskError }
+    // 4. Создание задачи в Supabase с зависимостями
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .insert({
@@ -120,6 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         estimated_hours: aiData.estimated_hours,
         epic_id: epicId,
         status: 'backlog',
+        blocked_by: aiData.blocked_by || [], // <--- СОХРАНЯЕМ ЗАВИСИМОСТИ
         board_x: Math.random() * 800,
         board_y: Math.random() * 600
       })
