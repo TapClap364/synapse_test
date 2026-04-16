@@ -91,14 +91,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const responseEpics = await supabase.from('epics').select('id, title') as any;
     const epics = responseEpics.data;
-    const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design';
+    const epicList = epics?.map((e: any) => e.title).join(', ') || 'пусто';
 
     const analysisCompletion = await openai.chat.completions.create({
-      model: "meta-llama/llama-3.3-70b-instruct",
+      model: "qwen/qwen3.6-plus",
       messages: [
         {
           role: "system",
           content: `Ты AI Project Manager. Проанализируй стикеры с брейншторма и создай структурированные задачи.
+
+          ПРАВИЛА:
+          1. Для каждого стикера создай задачу.
+          2. САМ определи эпик: используй существующий или придумай новый.
+          3. Не создавай дубликаты, если стикер уже есть в задачах.
           
           Доступные эпики: [${epicList}]
           

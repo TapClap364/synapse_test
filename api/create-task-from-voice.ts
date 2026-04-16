@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const responseEpics = await supabase.from('epics').select('id, title') as any;
     const epics = responseEpics.data;
     
-    const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design, Marketing';
+    const epicList = epics?.map((e: any) => e.title).join(', ') || 'пусто';
 
     // Берем последние 5 задач для анализа зависимостей
     const responseTasks = await supabase
@@ -60,16 +60,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 2. Запрос к OpenRouter (Структурирование + Зависимости + Эпик)
     const completion = await openai.chat.completions.create({
-      model: "meta-llama/llama-3.3-70b-instruct", 
+      model: "qwen/qwen3.6-plus", 
       messages: [
         {
           role: "system",
           content: `Ты Lead Project Manager. 
-          Твоя задача: проанализировать голосовое сообщение и создать задачу.
+          Твоя задача: проанализировать сообщение и создать задачу.
           
           ВАЖНО:
           1. Определи зависимости (blocked_by). Если новая задача логически не может начаться БЕЗ завершения одной из существующих задач, укажи её ID в массиве blocked_by.
-          2. Выбери подходящий эпик из списка или предложи новый.
+          2. Определи суть задачи. 
+          3. Если она подходит к существующему эпику — используй его название.
+          4. Если это НОВАЯ категория — САМ ПРИДУМАЙ название для нового эпика.
           
           Доступные Эпики: [${epicList}]
           Существующие задачи (контекст):
@@ -80,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             "title": "Короткий заголовок",
             "description": "Подробное описание",
             "priority": "low" | "medium" | "high" | "critical",
-            "epic_title": "Название эпика (выбери из списка или создай новый)",
+            "epic_title": "Название эпика (существующего или нового)",
             "estimated_hours": number,
             "blocked_by": number[] // Массив ID задач-предшественников. Если нет, верни []
           }`

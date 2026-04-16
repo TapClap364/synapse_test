@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 1. Получаем существующие эпики для контекста
     const responseEpics = await supabase.from('epics').select('id, title') as any;
     const existingEpics = responseEpics.data;
-    const epicList = existingEpics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design, Marketing';
+    const epicList = existingEpics?.map((e: any) => e.title).join(', ') || 'пусто';
 
     // 2. ИИ-Анализ с привязкой к эпикам
     const analysisCompletion = await openai.chat.completions.create({
@@ -29,6 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           role: "system",
           content: `Ты AI Secretary & Project Manager. Проанализируй текст встречи.
           Доступные эпики: [${epicList}]
+          ВАЖНО: Для каждой задачи САМ определи эпик. Если подходит существующий — бери его. Если нет — придумай новый.
           Верни СТРОГО JSON:
           {
             "summary": "Краткое резюме (3-5 предложений)",
