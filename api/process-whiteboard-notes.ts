@@ -33,11 +33,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'No notes provided' });
     }
 
-    // Получаем существующие эпики
     const {  epics } = await supabase.from('epics').select('id, title') as any;
     const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design';
 
-    // ИИ анализирует стикеры
     const analysisCompletion = await openai.chat.completions.create({
       model: "meta-llama/llama-3.3-70b-instruct",
       messages: [
@@ -47,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
           Доступные эпики: [${epicList}]
           
-          Верни СТРОГО JSON объект с ключом "tasks", содержащим массив:
+          Верни СТРОГО JSON объект с ключом "tasks":
           {
             "tasks": [
               {
@@ -70,13 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const aiResult = JSON.parse(analysisCompletion.choices[0].message.content || '{}');
-    // Явно приводим тип, чтобы избежать ошибки TS2345
     const tasks: TaskInput[] = Array.isArray(aiResult.tasks) ? aiResult.tasks : [];
 
-    // Создаём задачи в базе
-    const createdTasks = [];
+    // ИСПРАВЛЕНО: Явная типизация массива при инициализации
+    const createdTasks: any[] = []; 
+
     for (const task of tasks) {
-      // Найти или создать эпик
       let epicId = null;
       const foundEpic = epics?.find((e: any) => 
         e.title.toLowerCase().includes(task.epic_title?.toLowerCase()) ||
