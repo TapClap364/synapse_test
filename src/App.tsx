@@ -298,7 +298,7 @@ function App() {
       <header style={{ padding: '16px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '32px', height: '32px', background: '#3b82f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px' }}>🧠</div>
-          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Synapse AI</h1>
+          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Synapse AI - от идей к задачам</h1>
         </div>
         <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
           <button onClick={() => setView('board')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'board' ? '#fff' : 'transparent', boxShadow: view === 'board' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'board' ? '#3b82f6' : '#64748b' }}>📋 Задачи</button>
