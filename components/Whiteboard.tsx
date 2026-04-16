@@ -13,8 +13,8 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
   return (
     <div style={{ 
       position: 'absolute', 
-      right: '10px', 
-      top: '400px', 
+      right: '9px', 
+      top: '500px', 
       zIndex: 10000,
       display: 'flex',
       flexDirection: 'column',
