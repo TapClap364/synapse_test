@@ -270,53 +270,48 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
         </button>
       </div>
 
-      {/* Attachments */}
-      {attachments.length > 0 && (
-        <div style={{ padding: '16px 48px', background: '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, color: '#475569', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            📎 Вложения (AI-распознавание)
+     {/* Attachments - Compact */}
+{attachments.length > 0 && (
+  <div style={{ padding: '12px 48px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+    <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>
+      📎 Вложения ({attachments.length})
+    </div>
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      {attachments.map(att => {
+        const isPdf = att.file_type === 'application/pdf' || att.file_url.endsWith('.pdf');
+        return (
+          <div key={att.id} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '6px 10px', background: '#fff', borderRadius: '6px',
+            border: '1px solid #e2e8f0', fontSize: '12px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+          }}>
+            <span style={{ fontWeight: 500, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isPdf ? '📄' : '🖼️'} {att.file_name}
+            </span>
+            <button onClick={() => handleAiOcr(att.file_url, 'text', att.file_type)} 
+              disabled={isAiLoading} style={{
+                padding: '3px 8px', borderRadius: '4px', border: '1px solid #bae6fd',
+                background: '#eff6ff', color: '#0284c7', cursor: 'pointer', fontSize: '11px', fontWeight: 500
+              }}>
+              {isPdf ? '📝 Распознать' : '📝 Текст'}
+            </button>
+            <button onClick={() => handleAiOcr(att.file_url, 'table', att.file_type)} 
+              disabled={isAiLoading} style={{
+                padding: '3px 8px', borderRadius: '4px', border: '1px solid #bbf7d0',
+                background: '#f0fdf4', color: '#16a34a', cursor: 'pointer', fontSize: '11px', fontWeight: 500
+              }}>
+              📊 Таблица
+            </button>
+            <button onClick={() => handleDeleteAttachment(att.id)} 
+              style={{ padding: '3px 6px', border: 'none', background: 'transparent', 
+                color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}>×</button>
           </div>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {attachments.map(att => {
-              const isPdf = att.file_type === 'application/pdf' || att.file_url.endsWith('.pdf');
-              return (
-                <div key={att.id} style={{
-                  display: 'flex', flexDirection: 'column', gap: '8px',
-                  padding: '12px 16px', background: '#fff', borderRadius: '10px',
-                  border: '2px solid #e2e8f0', fontSize: '13px', minWidth: '220px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {isPdf ? '📄' : '🖼️'} {att.file_name}
-                    </span>
-                    <button onClick={() => handleDeleteAttachment(att.id)} 
-                      style={{ padding: '4px 8px', border: 'none', background: 'transparent', 
-                        color: '#94a3b8', cursor: 'pointer', fontSize: '16px' }}>×</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => handleAiOcr(att.file_url, 'text', att.file_type)} 
-                      disabled={isAiLoading} style={{
-                        flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #bae6fd',
-                        background: '#eff6ff', color: '#0284c7', cursor: 'pointer', fontSize: '12px', fontWeight: 600
-                      }}>
-                      📝 {isPdf ? 'Распознать' : 'Извлечь'}
-                    </button>
-                    <button onClick={() => handleAiOcr(att.file_url, 'table', att.file_type)} 
-                      disabled={isAiLoading} style={{
-                        flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #bbf7d0',
-                        background: '#f0fdf4', color: '#16a34a', cursor: 'pointer', fontSize: '12px', fontWeight: 600
-                      }}>
-                      📊 В таблицу
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
+        );
+      })}
+    </div>
+  </div>
+)}
       {/* Editor Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '48px', background: '#fff' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', minHeight: '600px' }}>
