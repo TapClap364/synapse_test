@@ -350,71 +350,52 @@ function App() {
                             </div>
                           ))}
                         </div>
-	{/* SVG СЛОЙ ДЛЯ СТРЕЛОК КРИТИЧЕСКОГО ПУТИ (УМНЫЕ ОРТОГОНАЛЬНЫЕ) */}
-<svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5, pointerEvents: 'none', overflow: 'visible' }}>
-  <defs>
-    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
-    </marker>
-  </defs>
-  {epic.tasks.map((task) => {
-    if (task.blocked_by && task.blocked_by.length > 0) {
-      const parentTaskId = task.blocked_by[0];
-      const parentTask = epic.tasks.find(t => t.id === parentTaskId);
-      
-      if (parentTask) {
-        const parentIndex = epic.tasks.indexOf(parentTask);
-        const taskIndex = epic.tasks.indexOf(task);
-        
-        const PIXELS_PER_HOUR = 12;
-        const ROW_HEIGHT = 56;
 
-        // Координаты начала (конец родительской задачи)
-        const parentEndHour = (parentTask.es || 0) + (parentTask.estimated_hours || 4);
-        const startX = 120 + parentEndHour * PIXELS_PER_HOUR;
-        const startY = (parentIndex * ROW_HEIGHT) + 20;
-        
-        // Координаты конца (начало текущей задачи)
-        const endX = 120 + (task.es || 0) * PIXELS_PER_HOUR;
-        const endY = (taskIndex * ROW_HEIGHT) + 20;
+                        {/* SVG СЛОЙ ДЛЯ СТРЕЛОК КРИТИЧЕСКОГО ПУТИ */}
+                        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5, pointerEvents: 'none', overflow: 'visible' }}>
+                          <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                              <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+                            </marker>
+                          </defs>
+                          {epic.tasks.map((task) => {
+                            if (task.blocked_by && task.blocked_by.length > 0) {
+                              const parentTaskId = task.blocked_by[0];
+                              const parentTask = epic.tasks.find(t => t.id === parentTaskId);
+                              
+                              if (parentTask) {
+                                const parentIndex = epic.tasks.indexOf(parentTask);
+                                const taskIndex = epic.tasks.indexOf(task);
+                                
+                                // Координаты начала (конец родительской задачи)
+                                const parentEndHour = (parentTask.es || 0) + (parentTask.estimated_hours || 4);
+                                const startX = 120 + parentEndHour * PIXELS_PER_HOUR;
+                                const startY = (parentIndex * ROW_HEIGHT) + 20;
+                                
+                                // Координаты конца (начало текущей задачи)
+                                const endX = 120 + (task.es || 0) * PIXELS_PER_HOUR;
+                                const endY = (taskIndex * ROW_HEIGHT) + 20;
 
-        // Умный расчет пути: если задачи далеко друг от друга по времени,
-        // делаем излом посередине. Если близко — короткий вертикальный спуск.
-        const horizontalGap = endX - startX;
-        
-        let pathD = '';
-        
-        if (horizontalGap > 40) {
-          // Задачи далеко друг от друга: классическая L-форма с горизонтальным участком
-          const midX = startX + Math.min(horizontalGap / 2, 100); // Ограничиваем длину горизонтального участка
-          pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
-        } else {
-          // Задачи близко или перекрываются: вертикальный спуск сразу от конца родителя
-          // Затем горизонтально к началу ребенка
-          const verticalDropX = startX + 15; // Небольшой отступ вправо от конца родителя
-          pathD = `M ${startX} ${startY} L ${verticalDropX} ${startY} L ${verticalDropX} ${endY} L ${endX} ${endY}`;
-        }
-
-        return (
-          <g key={`arrow-${task.id}`}>
-            <path
-              d={pathD}
-              stroke="#ef4444" 
-              strokeWidth="2" 
-              strokeDasharray="5 3" 
-              fill="none"
-              strokeLinejoin="round"
-              markerEnd="url(#arrowhead)"
-              style={{ filter: 'drop-shadow(0 1px 2px rgba(239,68,68,0.3))' }}
-            />
-          </g>
-        );
-      }
-    }
-    return null;
-  })}
-</svg>
-                                               {/* Задачи */}
+                                return (
+                                  <g key={`arrow-${task.id}`}>
+                                    <path 
+                                      d={`M ${startX} ${startY} C ${startX + 20} ${startY}, ${endX - 20} ${endY}, ${endX} ${endY}`}
+                                      stroke="#ef4444" 
+                                      strokeWidth="2" 
+                                      strokeDasharray="5 3" 
+                                      fill="none" 
+                                      markerEnd="url(#arrowhead)"
+                                      style={{ filter: 'drop-shadow(0 1px 2px rgba(239,68,68,0.3))' }}
+                                    />
+                                  </g>
+                                );
+                              }
+                            }
+                            return null;
+                          })}
+                        </svg>
+                        
+                        {/* Задачи */}
                         {epic.tasks.map((task, idx) => (
                           <div key={task.id}>
                             <div style={{ position: 'absolute', left: '-120px', top: `${idx * 56}px`, width: '110px', fontSize: '12px', fontWeight: 600, color: '#1e293b', textAlign: 'right', paddingRight: '10px', paddingTop: '12px' }}>
