@@ -11,12 +11,13 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "@tldraw/tldraw": "^2.4.6",
     "axios": "^1.7.7",
     "formidable": "^3.5.1",
     "openai": "^4.24.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tldraw": "^2.0.0-alpha.16"
+    "tldraw": "^2.4.6"
   },
   "devDependencies": {
     "@types/formidable": "^3.4.5",
