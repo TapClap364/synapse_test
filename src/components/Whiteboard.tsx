@@ -7,7 +7,6 @@ interface WhiteboardProps {
   onExtractTasks: (notes: string[]) => void;
 }
 
-// Компонент кнопки с доступом к editor через хук
 const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void }) => {
   const editor = useEditor();
   
@@ -29,75 +28,60 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
       >
         ✈️ Перенести в задачи
       </button>
-      
-      <div style={{
-        position: 'absolute',
-        top: '60px',
-        right: '0',
-        background: '#fff',
-        padding: '12px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        fontSize: '12px',
-        color: '#64748b',
-        maxWidth: '220px',
-        zIndex: 1001
-      }}>
-        <strong style={{ display: 'block', marginBottom: '8px', color: '#1e293b' }}>Как создать стикер:</strong>
-        1. Нажми <strong>S</strong> (Sticky)<br/>
-        2. Или <strong>T</strong> (Text)<br/>
-        3. Кликни на доску и пиши<br/>
-        4. Нажми кнопку выше ↗️
-      </div>
     </div>
   );
 };
 
 export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
   const handleExtract = (editor: any) => {
+    console.log('🔍 Editor:', editor);
+    
     try {
       const notes: string[] = [];
       
-      // Получаем все shapes из store
-      const shapes = editor.store.getAllShapes();
+      // tldraw v2: используем store.query с итератором
+      const shapes = Array.from(editor.store.query.shapes({}));
+      console.log('✅ Found shapes:', shapes);
       
       shapes.forEach((shape: any) => {
-        // Ищем текстовые shapes и sticky notes
-        if (shape.type === 'text' || shape.type === 'geo') {
-          const text = shape.props?.text?.trim();
-          if (text && text.length > 0 && text.length < 1000) {
-            // Проверяем на дубликаты
-            const isDuplicate = notes.some(n => 
-              n.toLowerCase().includes(text.toLowerCase()) || 
-              text.toLowerCase().includes(n.toLowerCase())
-            );
-            
-            if (!isDuplicate) {
-              notes.push(text);
-            }
-          }
+        console.log('📋 Shape:', shape.type, shape.props);
+        
+        // Ищем текст в разных типах shapes
+        let text = '';
+        
+        if (shape.type === 'text') {
+          text = shape.props?.text?.trim();
+        } else if (shape.type === 'geo' && shape.props?.geoType === 'sticky') {
+          text = shape.props?.text?.trim();
+        } else if (shape.type === 'note') {
+          text = shape.props?.text?.trim();
+        }
+        
+        if (text && text.length > 0) {
+          notes.push(text);
+          console.log('📝 Extracted:', text);
         }
       });
 
-      console.log('📝 Extracted notes from whiteboard:', notes);
+      // Убираем дубликаты
+      const uniqueNotes = [...new Set(notes)];
+      
+      console.log('🎯 Final notes:', uniqueNotes);
 
-      if (notes.length > 0) {
-        onExtractTasks(notes);
+      if (uniqueNotes.length > 0) {
+        onExtractTasks(uniqueNotes);
       } else {
-        alert('На доске нет текста. Создай стикер (клавиша S) или текст (клавиша T)');
+        alert('На доске нет текста. Создай стикер (S) или текст (T)');
       }
     } catch (error) {
-      console.error('Error extracting notes:', error);
-      alert('Ошибка при извлечении текста. Проверь консоль.');
+      console.error('❌ Error:', error);
+      alert(`Ошибка: ${error instanceof Error ? error.message : 'Unknown'}`);
     }
   };
 
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
-      <Tldraw 
-        persistenceKey="synapse-whiteboard"
-        autoFocus
-      >
+      <Tldraw persistenceKey="synapse-whiteboard" autoFocus>
         <ExtractButtonInner onExtract={handleExtract} />
       </Tldraw>
     </div>
