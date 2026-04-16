@@ -21,9 +21,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Image URL is required' });
     }
 
-    // Используем GPT-4 Vision для анализа изображений
+    console.log('🔍 OCR Request:', { imageUrl, action });
+
+    // Используем GPT-4 Vision или альтернативу
     const response = await openai.chat.completions.create({
-      model: "meta-llama/llama-3.2-11b-vision-instruct",
+      model: "openai/gpt-4o-mini", // Более доступная модель с vision
       messages: [
         {
           role: "user",
@@ -31,12 +33,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             {
               type: "text",
               text: action === 'table' 
-                ? "Extract all tables from this image and return them as HTML <table> format. Only return the HTML table code, no explanations."
-                : "Extract all text from this document/image. Preserve formatting as much as possible. Return clean text."
+                ? "Extract all tables from this image/document and return them as HTML <table> format. Only return the HTML table code, no explanations."
+                : "Extract all text from this document/image. Preserve formatting, line breaks, and structure as much as possible. Return clean text."
             },
             {
               type: "image_url",
-              image_url: { url: imageUrl }
+              image_url: { 
+                url: imageUrl,
+                detail: "high"
+              }
             }
           ]
         }
@@ -45,6 +50,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const extractedText = response.choices[0].message.content;
+    console.log('✅ OCR Result:', extractedText?.substring(0, 100));
+    
     return res.status(200).json({ result: extractedText });
 
   } catch (error: any) {

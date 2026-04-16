@@ -349,27 +349,40 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       </div>
 
       {/* AI OCR Panel for Attachments */}
-      {attachments.length > 0 && (
-        <div style={{ padding: '8px 40px', background: '#f0f9ff', borderBottom: '1px solid #bae6fd' }}>
-          <div style={{ fontSize: '12px', fontWeight: 600, color: '#0369a1', marginBottom: '8px' }}>
-            📎 Вложения (AI обработка):
-          </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {attachments.map(att => (
-              <div key={att.id} style={{ background: '#fff', padding: '6px 12px', borderRadius: '6px', border: '1px solid #bae6fd', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>{att.file_name}</span>
-                {att.file_type.startsWith('image/') && (
-                  <>
-                    <button onClick={() => handleAiOcr(att.file_url, 'text')} disabled={isAiLoading} style={miniBtnStyle}>📝 Текст</button>
-                    <button onClick={() => handleAiOcr(att.file_url, 'table')} disabled={isAiLoading} style={miniBtnStyle}>📊 Таблица</button>
-                  </>
-                )}
-                <button onClick={() => handleDeleteAttachment(att.id)} style={{...miniBtnStyle, color: '#ef4444'}}>✕</button>
-              </div>
-            ))}
-          </div>
+{attachments.length > 0 && (
+  <div style={{ padding: '8px 40px', background: '#f0f9ff', borderBottom: '1px solid #bae6fd' }}>
+    <div style={{ fontSize: '12px', fontWeight: 600, color: '#0369a1', marginBottom: '8px' }}>
+      📎 Вложения (AI обработка):
+    </div>
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      {attachments.map(att => (
+        <div key={att.id} style={{ background: '#fff', padding: '6px 12px', borderRadius: '6px', border: '1px solid #bae6fd', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {att.file_name}
+          </span>
+          
+          {/* Кнопки для ИЗОБРАЖЕНИЙ */}
+          {att.file_type.startsWith('image/') && (
+            <>
+              <button onClick={() => handleAiOcr(att.file_url, 'text')} disabled={isAiLoading} style={miniBtnStyle}>📝 Текст</button>
+              <button onClick={() => handleAiOcr(att.file_url, 'table')} disabled={isAiLoading} style={miniBtnStyle}>📊 Таблица</button>
+            </>
+          )}
+          
+          {/* Кнопки для PDF (показываем первую страницу как изображение) */}
+          {att.file_type === 'application/pdf' && (
+            <>
+              <span style={{ fontSize: '10px', color: '#64748b' }}>(PDF)</span>
+              <button onClick={() => handleAiOcr(att.file_url, 'text')} disabled={isAiLoading} style={miniBtnStyle}>📝 Распознать</button>
+            </>
+          )}
+          
+          <button onClick={() => handleDeleteAttachment(att.id)} style={{...miniBtnStyle, color: '#ef4444', marginLeft: '4px'}}>✕</button>
         </div>
-      )}
+      ))}
+    </div>
+  </div>
+)}
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '40px', background: '#fff' }}>
