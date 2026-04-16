@@ -151,19 +151,16 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       const fileExt = file.name.split('.').pop();
       const fileName = `${documentId}/${Date.now()}.${fileExt}`;
       
-      // Исправлено: data: uploadData
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('document-attachments')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
-      // Исправлено: data: { publicUrl }
       const { data: { publicUrl } } = supabase.storage
         .from('document-attachments')
         .getPublicUrl(fileName);
 
-      // Исправлено: data: attachmentData
       const { data: attachmentData } = await supabase
         .from('attachments')
         .insert({
@@ -189,34 +186,35 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
   };
 
   // --- AI OCR ---
-const handleAiOcr = async (fileUrl: string, action: 'text' | 'table', fileType: string) => {
-  setIsAiLoading(true);
-  try {
-    const res = await fetch('/api/ai-ocr', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        fileUrl, // <-- Gemini принимает именно fileUrl
-        action 
-      }),
-    });
-    
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'OCR Error');
-    
-    if (data.result) {
-      if (action === 'table') {
-        editor?.chain().focus().insertContent(data.result).run();
-      } else {
-        editor?.chain().focus().insertContent(`<div style="white-space: pre-wrap;">${data.result}</div>`).run();
+  const handleAiOcr = async (fileUrl: string, action: 'text' | 'table', fileType: string) => {
+    setIsAiLoading(true);
+    try {
+      const res = await fetch('/api/ai-ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          fileUrl,
+          action,
+          fileType // Передаем тип файла в API
+        }),
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'OCR Error');
+      
+      if (data.result) {
+        if (action === 'table') {
+          editor?.chain().focus().insertContent(data.result).run();
+        } else {
+          editor?.chain().focus().insertContent(`<div style="white-space: pre-wrap;">${data.result}</div>`).run();
+        }
       }
+    } catch (e: any) {
+      alert(`Ошибка AI OCR: ${e.message}`);
+    } finally {
+      setIsAiLoading(false);
     }
-  } catch (e: any) {
-    alert(`Ошибка AI OCR: ${e.message}`);
-  } finally {
-    setIsAiLoading(false);
-  }
-};
+  };
 
   // --- AI ACTIONS ---
   const handleAiAction = async (action: string) => {
@@ -352,40 +350,49 @@ const handleAiOcr = async (fileUrl: string, action: 'text' | 'table', fileType: 
       </div>
 
       {/* AI OCR Panel for Attachments */}
-{attachments.length > 0 && (
-  <div style={{ padding: '8px 40px', background: '#f0f9ff', borderBottom: '1px solid #bae6fd' }}>
-    <div style={{ fontSize: '12px', fontWeight: 600, color: '#0369a1', marginBottom: '8px' }}>
-      📎 Вложения (AI обработка):
-    </div>
-    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-      {attachments.map(att => (
-        <div key={att.id} style={{ background: '#fff', padding: '6px 12px', borderRadius: '6px', border: '1px solid #bae6fd', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {att.file_name}
-          </span>
-          
-          {/* Кнопки для ИЗОБРАЖЕНИЙ */}
-          {att.file_type.startsWith('image/') && (
-            <>
-              <button onClick={() => handleAiOcr(att.file_url, 'text')} disabled={isAiLoading} style={miniBtnStyle}>📝 Текст</button>
-              <button onClick={() => handleAiOcr(att.file_url, 'table')} disabled={isAiLoading} style={miniBtnStyle}>📊 Таблица</button>
-            </>
-          )}
-          
-          {/* Кнопки для PDF (показываем первую страницу как изображение) */}
-          {att.file_type === 'application/pdf' && (
-            <>
-              <span style={{ fontSize: '10px', color: '#64748b' }}>(PDF)</span>
-              <button onClick={() => handleAiOcr(att.file_url, 'text')} disabled={isAiLoading} style={miniBtnStyle}>📝 Распознать</button>
-            </>
-          )}
-          
-          <button onClick={() => handleDeleteAttachment(att.id)} style={{...miniBtnStyle, color: '#ef4444', marginLeft: '4px'}}>✕</button>
+      {attachments.length > 0 && (
+        <div style={{ padding: '8px 40px', background: '#f0f9ff', borderBottom: '1px solid #bae6fd' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#0369a1', marginBottom: '8px' }}>
+            📎 Вложения (AI обработка):
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {attachments.map(att => {
+              const isImage = att.file_type.startsWith('image/');
+              const isPdf = att.file_type === 'application/pdf';
+              
+              return (
+                <div key={att.id} style={{ background: '#fff', padding: '6px 12px', borderRadius: '6px', border: '1px solid #bae6fd', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {att.file_name}
+                  </span>
+                  
+                  {/* Кнопки для ИЗОБРАЖЕНИЙ и PDF (теперь оба поддерживаются Gemini) */}
+                  {(isImage || isPdf) && (
+                    <>
+                      <button 
+                        onClick={() => handleAiOcr(att.file_url, 'text', att.file_type)} 
+                        disabled={isAiLoading} 
+                        style={miniBtnStyle}
+                      >
+                        📝 Текст
+                      </button>
+                      <button 
+                        onClick={() => handleAiOcr(att.file_url, 'table', att.file_type)} 
+                        disabled={isAiLoading} 
+                        style={miniBtnStyle}
+                      >
+                        📊 Таблица
+                      </button>
+                    </>
+                  )}
+                  
+                  <button onClick={() => handleDeleteAttachment(att.id)} style={{...miniBtnStyle, color: '#ef4444', marginLeft: '4px'}}>✕</button>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      ))}
-    </div>
-  </div>
-)}
+      )}
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '40px', background: '#fff' }}>
