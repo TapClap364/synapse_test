@@ -13,42 +13,14 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
   return (
     <div style={{ 
       position: 'absolute', 
-      bottom: '30px', 
-      left: '30px', 
-      zIndex: 10000, 
-      display: 'flex', 
-      flexDirection: 'column-reverse', 
-      gap: '16px' 
+      top: '70px', 
+      left: '20px', 
+      zIndex: 10000,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+      maxWidth: '280px'
     }}>
-      <div style={{
-        background: 'rgba(255,255,255,0.95)',
-        backdropFilter: 'blur(12px)',
-        padding: '18px 20px',
-        borderRadius: '16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-        fontSize: '13px',
-        color: '#64748b',
-        maxWidth: '240px',
-        border: '1px solid rgba(0,0,0,0.06)'
-      }}>
-        <div style={{ marginBottom: '10px', color: '#1e293b', fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          📝 Горячие клавиши:
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '12px', color: '#334155', minWidth: '24px', textAlign: 'center' }}>N</span>
-            <span>Создать стикер</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '12px', color: '#334155', minWidth: '24px', textAlign: 'center' }}>T</span>
-            <span>Создать текст</span>
-          </div>
-        </div>
-        <div style={{ marginTop: '10px', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
-          Затем нажми кнопку ↗️
-        </div>
-      </div>
-
       <button
         onClick={() => onExtract(editor)}
         style={{
@@ -65,7 +37,7 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
           alignItems: 'center',
           gap: '10px',
           transition: 'all 0.2s ease',
-          alignSelf: 'flex-start'
+          whiteSpace: 'nowrap'
         }}
         onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)';
@@ -78,6 +50,35 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
       >
         ✈️ Перенести в задачи
       </button>
+
+      <div style={{
+        background: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(12px)',
+        padding: '16px 18px',
+        borderRadius: '16px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+        fontSize: '13px',
+        color: '#64748b',
+        border: '1px solid rgba(0,0,0,0.06)',
+        lineHeight: '1.6'
+      }}>
+        <div style={{ marginBottom: '10px', color: '#1e293b', fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          📝 Горячие клавиши:
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', fontWeight: 700, fontSize: '12px', color: '#334155', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>N</span>
+            <span>Создать стикер</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', fontWeight: 700, fontSize: '12px', color: '#334155', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>T</span>
+            <span>Создать текст</span>
+          </div>
+        </div>
+        <div style={{ marginTop: '10px', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
+          Затем нажми кнопку выше ↗️
+        </div>
+      </div>
     </div>
   );
 };
@@ -120,7 +121,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
   };
 
   return (
-    <div style={{ position: 'relative', height: '100vh', width: '100%', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
       <Tldraw persistenceKey="synapse-whiteboard" autoFocus>
         <ExtractButtonInner onExtract={handleExtract} />
       </Tldraw>
