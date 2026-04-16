@@ -350,7 +350,7 @@ function App() {
                             </div>
                           ))}
                         </div>
-						{/* SVG СЛОЙ ДЛЯ СТРЕЛОК КРИТИЧЕСКОГО ПУТИ (УГЛОВЫЕ/ОРТОГОНАЛЬНЫЕ) */}
+	{/* SVG СЛОЙ ДЛЯ СТРЕЛОК КРИТИЧЕСКОГО ПУТИ (УМНЫЕ ОРТОГОНАЛЬНЫЕ) */}
 <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5, pointerEvents: 'none', overflow: 'visible' }}>
   <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -378,28 +378,32 @@ function App() {
         const endX = 120 + (task.es || 0) * PIXELS_PER_HOUR;
         const endY = (taskIndex * ROW_HEIGHT) + 20;
 
-        // Точка излома (середина по X между концом родителя и началом ребенка)
-        // Если задачи идут последовательно без разрыва, излом будет посередине вертикального участка
-        const midX = Math.max(startX, endX - 20); 
-        // Или более простой вариант: излом на уровне конца родителя, затем вниз, затем к началу ребенка
+        // Умный расчет пути: если задачи далеко друг от друга по времени,
+        // делаем излом посередине. Если близко — короткий вертикальный спуск.
+        const horizontalGap = endX - startX;
         
-        // Логика ортогонального пути:
-        // 1. Горизонтально от конца родителя вправо (небольшой отступ)
-        // 2. Вертикально до уровня строки ребенка
-        // 3. Горизонтально к началу ребенка
+        let pathD = '';
         
-        const cornerX = startX + 20; // Отступ вправо от родителя
-        const cornerY = endY; // Поворот на уровне строки ребенка
+        if (horizontalGap > 40) {
+          // Задачи далеко друг от друга: классическая L-форма с горизонтальным участком
+          const midX = startX + Math.min(horizontalGap / 2, 100); // Ограничиваем длину горизонтального участка
+          pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+        } else {
+          // Задачи близко или перекрываются: вертикальный спуск сразу от конца родителя
+          // Затем горизонтально к началу ребенка
+          const verticalDropX = startX + 15; // Небольшой отступ вправо от конца родителя
+          pathD = `M ${startX} ${startY} L ${verticalDropX} ${startY} L ${verticalDropX} ${endY} L ${endX} ${endY}`;
+        }
 
         return (
           <g key={`arrow-${task.id}`}>
             <path
-              d={`M ${startX} ${startY} L ${cornerX} ${startY} L ${cornerX} ${cornerY} L ${endX} ${endY}`}
+              d={pathD}
               stroke="#ef4444" 
               strokeWidth="2" 
               strokeDasharray="5 3" 
               fill="none"
-              strokeLinejoin="round" // Скругленные углы для красоты
+              strokeLinejoin="round"
               markerEnd="url(#arrowhead)"
               style={{ filter: 'drop-shadow(0 1px 2px rgba(239,68,68,0.3))' }}
             />
