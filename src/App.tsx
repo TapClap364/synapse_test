@@ -1,9 +1,11 @@
-// src/App.tsx — С ИНТЕГРИРОВАННЫМ WHITEBOARD 🎨 И WIKI 📚
+// src/App.tsx — С ИНТЕГРИРОВАННЫМ WIKI И ПРОТОКОЛАМИ 📚📝
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { Whiteboard } from './components/Whiteboard';
-import { DocumentEditor } from './components/DocumentEditor'; // Импорт редактора Wiki
+import { DocumentEditor } from './components/DocumentEditor';
+import { MindMapNode } from './components/MindMapNode'; // Вынесем MindMap в отдельный компонент или оставим тут
 
+// --- Типы ---
 interface Task {
   id: number;
   title: string;
@@ -23,27 +25,29 @@ interface EpicGroup {
   tasks: Task[];
 }
 
-interface MindMapNode {
+interface MindMapNodeData {
   label: string;
-  children?: MindMapNode[];
+  children?: MindMapNodeData[];
 }
 
 const formatTaskId = (id: number) => `TASK-${String(id).padStart(3, '0')}`;
 
 function App() {
-  // Добавлено значение 'wiki'
   const [view, setView] = useState<'board' | 'gantt' | 'whiteboard' | 'wiki'>('board');
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [epics, setEpics] = useState<Record<number, string>>({});
   
-  // Состояния для Wiki
+  // Wiki State
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   
+  // Meetings State
+  const [meetings, setMeetings] = useState<any[]>([]);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [lastMeetingResult, setLastMeetingResult] = useState<any>(null);
@@ -51,6 +55,7 @@ function App() {
   const [isProcessingMeeting, setIsProcessingMeeting] = useState(false);
   const recognitionRef = useRef<any>(null);
 
+  // --- Data Fetching ---
   const fetchData = async () => {
     const resEpics = await supabase.from('epics').select('id, title') as any;
     if (resEpics.data) {
@@ -67,9 +72,15 @@ function App() {
     if (data) setDocuments(data);
   };
 
+  const fetchMeetings = async () => {
+    const { data } = await supabase.from('meetings').select('*').order('created_at', { ascending: false });
+    if (data) setMeetings(data);
+  };
+
   useEffect(() => {
     fetchData();
-    fetchDocuments(); // Загружаем документы при старте
+    fetchDocuments();
+    fetchMeetings(); // Загружаем встречи
     
     const channel = supabase.channel('public-tasks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
@@ -77,6 +88,7 @@ function App() {
     return () => { void supabase.removeChannel(channel); };
   }, []);
 
+  // --- Handlers ---
   const handleCreate = async () => {
     if (!inputText.trim()) return;
     setIsRecording(true);
@@ -96,21 +108,15 @@ function App() {
     setIsProcessingMeeting(true);
     try {
       const res = await fetch('/api/process-whiteboard-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes }),
       });
-      
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed to process notes');
-      
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
       const data = await res.json();
       alert(`✅ ${data.message}`);
       await fetchData();
-    } catch (e: any) {
-      alert(`Ошибка обработки доски: ${e.message}`);
-    } finally {
-      setIsProcessingMeeting(false);
-    }
+    } catch (e: any) { alert(`Ошибка: ${e.message}`); }
+    finally { setIsProcessingMeeting(false); }
   };
 
   const startMeetingRecording = () => {
@@ -152,6 +158,7 @@ function App() {
       setLastMeetingResult(data);
       setShowMeetingModal(true);
       await fetchData();
+      await fetchMeetings(); // Обновить список встреч
     } catch (e: any) { alert(`Ошибка: ${e.message}`); }
     finally { setIsProcessingMeeting(false); }
   };
@@ -165,6 +172,7 @@ function App() {
     await supabase.from('tasks').update({ status }).eq('id', id);
   };
 
+  // --- CPM Logic ---
   const cpmData = useMemo(() => {
     if (!tasks.length) return { epics: [], projectDuration: 0, criticalCount: 0 };
     const map = new Map<number, Task>();
@@ -202,8 +210,10 @@ function App() {
     return { epics: Object.values(groups), projectDuration: dur, criticalCount: Array.from(map.values()).filter(t => t.isCritical).length };
   }, [tasks, epics]);
 
-  // --- MIND MAP TREE ---
-  const MindMapNode: React.FC<{ node: MindMapNode; branchColor?: string }> = ({ node, branchColor = '#3b82f6' }) => {
+  // --- Components ---
+
+  // Вспомогательный компонент для отображения Mind Map (можно вынести в файл)
+  const MindMapViewer: React.FC<{ node: MindMapNodeData; branchColor?: string }> = ({ node, branchColor = '#3b82f6' }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
     return (
@@ -224,7 +234,6 @@ function App() {
             </span>
           )}
         </div>
-        
         {hasChildren && isExpanded && (
           <>
             <div style={{ width: '2px', height: '16px', background: branchColor }} />
@@ -238,7 +247,7 @@ function App() {
                 return (
                   <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
                     <div style={{ width: '2px', height: '16px', background: childColor, marginBottom: '0' }} />
-                    <MindMapNode node={child} branchColor={childColor} />
+                    <MindMapViewer node={child} branchColor={childColor} />
                   </div>
                 );
               })}
@@ -249,20 +258,16 @@ function App() {
     );
   };
 
-  // --- GANTT BAR ---
   const GanttBar = ({ task, index }: { task: Task; index: number }) => {
     const duration = task.estimated_hours || 4;
     const es = task.es || 0;
     const PIXELS_PER_HOUR = 12;
     const ROW_HEIGHT = 56;
-    
     const width = duration * PIXELS_PER_HOUR;
     const left = es * PIXELS_PER_HOUR;
     const top = index * ROW_HEIGHT;
-    
     const minWidth = 60;
     const displayWidth = Math.max(width, minWidth);
-    
     let barColor = '#3b82f6';
     if (task.status === 'done') barColor = '#10b981';
 
@@ -271,23 +276,11 @@ function App() {
         <div 
           title={`${task.title}\nДлительность: ${duration}ч`}
           style={{ 
-            width: `${displayWidth}px`,
-            background: barColor,
-            borderRadius: '8px', 
-            padding: '8px 12px',
-            color: '#fff', 
-            fontSize: '11px', 
-            fontWeight: 600,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            whiteSpace: 'nowrap', 
-            overflow: 'hidden', 
-            textOverflow: 'ellipsis', 
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            opacity: task.status === 'done' ? 0.85 : 1
+            width: `${displayWidth}px`, background: barColor, borderRadius: '8px', 
+            padding: '8px 12px', color: '#fff', fontSize: '11px', fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)', whiteSpace: 'nowrap', 
+            overflow: 'hidden', textOverflow: 'ellipsis', position: 'relative',
+            display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s', opacity: task.status === 'done' ? 0.85 : 1
           }}
         >
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -311,40 +304,12 @@ function App() {
         <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
           <button onClick={() => setView('board')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'board' ? '#fff' : 'transparent', boxShadow: view === 'board' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'board' ? '#3b82f6' : '#64748b' }}>📋 Задачи</button>
           <button onClick={() => setView('gantt')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'gantt' ? '#fff' : 'transparent', boxShadow: view === 'gantt' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'gantt' ? '#3b82f6' : '#64748b' }}>📊 График</button>
-          <button 
-            onClick={() => setView('whiteboard')} 
-            style={{ 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              background: view === 'whiteboard' ? '#fff' : 'transparent',
-              boxShadow: view === 'whiteboard' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              color: view === 'whiteboard' ? '#3b82f6' : '#64748b'
-            }}
-          >
-            🎨 Доска
-          </button>
-          <button 
-            onClick={() => setView('wiki')} 
-            style={{ 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              background: view === 'wiki' ? '#fff' : 'transparent',
-              boxShadow: view === 'wiki' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              color: view === 'wiki' ? '#3b82f6' : '#64748b'
-            }}
-          >
-            📚 Вики
-          </button>
+          <button onClick={() => setView('whiteboard')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'whiteboard' ? '#fff' : 'transparent', boxShadow: view === 'whiteboard' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'whiteboard' ? '#3b82f6' : '#64748b' }}>🎨 Доска</button>
+          <button onClick={() => setView('wiki')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'wiki' ? '#fff' : 'transparent', boxShadow: view === 'wiki' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'wiki' ? '#3b82f6' : '#64748b' }}>📚 Вики</button>
         </div>
       </header>
 
-      {/* Controls (Скрываем на Whiteboard и Wiki, чтобы не мешало) */}
+      {/* Controls */}
       {view !== 'whiteboard' && view !== 'wiki' && (
         <div style={{ padding: '20px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '12px', alignItems: 'center' }}>
           <input value={inputText} onChange={e => setInputText(e.target.value)} placeholder="Введи задачу или скажи голосом..." style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }} onKeyDown={e => e.key === 'Enter' && handleCreate()} />
@@ -365,58 +330,116 @@ function App() {
           /* WIKI VIEW */
           <div style={{ display: 'flex', height: '100%' }}>
             {/* Sidebar */}
-            <div style={{ width: '260px', borderRight: '1px solid #e2e8f0', padding: '20px', background: '#f8fafc', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              <h3 style={{ marginBottom: '16px', fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>📄 Страницы</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1 }}>
-                {documents.map(doc => (
-                  <li 
-                    key={doc.id} 
-                    onClick={() => setSelectedDocId(doc.id)}
-                    style={{ 
-                      padding: '10px 12px', 
-                      cursor: 'pointer', 
-                      borderRadius: '8px',
-                      background: selectedDocId === doc.id ? '#e2e8f0' : 'transparent',
-                      marginBottom: '4px',
-                      fontSize: '14px',
-                      color: selectedDocId === doc.id ? '#1e293b' : '#64748b',
-                      fontWeight: selectedDocId === doc.id ? 600 : 400,
-                      transition: 'background 0.2s'
-                    }}
-                  >
-                    {doc.title}
-                  </li>
-                ))}
-                {documents.length === 0 && (
-                  <li style={{ padding: '10px', color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>Нет страниц</li>
-                )}
-              </ul>
-              <button 
-                onClick={async () => {
-                   const title = prompt('Название новой страницы:', 'Новая страница');
-                   if(!title) return;
-                   const { data } = await supabase.from('documents').insert({ title, content: '' }).select().single();
-                   if(data) {
-                     setDocuments([data, ...documents]);
-                     setSelectedDocId(data.id);
-                   }
-                }}
-                style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}
-              >
-                + Новая страница
-              </button>
+            <div style={{ width: '280px', borderRight: '1px solid #e2e8f0', padding: '20px', background: '#f8fafc', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+              
+              {/* Section: Documents */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>📄 Документы</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {documents.map(doc => (
+                    <li 
+                      key={doc.id} 
+                      onClick={() => { setSelectedDocId(doc.id); setSelectedMeetingId(null); }}
+                      style={{ 
+                        padding: '8px 12px', cursor: 'pointer', borderRadius: '6px',
+                        background: selectedDocId === doc.id ? '#e2e8f0' : 'transparent',
+                        marginBottom: '4px', fontSize: '14px', color: '#334155'
+                      }}
+                    >
+                      {doc.title}
+                    </li>
+                  ))}
+                </ul>
+                <button 
+                  onClick={async () => {
+                     const title = prompt('Название новой страницы:', 'Новая страница');
+                     if(!title) return;
+                     const { data } = await supabase.from('documents').insert({ title, content: '' }).select().single();
+                     if(data) { setDocuments([data, ...documents]); setSelectedDocId(data.id); setSelectedMeetingId(null); }
+                  }}
+                  style={{ marginTop: '8px', width: '100%', padding: '8px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#3b82f6' }}
+                >
+                  + Новая страница
+                </button>
+              </div>
+
+              {/* Section: Meeting Protocols */}
+              <div>
+                <h3 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>📝 Протоколы встреч</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {meetings.map(meeting => (
+                    <li 
+                      key={meeting.id} 
+                      onClick={() => { setSelectedMeetingId(meeting.id); setSelectedDocId(null); }}
+                      style={{ 
+                        padding: '8px 12px', cursor: 'pointer', borderRadius: '6px',
+                        background: selectedMeetingId === meeting.id ? '#e2e8f0' : 'transparent',
+                        marginBottom: '4px', fontSize: '14px', color: '#334155',
+                        display: 'flex', flexDirection: 'column', gap: '2px'
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{meeting.title}</span>
+                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>{new Date(meeting.created_at).toLocaleDateString()}</span>
+                    </li>
+                  ))}
+                  {meetings.length === 0 && <li style={{ padding: '8px', color: '#94a3b8', fontSize: '13px' }}>Нет встреч</li>}
+                </ul>
+              </div>
+
             </div>
             
-            {/* Editor Area */}
-            <div style={{ flex: 1, background: '#fff', height: '100%' }}>
-              <DocumentEditor 
-                documentId={selectedDocId} 
-                onSave={fetchDocuments} 
-              />
+            {/* Content Area */}
+            <div style={{ flex: 1, background: '#fff', height: '100%', overflowY: 'auto' }}>
+              {selectedMeetingId ? (
+                /* MEETING PROTOCOL VIEW */
+                (() => {
+                  const meeting = meetings.find(m => m.id === selectedMeetingId);
+                  if (!meeting) return <div style={{ padding: '40px', color: '#64748b' }}>Загрузка...</div>;
+                  
+                  return (
+                    <div style={{ padding: '40px', maxWidth: '900px', margin: '0 auto' }}>
+                      <div style={{ marginBottom: '32px', borderBottom: '1px solid #e2e8f0', paddingBottom: '20px' }}>
+                        <h1 style={{ margin: '0 0 8px 0', fontSize: '28px', color: '#1e293b' }}>{meeting.title}</h1>
+                        <div style={{ color: '#64748b', fontSize: '14px' }}>
+                          📅 {new Date(meeting.created_at).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '40px' }}>
+                        <h2 style={{ fontSize: '20px', marginBottom: '16px', color: '#1e293b' }}>📝 Резюме</h2>
+                        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', lineHeight: '1.6', color: '#334155', border: '1px solid #e2e8f0' }}>
+                          {meeting.summary || 'Резюме отсутствует.'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h2 style={{ fontSize: '20px', marginBottom: '24px', color: '#1e293b' }}>🧠 Mind Map</h2>
+                        <div style={{ background: '#f8fafc', padding: '40px', borderRadius: '16px', border: '1px solid #e2e8f0', overflowX: 'auto', minHeight: '300px', display: 'flex', justifyContent: 'center' }}>
+                          {meeting.mind_map_ ? (
+                            <MindMapViewer node={meeting.mind_map_} />
+                          ) : (
+                            <p style={{ color: '#94a3b8' }}>Карта мыслей не сгенерирована.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : selectedDocId ? (
+                /* DOCUMENT EDITOR VIEW */
+                <DocumentEditor documentId={selectedDocId} onSave={fetchDocuments} />
+              ) : (
+                /* EMPTY STATE */
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
+                  <h2 style={{ margin: '0 0 8px 0', color: '#1e293b' }}>База Знаний Synapse</h2>
+                  <p>Выберите документ или протокол встречи слева.</p>
+                </div>
+              )}
             </div>
           </div>
         ) : (
-          /* KANBAN & GANTT VIEWS */
+          /* KANBAN & GANTT VIEWS (Existing Code) */
           <div style={{ padding: '24px 32px', height: '100%', overflow: 'auto' }}>
             {view === 'board' ? (
               <div style={{ display: 'flex', gap: '24px', height: '100%' }}>
@@ -449,32 +472,22 @@ function App() {
                 </div>
                 <div style={{ flex: 1, overflow: 'auto', background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px' }}>
                   <div style={{ minWidth: '1200px' }}>
-                    
-                    {/* Legend */}
                     <div style={{ marginBottom: '20px', padding: '12px', background: '#f8fafc', borderRadius: '8px', fontSize: '12px', color: '#64748b', display: 'flex', gap: '20px', borderTop: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 2" /></svg>
-                        Критический путь
-                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 2" /></svg> Критический путь</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '3px' }}></span> В работе</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '12px', height: '12px', background: '#10b981', borderRadius: '3px' }}></span> Выполнено</span>
                     </div>
-
                     {cpmData.epics.map((epic) => {
                       const PIXELS_PER_HOUR = 12;
                       const ROW_HEIGHT = 56;
                       const maxDuration = Math.max(...epic.tasks.map(t => (t.es || 0) + (t.estimated_hours || 4)), 1);
-                      
                       return (
                         <div key={epic.title} style={{ marginBottom: '32px', position: 'relative' }}>
                           <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             📁 {epic.title}
                             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>({epic.tasks.length} задач, {maxDuration}ч)</span>
                           </h3>
-                          
                           <div style={{ position: 'relative', minHeight: `${Math.max(epic.tasks.length * 56, 100)}px`, marginLeft: '120px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                            
-                            {/* Сетка дней */}
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%', display: 'flex', pointerEvents: 'none', zIndex: 1 }}>
                               {Array.from({ length: Math.ceil(maxDuration / 8) + 1 }).map((_, i) => (
                                 <div key={i} style={{ width: '96px', flexShrink: 0, borderLeft: i === 0 ? 'none' : '1px dashed #cbd5e1', height: '100%', position: 'relative' }}>
@@ -482,41 +495,23 @@ function App() {
                                 </div>
                               ))}
                             </div>
-
-                            {/* SVG СЛОЙ ДЛЯ СТРЕЛОК КРИТИЧЕСКОГО ПУТИ (КРИВЫЕ БЕЗЬЕ) */}
                             <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5, pointerEvents: 'none', overflow: 'visible' }}>
-                              <defs>
-                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                                  <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
-                                </marker>
-                              </defs>
+                              <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" /></marker></defs>
                               {epic.tasks.map((task) => {
                                 if (task.blocked_by && task.blocked_by.length > 0) {
                                   const parentTaskId = task.blocked_by[0];
                                   const parentTask = epic.tasks.find(t => t.id === parentTaskId);
-                                  
                                   if (parentTask) {
                                     const parentIndex = epic.tasks.indexOf(parentTask);
                                     const taskIndex = epic.tasks.indexOf(task);
-                                    
                                     const parentEndHour = (parentTask.es || 0) + (parentTask.estimated_hours || 4);
                                     const startX = 120 + parentEndHour * PIXELS_PER_HOUR;
                                     const startY = (parentIndex * ROW_HEIGHT) + 20;
-                                    
                                     const endX = 120 + (task.es || 0) * PIXELS_PER_HOUR;
                                     const endY = (taskIndex * ROW_HEIGHT) + 20;
-
                                     return (
                                       <g key={`arrow-${task.id}`}>
-                                        <path 
-                                          d={`M ${startX} ${startY} C ${startX + 30} ${startY}, ${endX - 30} ${endY}, ${endX} ${endY}`}
-                                          stroke="#ef4444" 
-                                          strokeWidth="2" 
-                                          strokeDasharray="5 3" 
-                                          fill="none" 
-                                          markerEnd="url(#arrowhead)"
-                                          style={{ filter: 'drop-shadow(0 1px 2px rgba(239,68,68,0.3))' }}
-                                        />
+                                        <path d={`M ${startX} ${startY} C ${startX + 30} ${startY}, ${endX - 30} ${endY}, ${endX} ${endY}`} stroke="#ef4444" strokeWidth="2" strokeDasharray="5 3" fill="none" markerEnd="url(#arrowhead)" style={{ filter: 'drop-shadow(0 1px 2px rgba(239,68,68,0.3))' }} />
                                       </g>
                                     );
                                   }
@@ -524,13 +519,9 @@ function App() {
                                 return null;
                               })}
                             </svg>
-                            
-                            {/* Задачи */}
                             {epic.tasks.map((task, idx) => (
                               <div key={task.id}>
-                                <div style={{ position: 'absolute', left: '-120px', top: `${idx * 56}px`, width: '110px', fontSize: '12px', fontWeight: 600, color: '#1e293b', textAlign: 'right', paddingRight: '10px', paddingTop: '12px' }}>
-                                  {formatTaskId(task.id)}
-                                </div>
+                                <div style={{ position: 'absolute', left: '-120px', top: `${idx * 56}px`, width: '110px', fontSize: '12px', fontWeight: 600, color: '#1e293b', textAlign: 'right', paddingRight: '10px', paddingTop: '12px' }}>{formatTaskId(task.id)}</div>
                                 <GanttBar task={task} index={idx} />
                               </div>
                             ))}
@@ -546,7 +537,7 @@ function App() {
         )}
       </main>
 
-      {/* Meeting Modal */}
+      {/* Meeting Modal (For new meetings only) */}
       {showMeetingModal && lastMeetingResult && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(6px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ background: '#fff', borderRadius: '20px', padding: '28px', maxWidth: '1000px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: '20px' }}>
@@ -554,27 +545,16 @@ function App() {
               <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>📝 Протокол встречи</h2>
               <button onClick={() => setShowMeetingModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#64748b', fontSize: '18px' }}>✕</button>
             </div>
-            
             <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '24px', height: '400px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '12px', color: '#166534' }}>
-                  ✅ Создано задач: <strong>{lastMeetingResult.tasksCreated}</strong>
-                </div>
-                <div>
-                  <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: 600 }}>Резюме:</h4>
-                  <p style={{ margin: 0, color: '#475569', lineHeight: '1.6', fontSize: '14px' }}>{lastMeetingResult.summary}</p>
-                </div>
-                <details style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px', marginTop: 'auto' }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#64748b', fontSize: '12px' }}>🔧 Raw JSON</summary>
-                  <pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '8px', fontSize: '10px', overflow: 'auto', borderRadius: '6px', border: '1px solid #e2e8f0', maxHeight: '120px' }}>{JSON.stringify(lastMeetingResult.mindMap, null, 2)}</pre>
-                </details>
+                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '12px', color: '#166534' }}>✅ Создано задач: <strong>{lastMeetingResult.tasksCreated}</strong></div>
+                <div><h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: 600 }}>Резюме:</h4><p style={{ margin: 0, color: '#475569', lineHeight: '1.6', fontSize: '14px' }}>{lastMeetingResult.summary}</p></div>
+                <details style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px', marginTop: 'auto' }}><summary style={{ cursor: 'pointer', fontWeight: 600, color: '#64748b', fontSize: '12px' }}>🔧 Raw JSON</summary><pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '8px', fontSize: '10px', overflow: 'auto', borderRadius: '6px', border: '1px solid #e2e8f0', maxHeight: '120px' }}>{JSON.stringify(lastMeetingResult.mindMap, null, 2)}</pre></details>
               </div>
-
               <div style={{ background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '24px', overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
-                {lastMeetingResult.mindMap ? <MindMapNode node={lastMeetingResult.mindMap} /> : <p style={{ color: '#94a3b8' }}>Нет данных</p>}
+                {lastMeetingResult.mindMap ? <MindMapViewer node={lastMeetingResult.mindMap} /> : <p style={{ color: '#94a3b8' }}>Нет данных</p>}
               </div>
             </div>
-            
             <button onClick={() => setShowMeetingModal(false)} style={{ padding: '14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: 'pointer', fontSize: '15px' }}>Закрыть и продолжить</button>
           </div>
         </div>
