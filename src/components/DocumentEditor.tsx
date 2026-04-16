@@ -16,9 +16,9 @@ import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import { supabase } from '../lib/supabase';
 
-// --- UI Components (Объявлены ДО основного компонента) ---
+// --- UI Components & Styles ---
 
-const toolBtn = {
+const toolBtnStyle = {
   padding: '6px 10px',
   borderRadius: '4px',
   border: 'none',
@@ -33,14 +33,8 @@ const ToolBtn = ({ children, onClick, active, style }: any) => (
   <button 
     onClick={onClick} 
     style={{
-      padding: '6px 10px',
-      borderRadius: '4px',
-      border: 'none',
+      ...toolBtnStyle,
       background: active ? '#e2e8f0' : 'transparent',
-      cursor: 'pointer',
-      fontSize: '13px',
-      fontWeight: 500,
-      color: '#475569',
       ...style
     }}
   >
@@ -57,7 +51,7 @@ const selectStyle = {
   cursor: 'pointer'
 };
 
-const iconBtn = {
+const iconBtnStyle = {
   padding: '6px 10px',
   borderRadius: '6px',
   border: 'none',
@@ -66,7 +60,7 @@ const iconBtn = {
   fontSize: '14px'
 };
 
-const miniBtn = {
+const miniBtnStyle = {
   padding: '2px 6px',
   borderRadius: '4px',
   border: '1px solid #cbd5e1',
@@ -88,7 +82,6 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
   const [isSaving, setIsSaving] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [attachments, setAttachments] = useState<any[]>([]);
-  const [showAttachments, setShowAttachments] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
@@ -130,7 +123,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
     if (!documentId || !editor) return;
     const fetchDoc = async () => {
       const { data } = await supabase.from('documents').select('*').eq('id', documentId).single();
-      if (data && !data.error) {
+      if (data) {
         setTitle(data.title);
         if (data.content) editor.commands.setContent(data.content);
       }
@@ -155,22 +148,22 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
     if (!file || !documentId) return;
 
     try {
-      // Загрузка файла в Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${documentId}/${Date.now()}.${fileExt}`;
       
+      // Исправлено: data: uploadData
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('document-attachments')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
-      // Получаем публичный URL
-      const {  { publicUrl } } = supabase.storage
+      // Исправлено: data: { publicUrl }
+      const { data: { publicUrl } } = supabase.storage
         .from('document-attachments')
         .getPublicUrl(fileName);
 
-      // Сохраняем в базу
+      // Исправлено: data: attachmentData
       const { data: attachmentData } = await supabase
         .from('attachments')
         .insert({
@@ -186,7 +179,6 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       if (attachmentData) {
         setAttachments([attachmentData, ...attachments]);
         
-        // Если это изображение, вставляем в редактор
         if (file.type.startsWith('image/')) {
           editor?.chain().focus().setImage({ src: publicUrl }).run();
         }
@@ -293,10 +285,10 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
           <span style={{ fontSize: '12px', color: isSaving ? '#f59e0b' : '#10b981' }}>
             {isSaving ? '💾 Сохранение...' : '✅ Сохранено'}
           </span>
-          <button onClick={() => setShowAttachments(!showAttachments)} style={iconBtn}>
+          <button onClick={() => {}} style={iconBtnStyle}>
             📎 {attachments.length}
           </button>
-          <button onClick={handleDelete} style={{...iconBtn, background: '#fee2e2', color: '#ef4444'}}>
+          <button onClick={handleDelete} style={{...iconBtnStyle, background: '#fee2e2', color: '#ef4444'}}>
             🗑️
           </button>
         </div>
@@ -305,7 +297,6 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       {/* Toolbar */}
       <div style={{ padding: '8px 40px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '8px', flexWrap: 'wrap', background: '#f8fafc' }}>
         
-        {/* Text Formatting */}
         <select 
           onChange={(e) => {
             if (e.target.value === 'paragraph') editor?.chain().focus().setParagraph().run();
@@ -352,9 +343,9 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
         
         <div style={{ width: '1px', background: '#cbd5e1' }} />
         
-        <ToolBtn onClick={() => handleAiAction('improve')} disabled={isAiLoading} style={{...toolBtn, color: '#0284c7'}}>✨ Rewrite</ToolBtn>
-        <ToolBtn onClick={() => handleAiAction('table')} disabled={isAiLoading} style={{...toolBtn, color: '#0284c7'}}>📊 AI Table</ToolBtn>
-        <ToolBtn onClick={() => handleAiAction('summary')} disabled={isAiLoading} style={{...toolBtn, color: '#0284c7'}}>📝 Summary</ToolBtn>
+        <ToolBtn onClick={() => handleAiAction('improve')} disabled={isAiLoading} style={{...toolBtnStyle, color: '#0284c7'}}>✨ Rewrite</ToolBtn>
+        <ToolBtn onClick={() => handleAiAction('table')} disabled={isAiLoading} style={{...toolBtnStyle, color: '#0284c7'}}>📊 AI Table</ToolBtn>
+        <ToolBtn onClick={() => handleAiAction('summary')} disabled={isAiLoading} style={{...toolBtnStyle, color: '#0284c7'}}>📝 Summary</ToolBtn>
       </div>
 
       {/* AI OCR Panel for Attachments */}
@@ -369,11 +360,11 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
                 <span>{att.file_name}</span>
                 {att.file_type.startsWith('image/') && (
                   <>
-                    <button onClick={() => handleAiOcr(att.file_url, 'text')} disabled={isAiLoading} style={miniBtn}>📝 Текст</button>
-                    <button onClick={() => handleAiOcr(att.file_url, 'table')} disabled={isAiLoading} style={miniBtn}>📊 Таблица</button>
+                    <button onClick={() => handleAiOcr(att.file_url, 'text')} disabled={isAiLoading} style={miniBtnStyle}>📝 Текст</button>
+                    <button onClick={() => handleAiOcr(att.file_url, 'table')} disabled={isAiLoading} style={miniBtnStyle}>📊 Таблица</button>
                   </>
                 )}
-                <button onClick={() => handleDeleteAttachment(att.id)} style={{...miniBtn, color: '#ef4444'}}>✕</button>
+                <button onClick={() => handleDeleteAttachment(att.id)} style={{...miniBtnStyle, color: '#ef4444'}}>✕</button>
               </div>
             ))}
           </div>
