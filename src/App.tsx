@@ -339,7 +339,7 @@ function App() {
               color: view === 'wiki' ? '#3b82f6' : '#64748b'
             }}
           >
-            📚 Wiki
+            📚 Вики
           </button>
         </div>
       </header>
