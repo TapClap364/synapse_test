@@ -14,6 +14,15 @@ const openai = new OpenAI({
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
+interface TaskInput {
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  epic_title: string;
+  estimated_hours: number;
+  blocked_by?: number[];
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -28,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const {  epics } = await supabase.from('epics').select('id, title') as any;
     const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design';
 
-    // ИИ анализирует стикеры и создаёт задачи
+    // ИИ анализирует стикеры
     const analysisCompletion = await openai.chat.completions.create({
       model: "meta-llama/llama-3.3-70b-instruct",
       messages: [
@@ -38,17 +47,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
           Доступные эпики: [${epicList}]
           
-          Верни СТРОГО JSON массив задач:
-          [
-            {
-              "title": "Заголовок задачи",
-              "description": "Описание",
-              "priority": "low" | "medium" | "high" | "critical",
-              "epic_title": "Название эпика",
-              "estimated_hours": number,
-              "blocked_by": number[]
-            }
-          ]`
+          Верни СТРОГО JSON объект с ключом "tasks", содержащим массив:
+          {
+            "tasks": [
+              {
+                "title": "Заголовок задачи",
+                "description": "Описание",
+                "priority": "low" | "medium" | "high" | "critical",
+                "epic_title": "Название эпика",
+                "estimated_hours": number,
+                "blocked_by": number[]
+              }
+            ]
+          }`
         },
         {
           role: "user",
@@ -59,7 +70,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const aiResult = JSON.parse(analysisCompletion.choices[0].message.content || '{}');
-    const tasks = aiResult.tasks || aiResult;
+    // Явно приводим тип, чтобы избежать ошибки TS2345
+    const tasks: TaskInput[] = Array.isArray(aiResult.tasks) ? aiResult.tasks : [];
 
     // Создаём задачи в базе
     const createdTasks = [];
