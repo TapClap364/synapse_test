@@ -298,8 +298,8 @@ function App() {
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Synapse AI</h1>
         </div>
         <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
-          <button onClick={() => setView('board')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'board' ? '#fff' : 'transparent', boxShadow: view === 'board' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'board' ? '#3b82f6' : '#64748b' }}>📋 Kanban</button>
-          <button onClick={() => setView('gantt')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'gantt' ? '#fff' : 'transparent', boxShadow: view === 'gantt' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'gantt' ? '#3b82f6' : '#64748b' }}>📊 Gantt</button>
+          <button onClick={() => setView('board')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'board' ? '#fff' : 'transparent', boxShadow: view === 'board' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'board' ? '#3b82f6' : '#64748b' }}>📋 Задачи</button>
+          <button onClick={() => setView('gantt')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'gantt' ? '#fff' : 'transparent', boxShadow: view === 'gantt' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'gantt' ? '#3b82f6' : '#64748b' }}>📊 График</button>
           <button 
             onClick={() => setView('whiteboard')} 
             style={{ 
@@ -313,7 +313,7 @@ function App() {
               color: view === 'whiteboard' ? '#3b82f6' : '#64748b'
             }}
           >
-            🎨 Whiteboard
+            🎨 Доска
           </button>
         </div>
       </header>
