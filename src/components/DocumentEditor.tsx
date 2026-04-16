@@ -16,6 +16,56 @@ import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import { supabase } from '../lib/supabase';
 
+// --- UI Components (Объявлены ДО основного компонента) ---
+
+const ToolBtn = ({ children, onClick, active, style }: any) => (
+  <button 
+    onClick={onClick} 
+    style={{
+      padding: '6px 10px',
+      borderRadius: '4px',
+      border: 'none',
+      background: active ? '#e2e8f0' : 'transparent',
+      cursor: 'pointer',
+      fontSize: '13px',
+      fontWeight: 500,
+      color: '#475569',
+      ...style
+    }}
+  >
+    {children}
+  </button>
+);
+
+const selectStyle = {
+  padding: '6px 10px',
+  borderRadius: '4px',
+  border: '1px solid #cbd5e1',
+  background: '#fff',
+  fontSize: '13px',
+  cursor: 'pointer'
+};
+
+const iconBtn = {
+  padding: '6px 10px',
+  borderRadius: '6px',
+  border: 'none',
+  background: '#f1f5f9',
+  cursor: 'pointer',
+  fontSize: '14px'
+};
+
+const miniBtn = {
+  padding: '2px 6px',
+  borderRadius: '4px',
+  border: '1px solid #cbd5e1',
+  background: '#fff',
+  cursor: 'pointer',
+  fontSize: '11px'
+};
+
+// --- Main Component ---
+
 interface DocumentEditorProps {
   documentId: string | null;
   onSave: () => void;
@@ -105,7 +155,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       if (uploadError) throw uploadError;
 
       // Получаем публичный URL
-      const { data: { publicUrl } } = supabase.storage
+      const {  { publicUrl } } = supabase.storage
         .from('document-attachments')
         .getPublicUrl(fileName);
 
@@ -339,42 +389,4 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       `}</style>
     </div>
   );
-};
-
-const toolBtn = {
-  padding: '6px 10px',
-  borderRadius: '4px',
-  border: 'none',
-  background: 'transparent',
-  cursor: 'pointer',
-  fontSize: '13px',
-  fontWeight: 500,
-  color: '#475569'
-};
-
-const selectStyle = {
-  padding: '6px 10px',
-  borderRadius: '4px',
-  border: '1px solid #cbd5e1',
-  background: '#fff',
-  fontSize: '13px',
-  cursor: 'pointer'
-};
-
-const iconBtn = {
-  padding: '6px 10px',
-  borderRadius: '6px',
-  border: 'none',
-  background: '#f1f5f9',
-  cursor: 'pointer',
-  fontSize: '14px'
-};
-
-const miniBtn = {
-  padding: '2px 6px',
-  borderRadius: '4px',
-  border: '1px solid #cbd5e1',
-  background: '#fff',
-  cursor: 'pointer',
-  fontSize: '11px'
 };
