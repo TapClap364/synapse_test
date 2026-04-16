@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Важно: для OpenRouter всегда используем "image_url", даже для PDF
     try {
       const response = await openai.chat.completions.create({
-        model: "google/gemini-1.5-pro", // Стандартное имя модели на OpenRouter
+        model: "deepseek/deepseek-chat-v3.1", // Стандартное имя модели на OpenRouter
         messages: [
           {
             role: "user",
@@ -64,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Если это картинка, пробуем GPT-4o
       const fallbackResponse = await openai.chat.completions.create({
-        model: "openai/gpt-4o",
+        model: "deepseek/deepseek-chat-v3.1",
         messages: [
           {
             role: "user",
