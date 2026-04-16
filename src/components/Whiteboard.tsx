@@ -34,19 +34,39 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
 
 export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
   const handleExtract = (editor: any) => {
-    console.log('🔍 Editor:', editor);
+    console.log('🔍 Editor keys:', Object.keys(editor || {}));
+    console.log('🔍 Store keys:', Object.keys(editor?.store || {}));
     
     try {
       const notes: string[] = [];
+      let shapes: any[] = [];
       
-      // tldraw v2: используем store.query с итератором
-      const shapes = Array.from(editor.store.query.shapes({}));
-      console.log('✅ Found shapes:', shapes);
+      // Пробуем разные методы получения shapes
+      if (editor?.getCurrentPageShapes) {
+        shapes = editor.getCurrentPageShapes();
+        console.log('✅ Method 1: getCurrentPageShapes');
+      } else if (editor?.store?.allShapes) {
+        shapes = Array.from(editor.store.allShapes);
+        console.log('✅ Method 2: store.allShapes');
+      } else if (editor?.shapes) {
+        shapes = Object.values(editor.shapes);
+        console.log('✅ Method 3: editor.shapes');
+      } else {
+        // Последняя попытка: итерируем store напрямую
+        const storeRecords = editor?.store?.serialize?.() || {};
+        console.log('🔍 Store serialize:', storeRecords);
+        
+        if (storeRecords.records) {
+          shapes = Object.values(storeRecords.records).filter((r: any) => r.type === 'shape');
+          console.log('✅ Method 4: store.serialize records');
+        }
+      }
+      
+      console.log('📋 Total shapes found:', shapes.length);
       
       shapes.forEach((shape: any) => {
-        console.log('📋 Shape:', shape.type, shape.props);
+        console.log('🔎 Shape type:', shape.type, 'Props:', shape.props);
         
-        // Ищем текст в разных типах shapes
         let text = '';
         
         if (shape.type === 'text') {
@@ -59,23 +79,21 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
         
         if (text && text.length > 0) {
           notes.push(text);
-          console.log('📝 Extracted:', text);
+          console.log('📝 Found text:', text);
         }
       });
 
-      // Убираем дубликаты
       const uniqueNotes = [...new Set(notes)];
-      
       console.log('🎯 Final notes:', uniqueNotes);
 
       if (uniqueNotes.length > 0) {
         onExtractTasks(uniqueNotes);
       } else {
-        alert('На доске нет текста. Создай стикер (S) или текст (T)');
+        alert('На доске нет текста. Создай стикер (S) или текст (T). Проверь консоль.');
       }
     } catch (error) {
       console.error('❌ Error:', error);
-      alert(`Ошибка: ${error instanceof Error ? error.message : 'Unknown'}`);
+      alert(`Ошибка: ${error instanceof Error ? error.message : 'Unknown'}. Смотри консоль.`);
     }
   };
 
