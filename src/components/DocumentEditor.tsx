@@ -157,10 +157,18 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${documentId}/${Date.now()}.${fileExt}`;
-      const {  uploadData, error: uploadError } = await supabase.storage.from('document-attachments').upload(fileName, file);
+      
+      // Исправлено: явное указание имен переменных
+      const { data: uploadData, error: uploadError } = await supabase.storage.from('document-attachments').upload(fileName, file);
+      
       if (uploadError) throw uploadError;
-      const {  { publicUrl } } = supabase.storage.from('document-attachments').getPublicUrl(fileName);
-      const {  attachmentData } = await supabase.from('attachments').insert({
+      
+      // Исправлено: корректная деструктуризация вложенного объекта
+      const { data: urlData } = supabase.storage.from('document-attachments').getPublicUrl(fileName);
+      const publicUrl = urlData.publicUrl;
+      
+      // Исправлено: явное указание имени переменной
+      const { data: attachmentData } = await supabase.from('attachments').insert({
         document_id: documentId,
         file_name: file.name,
         file_type: file.type,
