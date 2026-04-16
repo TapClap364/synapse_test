@@ -13,7 +13,7 @@ const ExtractButton = ({ onExtract }: { onExtract: () => void }) => {
       <button
         onClick={onExtract}
         style={{
-          padding: '10px 20px',
+          padding: '12px 24px',
           background: '#3b82f6',
           color: '#fff',
           border: 'none',
@@ -26,52 +26,90 @@ const ExtractButton = ({ onExtract }: { onExtract: () => void }) => {
           alignItems: 'center',
           gap: '8px'
         }}
+        title="Извлечь все стикеры и текст с доски"
       >
         ✈️ Перенести в задачи
       </button>
+      
+      {/* Подсказка как пользоваться */}
+      <div style={{
+        position: 'absolute',
+        top: '60px',
+        right: '0',
+        background: '#fff',
+        padding: '12px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        fontSize: '12px',
+        color: '#64748b',
+        maxWidth: '200px',
+        zIndex: 1001
+      }}>
+        <strong style={{ display: 'block', marginBottom: '8px', color: '#1e293b' }}>Как создать стикер:</strong>
+        1. Нажми <strong>S</strong> (Sticky)<br/>
+        2. Или <strong>T</strong> (Text)<br/>
+        3. Кликни на доску и пиши<br/>
+        4. Нажми кнопку выше ↗️
+      </div>
     </div>
   );
 };
 
 export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
   const handleExtract = () => {
+    // Используем глобальный editor если он есть, или ищем через querySelector
+    const canvas = document.querySelector('.tldraw-canvas');
+    if (!canvas) {
+      alert('Доска еще не загрузилась');
+      return;
+    }
+
     const notes: string[] = [];
     
-    // Ищем текстовые элементы tldraw
-    const textShapes = document.querySelectorAll('[data-tldraw-type="text"]');
+    // В tldraw v2 стикеры и текст хранятся в SVG элементах с определенными классами
+    // Ищем все текстовые элементы
+    const textElements = canvas.querySelectorAll('text, .tl-text, [data-testid="text"]');
     
-    textShapes.forEach((el) => {
-      // Приводим тип к HTMLElement, чтобы доступ к innerText был валидным
-      const htmlEl = el as HTMLElement;
-      const text = htmlEl.innerText?.trim();
-      if (text && text.length > 0 && !notes.includes(text)) {
-        notes.push(text);
+    textElements.forEach((el) => {
+      const text = el.textContent?.trim();
+      if (text && text.length > 0 && text.length < 500) { // Фильтр на разумную длину
+        // Убираем дубликаты
+        if (!notes.some(n => n.toLowerCase().includes(text.toLowerCase()) || text.toLowerCase().includes(n.toLowerCase()))) {
+          notes.push(text);
+        }
       }
     });
 
-    // Ищем стикеры (geo shapes)
-    const stickyShapes = document.querySelectorAll('[data-tldraw-type="geo"]');
-    stickyShapes.forEach((el) => {
-       const htmlEl = el as HTMLElement;
-       const text = htmlEl.innerText?.trim();
-       if (text && text.length > 0 && !notes.includes(text)) {
-         // Простая фильтрация системного текста
-         if (!text.toLowerCase().includes('sticky') && !text.toLowerCase().includes('note')) {
+    // Также ищем div элементы которые могут содержать текст стикеров
+    const divElements = canvas.querySelectorAll('div');
+    divElements.forEach((el) => {
+      // Проверяем по классам tldraw
+      const className = el.className?.toString() || '';
+      if (className.includes('sticky') || className.includes('geo') || className.includes('text')) {
+        const text = el.textContent?.trim();
+        if (text && text.length > 0 && text.length < 500) {
+          if (!notes.some(n => n.toLowerCase().includes(text.toLowerCase()) || text.toLowerCase().includes(n.toLowerCase()))) {
             notes.push(text);
-         }
-       }
+          }
+        }
+      }
     });
+
+    console.log('Extracted notes:', notes); // Для отладки
 
     if (notes.length > 0) {
       onExtractTasks(notes);
     } else {
-      alert('На доске нет текста или стикеров. Напишите что-нибудь инструментом Text или Sticky!');
+      alert('Не удалось найти текст на доске. Убедитесь, что создали стикеры (клавиша S) или текст (клавиша T)');
     }
   };
 
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
-      <Tldraw persistenceKey="synapse-whiteboard">
+      <Tldraw 
+        persistenceKey="synapse-whiteboard"
+        autoFocus
+      >
         <ExtractButton onExtract={handleExtract} />
       </Tldraw>
     </div>
