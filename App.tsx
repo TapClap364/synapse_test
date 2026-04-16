@@ -1,7 +1,8 @@
-// src/App.tsx — С ИНТЕГРИРОВАННЫМ WHITEBOARD 🎨
+// src/App.tsx — С ИНТЕГРИРОВАННЫМ WHITEBOARD 🎨 И WIKI 📚
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
-import { Whiteboard } from './components/Whiteboard'; // Импорт компонента доски
+import { Whiteboard } from './components/Whiteboard';
+import { DocumentEditor } from './components/DocumentEditor'; // Импорт редактора Wiki
 
 interface Task {
   id: number;
@@ -30,11 +31,15 @@ interface MindMapNode {
 const formatTaskId = (id: number) => `TASK-${String(id).padStart(3, '0')}`;
 
 function App() {
-  // Добавлено значение 'whiteboard'
-  const [view, setView] = useState<'board' | 'gantt' | 'whiteboard'>('board');
+  // Добавлено значение 'wiki'
+  const [view, setView] = useState<'board' | 'gantt' | 'whiteboard' | 'wiki'>('board');
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [epics, setEpics] = useState<Record<number, string>>({});
+  
+  // Состояния для Wiki
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -43,7 +48,7 @@ function App() {
   const [transcript, setTranscript] = useState('');
   const [lastMeetingResult, setLastMeetingResult] = useState<any>(null);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
-  const [isProcessingMeeting, setIsProcessingMeeting] = useState(false); // Используем также для загрузки whiteboard
+  const [isProcessingMeeting, setIsProcessingMeeting] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   const fetchData = async () => {
@@ -57,8 +62,15 @@ function App() {
     if (resTasks.data) setTasks(resTasks.data as Task[]);
   };
 
+  const fetchDocuments = async () => {
+    const { data } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+    if (data) setDocuments(data);
+  };
+
   useEffect(() => {
     fetchData();
+    fetchDocuments(); // Загружаем документы при старте
+    
     const channel = supabase.channel('public-tasks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
       .subscribe();
@@ -80,7 +92,6 @@ function App() {
     finally { setIsRecording(false); }
   };
 
-  // --- ЛОГИКА WHITEBOARD ---
   const handleWhiteboardExtract = async (notes: string[]) => {
     setIsProcessingMeeting(true);
     try {
@@ -94,7 +105,7 @@ function App() {
       
       const data = await res.json();
       alert(`✅ ${data.message}`);
-      await fetchData(); // Обновить список задач после создания
+      await fetchData();
     } catch (e: any) {
       alert(`Ошибка обработки доски: ${e.message}`);
     } finally {
@@ -315,11 +326,26 @@ function App() {
           >
             🎨 Доска
           </button>
+          <button 
+            onClick={() => setView('wiki')} 
+            style={{ 
+              padding: '8px 16px', 
+              borderRadius: '8px', 
+              border: 'none', 
+              background: view === 'wiki' ? '#fff' : 'transparent',
+              boxShadow: view === 'wiki' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              cursor: 'pointer',
+              fontWeight: 600,
+              color: view === 'wiki' ? '#3b82f6' : '#64748b'
+            }}
+          >
+            📚 Wiki
+          </button>
         </div>
       </header>
 
-      {/* Controls (Скрываем на Whiteboard, чтобы не мешало) */}
-      {view !== 'whiteboard' && (
+      {/* Controls (Скрываем на Whiteboard и Wiki, чтобы не мешало) */}
+      {view !== 'whiteboard' && view !== 'wiki' && (
         <div style={{ padding: '20px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '12px', alignItems: 'center' }}>
           <input value={inputText} onChange={e => setInputText(e.target.value)} placeholder="Введи задачу или скажи голосом..." style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }} onKeyDown={e => e.key === 'Enter' && handleCreate()} />
           <button onClick={handleCreate} disabled={isRecording} style={{ padding: '12px 24px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', opacity: isRecording ? 0.7 : 1 }}>{isRecording ? '⏳ Создание...' : '➕ Создать'}</button>
@@ -334,6 +360,60 @@ function App() {
         {view === 'whiteboard' ? (
           <div style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
             <Whiteboard onExtractTasks={handleWhiteboardExtract} />
+          </div>
+        ) : view === 'wiki' ? (
+          /* WIKI VIEW */
+          <div style={{ display: 'flex', height: '100%' }}>
+            {/* Sidebar */}
+            <div style={{ width: '260px', borderRight: '1px solid #e2e8f0', padding: '20px', background: '#f8fafc', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ marginBottom: '16px', fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>📄 Страницы</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1 }}>
+                {documents.map(doc => (
+                  <li 
+                    key={doc.id} 
+                    onClick={() => setSelectedDocId(doc.id)}
+                    style={{ 
+                      padding: '10px 12px', 
+                      cursor: 'pointer', 
+                      borderRadius: '8px',
+                      background: selectedDocId === doc.id ? '#e2e8f0' : 'transparent',
+                      marginBottom: '4px',
+                      fontSize: '14px',
+                      color: selectedDocId === doc.id ? '#1e293b' : '#64748b',
+                      fontWeight: selectedDocId === doc.id ? 600 : 400,
+                      transition: 'background 0.2s'
+                    }}
+                  >
+                    {doc.title}
+                  </li>
+                ))}
+                {documents.length === 0 && (
+                  <li style={{ padding: '10px', color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>Нет страниц</li>
+                )}
+              </ul>
+              <button 
+                onClick={async () => {
+                   const title = prompt('Название новой страницы:', 'Новая страница');
+                   if(!title) return;
+                   const { data } = await supabase.from('documents').insert({ title, content: '' }).select().single();
+                   if(data) {
+                     setDocuments([data, ...documents]);
+                     setSelectedDocId(data.id);
+                   }
+                }}
+                style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}
+              >
+                + Новая страница
+              </button>
+            </div>
+            
+            {/* Editor Area */}
+            <div style={{ flex: 1, background: '#fff', height: '100%' }}>
+              <DocumentEditor 
+                documentId={selectedDocId} 
+                onSave={fetchDocuments} 
+              />
+            </div>
           </div>
         ) : (
           /* KANBAN & GANTT VIEWS */
