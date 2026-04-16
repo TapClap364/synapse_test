@@ -18,6 +18,17 @@ import { supabase } from '../lib/supabase';
 
 // --- UI Components (Объявлены ДО основного компонента) ---
 
+const toolBtn = {
+  padding: '6px 10px',
+  borderRadius: '4px',
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  fontSize: '13px',
+  fontWeight: 500,
+  color: '#475569'
+};
+
 const ToolBtn = ({ children, onClick, active, style }: any) => (
   <button 
     onClick={onClick} 
