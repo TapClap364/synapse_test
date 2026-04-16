@@ -24,7 +24,11 @@ interface EpicGroup {
 interface MindMapNode {
   label: string;
   children?: MindMapNode[];
+  color?: string;
 }
+
+// Форматирование ID задачи
+const formatTaskId = (id: number) => `TASK-${String(id).padStart(3, '0')}`;
 
 function App() {
   const [view, setView] = useState<'board' | 'gantt'>('board');
@@ -34,7 +38,6 @@ function App() {
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
 
-  // Meeting State
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [lastMeetingResult, setLastMeetingResult] = useState<any>(null);
@@ -42,7 +45,6 @@ function App() {
   const [isProcessingMeeting, setIsProcessingMeeting] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  // --- DATA FETCHING ---
   const fetchData = async () => {
     const resEpics = await supabase.from('epics').select('id, title') as any;
     if (resEpics.data) {
@@ -62,7 +64,6 @@ function App() {
     return () => { void supabase.removeChannel(channel); };
   }, []);
 
-  // --- CREATE TASK ---
   const handleCreate = async () => {
     if (!inputText.trim()) return;
     setIsRecording(true);
@@ -78,7 +79,6 @@ function App() {
     finally { setIsRecording(false); }
   };
 
-  // --- MEETING RECORDING ---
   const startMeetingRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) { alert("Используйте Chrome/Edge"); return; }
@@ -122,7 +122,6 @@ function App() {
     finally { setIsProcessingMeeting(false); }
   };
 
-  // --- DRAG & DROP ---
   const onDragStart = (e: React.DragEvent, id: number) => e.dataTransfer.setData('id', id.toString());
   const onDragOver = (e: React.DragEvent) => e.preventDefault();
   const onDrop = async (e: React.DragEvent, status: string) => {
@@ -132,7 +131,6 @@ function App() {
     await supabase.from('tasks').update({ status }).eq('id', id);
   };
 
-  // --- CPM ---
   const cpmData = useMemo(() => {
     if (!tasks.length) return { epics: [], projectDuration: 0, criticalCount: 0 };
     const map = new Map<number, Task>();
@@ -164,106 +162,69 @@ function App() {
     const groups: Record<string, EpicGroup> = {};
     tasks.forEach(t => {
       const k = t.epic_id ? `epic_${t.epic_id}` : 'no_epic';
-      if (!groups[k]) groups[k] = { id: t.epic_id, title: t.epic_id ? (epics[t.epic_id] || 'General') : 'General', tasks: [] };
+      if (!groups[k]) groups[k] = { id: t.epic_id, title: t.epic_id ? (epics[t.epic_id] || 'Общие задачи') : 'Общие задачи', tasks: [] };
       groups[k].tasks.push(map.get(t.id)!);
     });
     return { epics: Object.values(groups), projectDuration: dur, criticalCount: Array.from(map.values()).filter(t => t.isCritical).length };
   }, [tasks, epics]);
 
-  // --- MIND MAP VISUALIZATION COMPONENT ---
-  const MindMapTree: React.FC<{ node: MindMapNode; isRoot?: boolean }> = ({ node, isRoot = false }) => {
-    const [expanded, setExpanded] = useState(true);
-    
-    // Генерация цвета на основе индекса корневых детей (для консистентности)
-    // Для простоты используем хэш строки или просто случайный, но стабильный цвет
-    const getColor = (str: string, level: number) => {
-      const colors = [
-        ['#3b82f6', '#dbeafe'], // Blue
-        ['#10b981', '#d1fae5'], // Green
-        ['#f59e0b', '#fef3c7'], // Amber
-        ['#ef4444', '#fee2e2'], // Red
-        ['#8b5cf6', '#ede9fe'], // Violet
-        ['#ec4899', '#fce7f3'], // Pink
-      ];
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-      const index = Math.abs(hash) % colors.length;
-      return level === 0 ? colors[index][0] : colors[index][1]; // Темный для корня/ветвей, светлый для листьев
-    };
-
+  // --- MIND MAP TREE (Redesigned) ---
+  const MindMapNode: React.FC<{ node: MindMapNode; branchColor?: string }> = ({ node, branchColor = '#3b82f6' }) => {
+    const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
-    const borderColor = getColor(node.label, isRoot ? 0 : 1);
-    const bgColor = isRoot ? '#f8fafc' : '#fff';
+    const bgColor = branchColor === '#3b82f6' ? '#dbeafe' : branchColor === '#10b981' ? '#d1fae5' : branchColor === '#f59e0b' ? '#fef3c7' : branchColor === '#ef4444' ? '#fee2e2' : '#ede9fe';
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        {/* Узел */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
         <div 
-          onClick={() => hasChildren && setExpanded(!expanded)}
+          onClick={() => hasChildren && setIsExpanded(!isExpanded)}
           style={{
-            padding: isRoot ? '12px 24px' : '8px 16px',
-            borderRadius: isRoot ? '12px' : '8px',
-            background: bgColor,
-            border: `2px solid ${borderColor}`,
-            color: isRoot ? '#1e293b' : '#334155',
-            fontWeight: isRoot ? 700 : 500,
-            fontSize: isRoot ? '16px' : '13px',
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+            padding: '8px 16px',
+            background: '#fff',
+            border: `2px solid ${branchColor}`,
+            borderRadius: '20px',
+            fontWeight: 600,
+            fontSize: '13px',
+            color: '#1e293b',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
             cursor: hasChildren ? 'pointer' : 'default',
-            zIndex: 10,
-            position: 'relative',
-            transition: 'all 0.2s',
-            maxWidth: '200px',
             textAlign: 'center',
-            wordWrap: 'break-word'
+            maxWidth: '180px',
+            transition: 'all 0.2s',
+            position: 'relative',
+            zIndex: 2
           }}
         >
           {node.label}
           {hasChildren && (
-            <span style={{ 
-              position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)',
-              background: borderColor, color: '#fff', borderRadius: '50%', width: '16px', height: '16px',
-              fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              {expanded ? '−' : '+'}
+            <span style={{ position: 'absolute', right: '-8px', top: '-8px', background: branchColor, color: '#fff', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {isExpanded ? '−' : '+'}
             </span>
           )}
         </div>
-
-        {/* Дети и линии */}
-        {hasChildren && expanded && (
-          <div style={{ 
-            display: 'flex', 
-            paddingTop: '24px', 
-            position: 'relative',
-            gap: '16px'
-          }}>
-            {/* Вертикальная линия от родителя */}
-            <div style={{
-              position: 'absolute', top: 0, left: '50%', width: '2px', height: '24px',
-              background: borderColor, transform: 'translateX(-50%)'
-            }} />
-            
-            {/* Горизонтальная соединительная линия */}
-            <div style={{
-              position: 'absolute', top: 0, left: '0', right: '0', height: '2px',
-              background: borderColor,
-              // Обрезаем линию, чтобы она шла только между крайними детьми
-              marginLeft: node.children!.length > 1 ? `${100 / (node.children!.length * 2)}%` : '0',
-              marginRight: node.children!.length > 1 ? `${100 / (node.children!.length * 2)}%` : '0',
-            }} />
-
-            {node.children!.map((child, idx) => (
-              <div key={idx} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                {/* Вертикальная линия к ребенку */}
-                <div style={{
-                  width: '2px', height: '24px', background: getColor(child.label, 2),
-                  marginBottom: '0px' // Соединяется с родителем через абсолютные позиции выше
-                }} />
-                <MindMapTree node={child} />
-              </div>
-            ))}
-          </div>
+        
+        {hasChildren && isExpanded && (
+          <>
+            {/* Vertical connector */}
+            <div style={{ width: '2px', height: '16px', background: branchColor }} />
+            {/* Horizontal connector bar */}
+            {node.children!.length > 1 && (
+              <div style={{ width: `${Math.min(node.children!.length * 140, 1000)}px`, height: '2px', background: branchColor, borderRadius: '1px' }} />
+            )}
+            <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', position: 'relative' }}>
+              {node.children!.map((child, idx) => {
+                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+                const childColor = colors[(node.label.length + idx) % colors.length];
+                return (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                    {/* Vertical line to child */}
+                    <div style={{ width: '2px', height: '16px', background: childColor, marginBottom: '0' }} />
+                    <MindMapNode node={child} branchColor={childColor} />
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     );
@@ -273,27 +234,37 @@ function App() {
   const GanttBar = ({ task }: { task: Task }) => {
     const w = (task.estimated_hours || 4) * 24;
     const ml = (task.es || 0) * 24;
+    const depsText = task.blocked_by?.map(b => formatTaskId(b)).join(', ');
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <div style={{ width: '180px', fontSize: '13px', fontWeight: 500, color: '#1e293b' }}>
-          {task.title} {task.isCritical && <span style={{ color: '#ef4444' }}>🔥</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', position: 'relative' }}>
+        <div style={{ width: '100px', fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+          {formatTaskId(task.id)}
         </div>
         <div style={{ 
-          height: '26px', width: `${Math.max(w, 8)}px`, marginLeft: `${ml}px`,
+          height: '32px', width: `${Math.max(w, 12)}px`, marginLeft: `${ml}px`,
           background: task.isCritical ? 'linear-gradient(135deg, #ef4444, #f87171)' : task.status === 'done' ? '#10b981' : '#3b82f6',
-          borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '11px', fontWeight: 600,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '11px', fontWeight: 700,
+          boxShadow: task.isCritical ? '0 4px 12px rgba(239,68,68,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+          transition: 'all 0.2s'
         }}>
-          {task.estimated_hours}ч
+          {task.title} ({task.estimated_hours}ч)
         </div>
+        {depsText && (
+          <span style={{ fontSize: '10px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px' }}>
+            🔗 {depsText}
+          </span>
+        )}
+        {task.isCritical && (
+          <span style={{ position: 'absolute', left: '110px', top: '-8px', background: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '2px 4px', borderRadius: '4px' }}>
+            КРИТИЧЕСКИЙ
+          </span>
+        )}
       </div>
     );
   };
 
   return (
     <div style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc', color: '#0f172a' }}>
-      
-      {/* Header */}
       <header style={{ padding: '16px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '32px', height: '32px', background: '#3b82f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px' }}>🧠</div>
@@ -305,34 +276,13 @@ function App() {
         </div>
       </header>
 
-      {/* Controls */}
       <div style={{ padding: '20px 32px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '12px', alignItems: 'center' }}>
-        <input 
-          value={inputText} onChange={e => setInputText(e.target.value)}
-          placeholder="Введи задачу или скажи голосом..."
-          style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
-          onKeyDown={e => e.key === 'Enter' && handleCreate()}
-        />
-        <button onClick={handleCreate} disabled={isRecording} style={{ padding: '12px 24px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', opacity: isRecording ? 0.7 : 1 }}>
-          {isRecording ? '⏳ Создание...' : '➕ Создать'}
-        </button>
+        <input value={inputText} onChange={e => setInputText(e.target.value)} placeholder="Введи задачу или скажи голосом..." style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }} onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+        <button onClick={handleCreate} disabled={isRecording} style={{ padding: '12px 24px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', opacity: isRecording ? 0.7 : 1 }}>{isRecording ? '⏳ Создание...' : '➕ Создать'}</button>
         <div style={{ width: '1px', height: '28px', background: '#e2e8f0' }} />
-        <button 
-          onClick={isListening ? stopMeetingRecording : startMeetingRecording}
-          disabled={isProcessingMeeting}
-          style={{ 
-            padding: '12px 20px', borderRadius: '10px', border: '1px solid #e2e8f0',
-            background: isListening ? '#fef2f2' : isProcessingMeeting ? '#f8fafc' : '#fff',
-            color: isListening ? '#dc2626' : '#334155',
-            cursor: isProcessingMeeting ? 'wait' : 'pointer',
-            display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500
-          }}
-        >
-          {isProcessingMeeting ? '⏳ Анализ...' : (isListening ? '⏹ Остановить' : '🎙 Запись встречи')}
-        </button>
+        <button onClick={isListening ? stopMeetingRecording : startMeetingRecording} disabled={isProcessingMeeting} style={{ padding: '12px 20px', borderRadius: '10px', border: '1px solid #e2e8f0', background: isListening ? '#fef2f2' : isProcessingMeeting ? '#f8fafc' : '#fff', color: isListening ? '#dc2626' : '#334155', cursor: isProcessingMeeting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>{isProcessingMeeting ? '⏳ Анализ...' : (isListening ? '⏹ Остановить' : '🎙 Запись встречи')}</button>
       </div>
 
-      {/* Main Content */}
       <main style={{ flex: 1, padding: '24px 32px', overflow: 'hidden' }}>
         {view === 'board' ? (
           <div style={{ display: 'flex', gap: '24px', height: '100%' }}>
@@ -343,14 +293,16 @@ function App() {
                 </h3>
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {tasks.filter(t => t.status === status).map(t => (
-                    <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} style={{ background: '#fff', padding: '14px', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: 'grab', borderLeft: `3px solid ${t.priority === 'critical' ? '#ef4444' : t.priority === 'high' ? '#f59e0b' : '#3b82f6'}` }}>
-                      <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{t.title}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>{epics[t.epic_id || 0]}</div>
+                    <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} style={{ background: '#fff', padding: '12px', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: 'grab', borderLeft: `3px solid ${t.priority === 'critical' ? '#ef4444' : t.priority === 'high' ? '#f59e0b' : '#3b82f6'}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>{formatTaskId(t.id)}</span>
+                        {t.blocked_by && t.blocked_by.length > 0 && <span style={{ fontSize: '9px', background: '#fef2f2', color: '#dc2626', padding: '2px 6px', borderRadius: '4px' }}>🔗 Зависит</span>}
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>{t.title}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>{epics[t.epic_id || 0] || 'Без эпика'}</div>
                     </div>
                   ))}
-                  {tasks.filter(t => t.status === status).length === 0 && (
-                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '20px' }}>Перетащи сюда</div>
-                  )}
+                  {tasks.filter(t => t.status === status).length === 0 && <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '20px' }}>Перетащи сюда</div>}
                 </div>
               </div>
             ))}
@@ -359,73 +311,64 @@ function App() {
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>📅 Диаграмма Ганта</h2>
-              <div style={{ fontSize: '13px', color: '#64748b' }}>
-                Длительность: <strong>{cpmData.projectDuration}ч</strong> | Критических: <strong style={{ color: '#ef4444' }}>{cpmData.criticalCount} 🔥</strong>
-              </div>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>Длительность: <strong>{cpmData.projectDuration}ч</strong> | Критических: <strong style={{ color: '#ef4444' }}>{cpmData.criticalCount} 🔥</strong></div>
             </div>
-            <div style={{ flex: 1, overflow: 'auto', background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px' }}>
-              <div style={{ minWidth: '1100px' }}>
-                <div style={{ display: 'flex', marginLeft: '190px', marginBottom: '12px', fontSize: '12px', color: '#64748b', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+            <div style={{ flex: 1, overflow: 'auto', background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px' }}>
+              <div style={{ minWidth: '1200px' }}>
+                <div style={{ display: 'flex', marginLeft: '110px', marginBottom: '12px', fontSize: '12px', color: '#64748b', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
                   {Array.from({ length: Math.ceil(cpmData.projectDuration / 8) + 2 }).map((_, i) => (
                     <div key={i} style={{ width: '192px', flexShrink: 0, borderLeft: '1px dashed #cbd5e1', paddingLeft: '8px' }}>День {i + 1}</div>
                   ))}
                 </div>
                 {cpmData.epics.map(epic => (
-                  <div key={epic.title} style={{ marginBottom: '24px', background: '#f8fafc', borderRadius: '12px', padding: '16px', borderLeft: '3px solid #3b82f6' }}>
+                  <div key={epic.title} style={{ marginBottom: '28px', background: '#f8fafc', borderRadius: '12px', padding: '16px', borderLeft: '3px solid #3b82f6' }}>
                     <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600 }}>📁 {epic.title}</h3>
                     {epic.tasks.map(t => <GanttBar key={t.id} task={t} />)}
                   </div>
                 ))}
+                {/* Legend */}
+                <div style={{ marginTop: '20px', padding: '12px', background: '#f8fafc', borderRadius: '8px', fontSize: '12px', color: '#64748b', display: 'flex', gap: '20px', borderTop: '1px solid #e2e8f0' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '3px' }}></span> Критический путь</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '3px' }}></span> В работе</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '12px', height: '12px', background: '#10b981', borderRadius: '3px' }}></span> Выполнено</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🔗 Зависимости</span>
+                </div>
               </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* Meeting Modal with Visual Tree */}
+      {/* Meeting Modal */}
       {showMeetingModal && lastMeetingResult && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '900px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>📝 Протокол встречи</h2>
-              <button onClick={() => setShowMeetingModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', color: '#64748b' }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(6px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#fff', borderRadius: '20px', padding: '28px', maxWidth: '1000px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>📝 Протокол встречи</h2>
+              <button onClick={() => setShowMeetingModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#64748b', fontSize: '18px' }}>✕</button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', flex: 1 }}>
-              {/* Left Column: Summary & Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '24px', height: '400px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '10px', color: '#166534' }}>
+                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '12px', color: '#166534' }}>
                   ✅ Создано задач: <strong>{lastMeetingResult.tasksCreated}</strong>
                 </div>
-                
                 <div>
-                  <h4 style={{ margin: '0 0 8px 0', fontSize: '15px' }}>Резюме:</h4>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: 600 }}>Резюме:</h4>
                   <p style={{ margin: 0, color: '#475569', lineHeight: '1.6', fontSize: '14px' }}>{lastMeetingResult.summary}</p>
                 </div>
-
                 <details style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px', marginTop: 'auto' }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#64748b', fontSize: '13px' }}>🔧 Raw JSON</summary>
-                  <pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '8px', fontSize: '10px', overflow: 'auto', borderRadius: '6px', border: '1px solid #e2e8f0', maxHeight: '150px' }}>
-                    {JSON.stringify(lastMeetingResult.mindMap, null, 2)}
-                  </pre>
+                  <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#64748b', fontSize: '12px' }}>🔧 Raw JSON</summary>
+                  <pre style={{ margin: '10px 0 0 0', background: '#fff', padding: '8px', fontSize: '10px', overflow: 'auto', borderRadius: '6px', border: '1px solid #e2e8f0', maxHeight: '120px' }}>{JSON.stringify(lastMeetingResult.mindMap, null, 2)}</pre>
                 </details>
               </div>
 
-              {/* Right Column: Visual Mind Map Tree */}
-              <div style={{ 
-                background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', 
-                padding: '20px', minHeight: '300px', overflow: 'auto',
-                display: 'flex', justifyContent: 'center', alignItems: 'flex-start'
-              }}>
-                {lastMeetingResult.mindMap ? (
-                  <MindMapTree node={lastMeetingResult.mindMap} isRoot={true} />
-                ) : (
-                  <p style={{ color: '#94a3b8' }}>Нет данных для карты</p>
-                )}
+              <div style={{ background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '24px', overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+                {lastMeetingResult.mindMap ? <MindMapNode node={lastMeetingResult.mindMap} /> : <p style={{ color: '#94a3b8' }}>Нет данных</p>}
               </div>
             </div>
             
-            <button onClick={() => setShowMeetingModal(false)} style={{ marginTop: '24px', width: '100%', padding: '14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Закрыть</button>
+            <button onClick={() => setShowMeetingModal(false)} style={{ padding: '14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: 'pointer', fontSize: '15px' }}>Закрыть и продолжить</button>
           </div>
         </div>
       )}

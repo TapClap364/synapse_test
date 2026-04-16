@@ -42,20 +42,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // 1. Получаем контекст: Эпики и последние задачи
-    // Используем as any для обхода строгих типов TS в Vercel для этого файла
-    const { data: epics } = await supabase.from('epics').select('id, title') as any;
-    const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend';
+    // Используем as any для обхода строгих типов TS в Vercel
+    const responseEpics = await supabase.from('epics').select('id, title') as any;
+    const epics = responseEpics.data;
+    
+    const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design, Marketing';
 
     // Берем последние 5 задач для анализа зависимостей
-    const { data: recentTasks } = await supabase
+    const responseTasks = await supabase
       .from('tasks')
-      .select('id, title, status')
+      .select('id, title, status, epic_id')
       .order('created_at', { ascending: false })
       .limit(5) as any;
+    const recentTasks = responseTasks.data;
 
     const taskContext = recentTasks?.map((t: any) => `ID:${t.id} [${t.status}] "${t.title}"`).join('\n') || 'Нет существующих задач';
 
-    // 2. Запрос к OpenRouter (Структурирование + Зависимости)
+    // 2. Запрос к OpenRouter (Структурирование + Зависимости + Эпик)
     const completion = await openai.chat.completions.create({
       model: "meta-llama/llama-3.3-70b-instruct", 
       messages: [
@@ -64,8 +67,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           content: `Ты Lead Project Manager. 
           Твоя задача: проанализировать голосовое сообщение и создать задачу.
           
-          ВАЖНО: Определи зависимости (blocked_by). 
-          Если новая задача логически не может начаться БЕЗ завершения одной из существующих задач (например, "Крыша" не может быть сделана до "Стен"), укажи ID этой существующей задачи в массиве blocked_by.
+          ВАЖНО:
+          1. Определи зависимости (blocked_by). Если новая задача логически не может начаться БЕЗ завершения одной из существующих задач, укажи её ID в массиве blocked_by.
+          2. Выбери подходящий эпик из списка или предложи новый.
           
           Доступные Эпики: [${epicList}]
           Существующие задачи (контекст):
@@ -91,28 +95,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const aiData = JSON.parse(content);
 
-    // 3. Логика поиска или создания Эпика
+    // 3. Логика поиска или создания Эпика (УЛУЧШЕНО: гибкий поиск)
     let epicId: number | null = null;
     
+    // Гибкий поиск: игнорируем регистр и лишние пробелы
     const existingEpic = epics?.find(
-      (e: any) => e.title.toLowerCase().trim() === aiData.epic_title.toLowerCase().trim()
+      (e: any) => e.title.toLowerCase().trim().includes(aiData.epic_title.toLowerCase().trim()) ||
+                  aiData.epic_title.toLowerCase().trim().includes(e.title.toLowerCase().trim())
     );
 
     if (existingEpic) {
       epicId = existingEpic.id;
     } else {
-      const { data: newEpic, error: epicError } = await supabase
+      // Создаем новый эпик, если не нашли
+      const responseNewEpic = await supabase
         .from('epics')
         .insert({ title: aiData.epic_title })
         .select()
-        .single();
+        .single() as any;
+      
+      const newEpic = responseNewEpic.data;
+      const epicError = responseNewEpic.error;
       
       if (epicError || !newEpic) throw new Error(`Failed to create epic: ${epicError?.message}`);
       epicId = newEpic.id;
     }
 
     // 4. Создание задачи в Supabase с зависимостями
-    const { data: task, error: taskError } = await supabase
+    const responseTask = await supabase
       .from('tasks')
       .insert({
         title: aiData.title,
@@ -121,12 +131,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         estimated_hours: aiData.estimated_hours,
         epic_id: epicId,
         status: 'backlog',
-        blocked_by: aiData.blocked_by || [], // <--- СОХРАНЯЕМ ЗАВИСИМОСТИ
+        blocked_by: aiData.blocked_by || [], // Сохраняем зависимости
         board_x: Math.random() * 800,
         board_y: Math.random() * 600
       })
       .select()
-      .single();
+      .single() as any;
+
+    const task = responseTask.data;
+    const taskError = responseTask.error;
 
     if (taskError || !task) throw new Error(`Failed to create task: ${taskError?.message}`);
 
