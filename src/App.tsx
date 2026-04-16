@@ -24,10 +24,8 @@ interface EpicGroup {
 interface MindMapNode {
   label: string;
   children?: MindMapNode[];
-  color?: string;
 }
 
-// Форматирование ID задачи
 const formatTaskId = (id: number) => `TASK-${String(id).padStart(3, '0')}`;
 
 function App() {
@@ -168,31 +166,19 @@ function App() {
     return { epics: Object.values(groups), projectDuration: dur, criticalCount: Array.from(map.values()).filter(t => t.isCritical).length };
   }, [tasks, epics]);
 
-  // --- MIND MAP TREE (Redesigned) ---
+  // --- MIND MAP TREE ---
   const MindMapNode: React.FC<{ node: MindMapNode; branchColor?: string }> = ({ node, branchColor = '#3b82f6' }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
-    const bgColor = branchColor === '#3b82f6' ? '#dbeafe' : branchColor === '#10b981' ? '#d1fae5' : branchColor === '#f59e0b' ? '#fef3c7' : branchColor === '#ef4444' ? '#fee2e2' : '#ede9fe';
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
         <div 
           onClick={() => hasChildren && setIsExpanded(!isExpanded)}
           style={{
-            padding: '8px 16px',
-            background: '#fff',
-            border: `2px solid ${branchColor}`,
-            borderRadius: '20px',
-            fontWeight: 600,
-            fontSize: '13px',
-            color: '#1e293b',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            cursor: hasChildren ? 'pointer' : 'default',
-            textAlign: 'center',
-            maxWidth: '180px',
-            transition: 'all 0.2s',
-            position: 'relative',
-            zIndex: 2
+            padding: '8px 16px', background: '#fff', border: `2px solid ${branchColor}`,
+            borderRadius: '20px', fontWeight: 600, fontSize: '13px', color: '#1e293b',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)', cursor: hasChildren ? 'pointer' : 'default',
+            textAlign: 'center', maxWidth: '180px', transition: 'all 0.2s', position: 'relative', zIndex: 2
           }}
         >
           {node.label}
@@ -205,9 +191,7 @@ function App() {
         
         {hasChildren && isExpanded && (
           <>
-            {/* Vertical connector */}
             <div style={{ width: '2px', height: '16px', background: branchColor }} />
-            {/* Horizontal connector bar */}
             {node.children!.length > 1 && (
               <div style={{ width: `${Math.min(node.children!.length * 140, 1000)}px`, height: '2px', background: branchColor, borderRadius: '1px' }} />
             )}
@@ -217,7 +201,6 @@ function App() {
                 const childColor = colors[(node.label.length + idx) % colors.length];
                 return (
                   <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                    {/* Vertical line to child */}
                     <div style={{ width: '2px', height: '16px', background: childColor, marginBottom: '0' }} />
                     <MindMapNode node={child} branchColor={childColor} />
                   </div>
@@ -230,34 +213,37 @@ function App() {
     );
   };
 
-  // --- UI COMPONENTS ---
-  const GanttBar = ({ task }: { task: Task }) => {
-    const w = (task.estimated_hours || 4) * 24;
-    const ml = (task.es || 0) * 24;
+  // --- GANTT BAR (ИСПРАВЛЕННЫЙ) ---
+  const GanttBar = ({ task, index }: { task: Task; index: number }) => {
+    const duration = task.estimated_hours || 4;
+    const es = task.es || 0;
+    const PIXELS_PER_HOUR = 12;
+    const ROW_HEIGHT = 56;
+    
+    const width = duration * PIXELS_PER_HOUR;
+    const left = es * PIXELS_PER_HOUR;
+    const top = index * ROW_HEIGHT;
+    
     const depsText = task.blocked_by?.map(b => formatTaskId(b)).join(', ');
+
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', position: 'relative' }}>
-        <div style={{ width: '100px', fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
-          {formatTaskId(task.id)}
-        </div>
+      <div style={{ position: 'absolute', left: `${120 + left}px`, top: `${top}px`, height: '40px', zIndex: 10 }}>
         <div style={{ 
-          height: '32px', width: `${Math.max(w, 12)}px`, marginLeft: `${ml}px`,
+          width: `${Math.max(width, 40)}px`,
           background: task.isCritical ? 'linear-gradient(135deg, #ef4444, #f87171)' : task.status === 'done' ? '#10b981' : '#3b82f6',
-          borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '11px', fontWeight: 700,
-          boxShadow: task.isCritical ? '0 4px 12px rgba(239,68,68,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
-          transition: 'all 0.2s'
+          borderRadius: '8px', padding: '8px 12px', color: '#fff', fontSize: '12px', fontWeight: 600,
+          boxShadow: task.isCritical ? '0 4px 12px rgba(239,68,68,0.4)' : '0 2px 8px rgba(0,0,0,0.1)',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', position: 'relative'
         }}>
-          {task.title} ({task.estimated_hours}ч)
+          {task.title} ({duration}ч)
+          {task.isCritical && (
+            <span style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#fff', color: '#ef4444', fontSize: '9px', fontWeight: 800, padding: '2px 4px', borderRadius: '4px' }}>🔥</span>
+          )}
         </div>
         {depsText && (
-          <span style={{ fontSize: '10px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px' }}>
+          <div style={{ position: 'absolute', top: '44px', left: '0', fontSize: '10px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
             🔗 {depsText}
-          </span>
-        )}
-        {task.isCritical && (
-          <span style={{ position: 'absolute', left: '110px', top: '-8px', background: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '2px 4px', borderRadius: '4px' }}>
-            КРИТИЧЕСКИЙ
-          </span>
+          </div>
         )}
       </div>
     );
@@ -315,24 +301,47 @@ function App() {
             </div>
             <div style={{ flex: 1, overflow: 'auto', background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px' }}>
               <div style={{ minWidth: '1200px' }}>
-                <div style={{ display: 'flex', marginLeft: '110px', marginBottom: '12px', fontSize: '12px', color: '#64748b', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
-                  {Array.from({ length: Math.ceil(cpmData.projectDuration / 8) + 2 }).map((_, i) => (
-                    <div key={i} style={{ width: '192px', flexShrink: 0, borderLeft: '1px dashed #cbd5e1', paddingLeft: '8px' }}>День {i + 1}</div>
-                  ))}
-                </div>
-                {cpmData.epics.map(epic => (
-                  <div key={epic.title} style={{ marginBottom: '28px', background: '#f8fafc', borderRadius: '12px', padding: '16px', borderLeft: '3px solid #3b82f6' }}>
-                    <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600 }}>📁 {epic.title}</h3>
-                    {epic.tasks.map(t => <GanttBar key={t.id} task={t} />)}
-                  </div>
-                ))}
                 {/* Legend */}
-                <div style={{ marginTop: '20px', padding: '12px', background: '#f8fafc', borderRadius: '8px', fontSize: '12px', color: '#64748b', display: 'flex', gap: '20px', borderTop: '1px solid #e2e8f0' }}>
+                <div style={{ marginBottom: '20px', padding: '12px', background: '#f8fafc', borderRadius: '8px', fontSize: '12px', color: '#64748b', display: 'flex', gap: '20px', borderTop: '1px solid #e2e8f0' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '3px' }}></span> Критический путь</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '3px' }}></span> В работе</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '12px', height: '12px', background: '#10b981', borderRadius: '3px' }}></span> Выполнено</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🔗 Зависимости</span>
                 </div>
+
+                {cpmData.epics.map((epic) => {
+                  const maxDuration = Math.max(...epic.tasks.map(t => (t.es || 0) + (t.estimated_hours || 4)), 1);
+                  
+                  return (
+                    <div key={epic.title} style={{ marginBottom: '32px' }}>
+                      <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        📁 {epic.title}
+                        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>({epic.tasks.length} задач, {maxDuration}ч)</span>
+                      </h3>
+                      
+                      <div style={{ position: 'relative', minHeight: `${Math.max(epic.tasks.length * 56, 100)}px`, marginLeft: '120px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        {/* Сетка дней */}
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%', display: 'flex', pointerEvents: 'none' }}>
+                          {Array.from({ length: Math.ceil(maxDuration / 8) + 1 }).map((_, i) => (
+                            <div key={i} style={{ width: '96px', flexShrink: 0, borderLeft: i === 0 ? 'none' : '1px dashed #cbd5e1', height: '100%', position: 'relative' }}>
+                              <span style={{ position: 'absolute', top: '-20px', left: '4px', fontSize: '11px', color: '#64748b' }}>День {i + 1}</span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Задачи */}
+                        {epic.tasks.map((task, idx) => (
+                          <div key={task.id}>
+                            <div style={{ position: 'absolute', left: '-120px', top: `${idx * 56}px`, width: '110px', fontSize: '12px', fontWeight: 600, color: '#1e293b', textAlign: 'right', paddingRight: '10px', paddingTop: '12px' }}>
+                              {formatTaskId(task.id)}
+                            </div>
+                            <GanttBar task={task} index={idx} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
