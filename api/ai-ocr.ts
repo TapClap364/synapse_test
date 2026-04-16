@@ -21,72 +21,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'fileUrl is required' });
     }
 
-    console.log('🚀 Starting OCR for:', fileUrl);
+    console.log('🚀 Starting OCR with Qwen-VL for:', fileUrl);
 
-    // 1. Пытаемся использовать Gemini (он умеет читать PDF)
-    // Важно: для OpenRouter всегда используем "image_url", даже для PDF
-    try {
-      const response = await openai.chat.completions.create({
-        model: "qwen/qwen3-vl-235b-a22b-instruct", // Стандартное имя модели на OpenRouter
-        messages: [
-          {
-            role: "user",
-            content: [
-              { 
-                type: "text", 
-                text: action === 'table' 
-                  ? "Extract ALL tables from this document. Return strictly as HTML <table> code."
-                  : "Extract all text from this document. Keep formatting."
-              },
-              { 
-                type: "image_url", // <--- FIX: Всегда image_url для OpenRouter
-                image_url: { url: fileUrl } 
-              }
-            ]
-          }
-        ],
-        max_tokens: 8192,
-        temperature: 0.1
-      });
+    // Используем Qwen-VL как основную модель. 
+    // Она отлично понимает PDF и изображения через image_url.
+    const response = await openai.chat.completions.create({
+      model: "qwen/qwen3-vl-235b-a22b-instruct", // Твоя рабочая модель
+      messages: [
+        {
+          role: "user",
+          content: [
+            { 
+              type: "text", 
+              text: action === 'table' 
+                ? "Extract ALL tables from this document. Return strictly as HTML <table> code. Do not add markdown blocks or explanations."
+                : "Extract all text from this document. Preserve original structure, line breaks, and formatting. Return clean text."
+            },
+            { 
+              type: "image_url", // OpenRouter требует этот формат
+              image_url: { url: fileUrl } 
+            }
+          ]
+        }
+      ],
+      max_tokens: 8192,
+      temperature: 0.1
+    });
 
-      const result = response.choices[0].message.content;
-      console.log('✅ Success with Gemini');
-      return res.status(200).json({ result });
-
-    } catch (geminiError: any) {
-      console.warn('⚠️ Gemini failed, trying fallback...', geminiError.message);
-      
-      // 2. Фоллбэк на GPT-4o (работает только с картинками, не с PDF)
-      // Если это PDF, фоллбэк не сработает, и мы вернем ошибку Gemini
-      if (fileUrl.toLowerCase().endsWith('.pdf')) {
-        throw new Error(`Gemini failed: ${geminiError.message}`);
-      }
-
-      // Если это картинка, пробуем GPT-4o
-      const fallbackResponse = await openai.chat.completions.create({
-        model: "qwen/qwen3-vl-235b-a22b-instruct",
-        messages: [
-          {
-            role: "user",
-            content: [
-              { 
-                type: "text", 
-                text: action === 'table' 
-                  ? "Extract tables as HTML." 
-                  : "Extract text." 
-              },
-              { 
-                type: "image_url", 
-                image_url: { url: fileUrl } 
-              }
-            ]
-          }
-        ],
-        max_tokens: 4000
-      });
-
-      return res.status(200).json({ result: fallbackResponse.choices[0].message.content });
-    }
+    const result = response.choices[0].message.content;
+    console.log('✅ Qwen OCR Success');
+    
+    return res.status(200).json({ result });
 
   } catch (error: any) {
     console.error("❌ OCR Error:", error);
