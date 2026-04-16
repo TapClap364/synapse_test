@@ -16,76 +16,29 @@ import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import { supabase } from '../lib/supabase';
 
-// --- UI Components & Styles ---
+// --- UI Components ---
 
-const btnBase = {
-  padding: '6px 10px',
-  borderRadius: '6px',
-  border: 'none',
-  background: 'transparent',
-  cursor: 'pointer',
-  fontSize: '13px',
-  fontWeight: 500,
-  color: '#475569',
-  transition: 'all 0.2s'
-};
-
-const ToolBtn = ({ children, onClick, active, style, title }: any) => (
+const ToolBtn = ({ children, onClick, active, title }: any) => (
   <button 
     onClick={onClick} 
     title={title}
     style={{
-      ...btnBase,
-      background: active ? '#e2e8f0' : 'transparent',
-      ...style
+      padding: '6px 8px',
+      borderRadius: '4px',
+      border: 'none',
+      background: active ? '#e0e7ff' : 'transparent',
+      color: active ? '#4f46e5' : '#64748b',
+      cursor: 'pointer',
+      fontSize: '13px',
+      fontWeight: 500,
+      transition: 'all 0.2s'
     }}
+    onMouseEnter={(e) => !active && (e.currentTarget.style.background = '#f1f5f9')}
+    onMouseLeave={(e) => !active && (e.currentTarget.style.background = 'transparent')}
   >
     {children}
   </button>
 );
-
-const selectStyle = {
-  padding: '6px 10px',
-  borderRadius: '6px',
-  border: '1px solid #cbd5e1',
-  background: '#fff',
-  fontSize: '13px',
-  cursor: 'pointer',
-  color: '#334155'
-};
-
-const iconBtnStyle = {
-  padding: '6px 10px',
-  borderRadius: '6px',
-  border: 'none',
-  background: '#f1f5f9',
-  cursor: 'pointer',
-  fontSize: '14px',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px'
-};
-
-const miniBtnStyle = {
-  padding: '4px 8px',
-  borderRadius: '4px',
-  border: '1px solid #cbd5e1',
-  background: '#fff',
-  cursor: 'pointer',
-  fontSize: '11px',
-  fontWeight: 600,
-  color: '#3b82f6'
-};
-
-const aiBtnStyle = {
-  ...btnBase,
-  background: '#eff6ff',
-  color: '#2563eb',
-  border: '1px solid #bfdbfe',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '4px'
-};
 
 // --- Main Component ---
 
@@ -105,18 +58,13 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: 'Начните писать документ или загрузите файл для AI-обработки...' }),
+      Placeholder.configure({ placeholder: 'Начните писать документ...' }),
       Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
+      TableRow, TableHeader, TableCell,
       Link.configure({ openOnClick: false }),
-      Image,
-      Underline,
+      Image, Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      TextStyle,
-      Color,
-      Highlight,
+      TextStyle, Color, Highlight,
     ],
     content: '',
     onUpdate: async ({ editor }) => {
@@ -150,51 +98,35 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
     if (data) setAttachments(data);
   };
 
-  // --- FILE UPLOAD ---
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !documentId) return;
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${documentId}/${Date.now()}.${fileExt}`;
-      
-      // Исправлено: явное указание имен переменных
-      const { data: uploadData, error: uploadError } = await supabase.storage.from('document-attachments').upload(fileName, file);
-      
+      const {  uploadData, error: uploadError } = await supabase.storage.from('document-attachments').upload(fileName, file);
       if (uploadError) throw uploadError;
-      
-      // Исправлено: корректная деструктуризация вложенного объекта
-      const { data: urlData } = supabase.storage.from('document-attachments').getPublicUrl(fileName);
-      const publicUrl = urlData.publicUrl;
-      
-      // Исправлено: явное указание имени переменной
-      const { data: attachmentData } = await supabase.from('attachments').insert({
-        document_id: documentId,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        file_url: publicUrl
+      const {  { publicUrl } } = supabase.storage.from('document-attachments').getPublicUrl(fileName);
+      const {  attachmentData } = await supabase.from('attachments').insert({
+        document_id: documentId, file_name: file.name, file_type: file.type,
+        file_size: file.size, file_url: publicUrl
       }).select().single();
-
       if (attachmentData) {
         setAttachments([attachmentData, ...attachments]);
         if (file.type.startsWith('image/')) editor?.chain().focus().setImage({ src: publicUrl }).run();
       }
-    } catch (error: any) { alert(`Ошибка загрузки: ${error.message}`); }
+    } catch (error: any) { alert(`Ошибка: ${error.message}`); }
   };
 
-  // --- AI OCR ---
   const handleAiOcr = async (fileUrl: string, action: 'text' | 'table', fileType: string) => {
     setIsAiLoading(true);
     try {
       const res = await fetch('/api/ai-ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileUrl, action, fileType }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'OCR Error');
-      
       if (data.result) {
         if (action === 'table') editor?.chain().focus().insertContent(data.result).run();
         else editor?.chain().focus().insertContent(`<div style="white-space: pre-wrap;">${data.result}</div>`).run();
@@ -203,17 +135,14 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
     finally { setIsAiLoading(false); }
   };
 
-  // --- AI ACTIONS ---
   const handleAiAction = async (action: string) => {
     if (!editor) return;
     const selectedText = editor.state.selection.empty ? editor.getText() : editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ');
-    if (!selectedText.trim()) { alert("Выделите текст для обработки!"); return; }
-    
+    if (!selectedText.trim()) { alert("Выделите текст!"); return; }
     setIsAiLoading(true);
     try {
       const res = await fetch('/api/wiki-ai-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: selectedText, action }),
       });
       if (!res.ok) throw new Error('AI Error');
@@ -228,7 +157,10 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
 
   const handleDelete = async () => {
     if (!documentId) return;
-    if (window.confirm('Удалить документ?')) { await supabase.from('documents').delete().eq('id', documentId); onRefresh(); }
+    if (window.confirm('Удалить документ?')) {
+      await supabase.from('documents').delete().eq('id', documentId);
+      onRefresh();
+    }
   };
 
   const handleDeleteAttachment = async (id: string) => {
@@ -241,135 +173,126 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#fff' }}>
       
-      {/* Header */}
-      <div style={{ padding: '16px 40px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Clean Header */}
+      <div style={{ padding: '20px 48px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <input 
           value={title} 
           onChange={(e) => setTitle(e.target.value)}
           onBlur={async () => await supabase.from('documents').update({ title }).eq('id', documentId)}
-          style={{ fontSize: '24px', fontWeight: 700, border: 'none', outline: 'none', width: '100%', color: '#1e293b' }}
+          style={{ fontSize: '28px', fontWeight: 700, border: 'none', outline: 'none', width: '100%', color: '#1e293b' }}
           placeholder="Название документа"
         />
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span style={{ fontSize: '12px', color: isSaving ? '#f59e0b' : '#10b981', fontWeight: 600 }}>
-            {isSaving ? '💾 Сохранение...' : '✅ Сохранено'}
-          </span>
-          <button onClick={() => fileInputRef.current?.click()} style={{...iconBtnStyle, background: '#e0f2fe', color: '#0284c7'}}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {isSaving && <span style={{ fontSize: '12px', color: '#10b981' }}>✓</span>}
+          <button onClick={() => fileInputRef.current?.click()} style={{
+            padding: '8px 16px', borderRadius: '6px', border: '1px solid #e2e8f0',
+            background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '13px', fontWeight: 500
+          }}>
             📎 Прикрепить
           </button>
           <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
-          
-          <button onClick={handleDelete} style={{...iconBtnStyle, background: '#fee2e2', color: '#ef4444'}}>
-            🗑️ Удалить
+          <button onClick={handleDelete} style={{
+            padding: '8px 16px', borderRadius: '6px', border: 'none',
+            background: '#fee2e2', color: '#ef4444', cursor: 'pointer', fontSize: '13px', fontWeight: 500
+          }}>
+            Удалить
           </button>
         </div>
       </div>
 
-      {/* Toolbar Row 1: Formatting */}
-      <div style={{ padding: '8px 40px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Compact Toolbar */}
+      <div style={{ padding: '8px 48px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
         <select onChange={(e) => {
             if (e.target.value === 'p') editor?.chain().focus().setParagraph().run();
             if (e.target.value === 'h1') editor?.chain().focus().toggleHeading({ level: 1 }).run();
             if (e.target.value === 'h2') editor?.chain().focus().toggleHeading({ level: 2 }).run();
-            if (e.target.value === 'h3') editor?.chain().focus().toggleHeading({ level: 3 }).run();
-          }} style={selectStyle}>
-          <option value="p">Обычный текст</option>
+          }} style={{
+            padding: '6px 10px', borderRadius: '4px', border: '1px solid #e2e8f0',
+            background: '#fff', fontSize: '13px', color: '#475569', cursor: 'pointer'
+          }}>
+          <option value="p">Текст</option>
           <option value="h1">Заголовок 1</option>
           <option value="h2">Заголовок 2</option>
-          <option value="h3">Заголовок 3</option>
         </select>
 
-        <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 4px' }} />
+        <div style={{ width: '1px', height: '20px', background: '#e2e8f0', margin: '0 4px' }} />
         
-        <ToolBtn onClick={() => editor?.chain().focus().toggleBold().run()} active={editor?.isActive('bold')} title="Жирный"><b>B</b></ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().toggleItalic().run()} active={editor?.isActive('italic')} title="Курсив"><i>I</i></ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().toggleUnderline().run()} active={editor?.isActive('underline')} title="Подчеркнутый"><u>U</u></ToolBtn>
+        <ToolBtn onClick={() => editor?.chain().focus().toggleBold().run()} active={editor?.isActive('bold')} title="Жирный">B</ToolBtn>
+        <ToolBtn onClick={() => editor?.chain().focus().toggleItalic().run()} active={editor?.isActive('italic')} title="Курсив">I</ToolBtn>
+        <ToolBtn onClick={() => editor?.chain().focus().toggleUnderline().run()} active={editor?.isActive('underline')} title="Подчеркнутый">U</ToolBtn>
         
-        <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 4px' }} />
+        <div style={{ width: '1px', height: '20px', background: '#e2e8f0', margin: '0 4px' }} />
         
-        <ToolBtn onClick={() => editor?.chain().focus().setTextAlign('left').run()} title="По левому краю">⬅️</ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().setTextAlign('center').run()} title="По центру">⬆️</ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().setTextAlign('right').run()} title="По правому краю">➡️</ToolBtn>
+        <ToolBtn onClick={() => editor?.chain().focus().toggleBulletList().run()} title="Список">• Список</ToolBtn>
+        <ToolBtn onClick={() => editor?.chain().focus().toggleOrderedList().run()} title="Нумерация">1. Список</ToolBtn>
+        <ToolBtn onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Таблица">📊</ToolBtn>
         
-        <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 4px' }} />
+        <div style={{ width: '1px', height: '20px', background: '#e2e8f0', margin: '0 4px' }} />
         
-        <ToolBtn onClick={() => editor?.chain().focus().toggleBulletList().run()} title="Маркированный список">• Список</ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().toggleOrderedList().run()} title="Нумерованный список">1. Список</ToolBtn>
-        
-        <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 4px' }} />
-        
-        <ToolBtn onClick={() => { const url = prompt('Введите ссылку:'); if (url) editor?.chain().focus().setLink({ href: url }).run(); }} title="Вставить ссылку">🔗</ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Вставить таблицу">📊 Таблица</ToolBtn>
+        <ToolBtn onClick={() => { const url = prompt('URL:'); if (url) editor?.chain().focus().setLink({ href: url }).run(); }} title="Ссылка">🔗</ToolBtn>
       </div>
 
-      {/* Toolbar Row 2: AI Actions */}
-      <div style={{ padding: '8px 40px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', marginRight: '8px' }}>✨ AI Инструменты:</span>
+      {/* AI Toolbar - Clean */}
+      <div style={{ padding: '8px 48px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>AI</span>
+        <div style={{ width: '1px', height: '16px', background: '#e2e8f0' }} />
         
-        <ToolBtn onClick={() => handleAiAction('improve')} disabled={isAiLoading} style={aiBtnStyle}>
-          ✍️ Улучшить стиль
-        </ToolBtn>
-        <ToolBtn onClick={() => handleAiAction('table')} disabled={isAiLoading} style={aiBtnStyle}>
-          📊 Текст → Таблица
-        </ToolBtn>
-        <ToolBtn onClick={() => handleAiAction('summary')} disabled={isAiLoading} style={aiBtnStyle}>
-          📝 Краткое содержание
-        </ToolBtn>
-         <ToolBtn onClick={() => handleAiAction('tasks')} disabled={isAiLoading} style={aiBtnStyle}>
-          ✅ Извлечь задачи
-        </ToolBtn>
+        <button onClick={() => handleAiAction('improve')} disabled={isAiLoading} style={{
+          padding: '6px 12px', borderRadius: '6px', border: '1px solid #e0e7ff',
+          background: '#fff', color: '#4f46e5', cursor: 'pointer', fontSize: '12px', fontWeight: 500
+        }}>Улучшить текст</button>
+        
+        <button onClick={() => handleAiAction('table')} disabled={isAiLoading} style={{
+          padding: '6px 12px', borderRadius: '6px', border: '1px solid #e0e7ff',
+          background: '#fff', color: '#4f46e5', cursor: 'pointer', fontSize: '12px', fontWeight: 500
+        }}>→ Таблица</button>
+        
+        <button onClick={() => handleAiAction('summary')} disabled={isAiLoading} style={{
+          padding: '6px 12px', borderRadius: '6px', border: '1px solid #e0e7ff',
+          background: '#fff', color: '#4f46e5', cursor: 'pointer', fontSize: '12px', fontWeight: 500
+        }}>Саммари</button>
+        
+        <button onClick={() => handleAiAction('tasks')} disabled={isAiLoading} style={{
+          padding: '6px 12px', borderRadius: '6px', border: '1px solid #e0e7ff',
+          background: '#fff', color: '#4f46e5', cursor: 'pointer', fontSize: '12px', fontWeight: 500
+        }}>✓ Задачи</button>
       </div>
 
-      {/* Attachments Panel */}
+      {/* Attachments - Compact */}
       {attachments.length > 0 && (
-        <div style={{ padding: '12px 40px', background: '#f0f9ff', borderBottom: '1px solid #bae6fd' }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, color: '#0369a1', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            📎 Вложения (AI-распознавание):
+        <div style={{ padding: '12px 48px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>
+            Вложения ({attachments.length})
           </div>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {attachments.map(att => {
               const isPdf = att.file_type === 'application/pdf' || att.file_url.endsWith('.pdf');
-              const isImage = att.file_type.startsWith('image/');
-              
               return (
-                <div key={att.id} style={{ 
-                  background: '#fff', 
-                  padding: '8px 12px', 
-                  borderRadius: '8px', 
-                  border: '1px solid #bae6fd', 
-                  fontSize: '13px', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  gap: '6px',
-                  minWidth: '200px'
+                <div key={att.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '6px 10px', background: '#fff', borderRadius: '6px',
+                  border: '1px solid #e2e8f0', fontSize: '12px'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {isPdf ? '📄' : '🖼️'} {att.file_name}
-                    </span>
-                    <button onClick={() => handleDeleteAttachment(att.id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: '16px' }}>×</button>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {(isPdf || isImage) && (
-                      <>
-                        <button 
-                          onClick={() => handleAiOcr(att.file_url, 'text', att.file_type)} 
-                          disabled={isAiLoading} 
-                          style={{...miniBtnStyle, flex: 1}}
-                        >
-                          📝 {isPdf ? 'Распознать текст' : 'Извлечь текст'}
-                        </button>
-                        <button 
-                          onClick={() => handleAiOcr(att.file_url, 'table', att.file_type)} 
-                          disabled={isAiLoading} 
-                          style={{...miniBtnStyle, flex: 1}}
-                        >
-                          📊 {isPdf ? 'В таблицу' : 'Создать таблицу'}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <span style={{ fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {isPdf ? '📄' : '🖼️'} {att.file_name}
+                  </span>
+                  <button onClick={() => handleAiOcr(att.file_url, 'text', att.file_type)} 
+                    disabled={isAiLoading} style={{
+                      padding: '3px 8px', borderRadius: '4px', border: 'none',
+                      background: '#eff6ff', color: '#3b82f6', cursor: 'pointer', fontSize: '11px', fontWeight: 500
+                    }}>
+                    Текст
+                  </button>
+                  <button onClick={() => handleAiOcr(att.file_url, 'table', att.file_type)} 
+                    disabled={isAiLoading} style={{
+                      padding: '3px 8px', borderRadius: '4px', border: 'none',
+                      background: '#eff6ff', color: '#3b82f6', cursor: 'pointer', fontSize: '11px', fontWeight: 500
+                    }}>
+                    Таблица
+                  </button>
+                  <button onClick={() => handleDeleteAttachment(att.id)} 
+                    style={{ padding: '3px 6px', border: 'none', background: 'transparent', 
+                      color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}>×</button>
                 </div>
               );
             })}
@@ -377,23 +300,23 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
         </div>
       )}
 
-      {/* Content Area */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '40px', background: '#fff' }}>
+      {/* Editor Content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '48px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', minHeight: '600px' }}>
           <EditorContent editor={editor} />
         </div>
       </div>
 
       <style>{`
-        .ProseMirror p { margin-bottom: 1em; line-height: 1.6; }
-        .ProseMirror h1 { font-size: 2em; font-weight: bold; margin: 1em 0 0.5em; color: #1e293b; }
-        .ProseMirror h2 { font-size: 1.5em; font-weight: bold; margin: 1em 0 0.5em; color: #334155; }
-        .ProseMirror h3 { font-size: 1.25em; font-weight: bold; margin: 1em 0 0.5em; color: #475569; }
+        .ProseMirror { outline: none; }
+        .ProseMirror p { margin-bottom: 1em; line-height: 1.7; color: #334155; }
+        .ProseMirror h1 { font-size: 2.25em; font-weight: 700; margin: 1.5em 0 0.75em; color: #0f172a; }
+        .ProseMirror h2 { font-size: 1.75em; font-weight: 600; margin: 1.25em 0 0.5em; color: #1e293b; }
         .ProseMirror table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-        .ProseMirror td, .ProseMirror th { border: 1px solid #cbd5e1; padding: 8px; }
-        .ProseMirror th { background: #f1f5f9; font-weight: bold; }
-        .ProseMirror img { max-width: 100%; height: auto; border-radius: 4px; margin: 10px 0; }
-        .ProseMirror a { color: #3b82f6; text-decoration: underline; }
+        .ProseMirror td, .ProseMirror th { border: 1px solid #e2e8f0; padding: 10px; }
+        .ProseMirror th { background: #f8fafc; font-weight: 600; }
+        .ProseMirror img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }
+        .ProseMirror a { color: #4f46e5; text-decoration: underline; }
       `}</style>
     </div>
   );
