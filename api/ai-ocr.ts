@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Важно: для OpenRouter всегда используем "image_url", даже для PDF
     try {
       const response = await openai.chat.completions.create({
-        model: "anthropic/claude-opus-4.7", // Стандартное имя модели на OpenRouter
+        model: "qwen/qwen3-vl-235b-a22b-instruct", // Стандартное имя модели на OpenRouter
         messages: [
           {
             role: "user",
@@ -64,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Если это картинка, пробуем GPT-4o
       const fallbackResponse = await openai.chat.completions.create({
-        model: "anthropic/claude-opus-4.7",
+        model: "qwen/qwen3-vl-235b-a22b-instruct",
         messages: [
           {
             role: "user",
