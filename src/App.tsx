@@ -1,4 +1,4 @@
-// src/App.tsx — ФИНАЛЬНАЯ ВЕРСИЯ 🚀
+// src/App.tsx — ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ 🚀
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 
@@ -213,7 +213,7 @@ function App() {
     );
   };
 
-  // --- GANTT BAR (Адаптивный текст + статусные цвета) ---
+  // --- GANTT BAR (ЕДИНЫЙ СТИЛЬ: всегда бар, минимальная ширина 60px) ---
   const GanttBar = ({ task, index }: { task: Task; index: number }) => {
     const duration = task.estimated_hours || 4;
     const es = task.es || 0;
@@ -224,10 +224,10 @@ function App() {
     const left = es * PIXELS_PER_HOUR;
     const top = index * ROW_HEIGHT;
     
-    const minTextWidth = 80;
-    const showTextInside = width >= minTextWidth;
-    const showHoursInside = width >= 120;
-
+    // Минимальная ширина бара для читаемости
+    const minWidth = 60;
+    const displayWidth = Math.max(width, minWidth);
+    
     // Цвет зависит ТОЛЬКО от статуса
     let barColor = '#3b82f6';
     if (task.status === 'done') barColor = '#10b981';
@@ -237,10 +237,10 @@ function App() {
         <div 
           title={`${task.title}\nДлительность: ${duration}ч`}
           style={{ 
-            width: `${Math.max(width, 40)}px`,
+            width: `${displayWidth}px`,
             background: barColor,
             borderRadius: '8px', 
-            padding: showTextInside ? '8px 12px' : '0',
+            padding: '8px 12px',
             color: '#fff', 
             fontSize: '11px', 
             fontWeight: 600,
@@ -251,29 +251,16 @@ function App() {
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: showTextInside ? 'center' : 'flex-start',
             cursor: 'pointer',
             transition: 'all 0.2s',
             opacity: task.status === 'done' ? 0.85 : 1
           }}
         >
-          {showTextInside && (
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {task.title}
-              {showHoursInside && <span style={{ marginLeft: '4px', opacity: 0.9 }}>({duration}ч)</span>}
-            </span>
-          )}
-        </div>
-        
-        {!showTextInside && (
-          <div style={{
-            position: 'absolute', top: '-20px', left: '0', fontSize: '11px', fontWeight: 600,
-            color: '#1e293b', whiteSpace: 'nowrap', background: '#fff', padding: '2px 6px',
-            borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 11, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis'
-          }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {task.title}
-          </div>
-        )}
+            {width >= 120 && <span style={{ marginLeft: '4px', opacity: 0.9 }}>({duration}ч)</span>}
+          </span>
+        </div>
       </div>
     );
   };
@@ -365,37 +352,42 @@ function App() {
                         </div>
 
                         {/* SVG СЛОЙ ДЛЯ СТРЕЛОК КРИТИЧЕСКОГО ПУТИ */}
-                        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5, pointerEvents: 'none' }}>
+                        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5, pointerEvents: 'none', overflow: 'visible' }}>
                           <defs>
                             <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
                               <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
                             </marker>
                           </defs>
                           {epic.tasks.map((task) => {
-                            if (task.isCritical && task.blocked_by && task.blocked_by.length > 0) {
+                            if (task.blocked_by && task.blocked_by.length > 0) {
                               const parentTaskId = task.blocked_by[0];
                               const parentTask = epic.tasks.find(t => t.id === parentTaskId);
                               
                               if (parentTask) {
                                 const parentIndex = epic.tasks.indexOf(parentTask);
                                 const taskIndex = epic.tasks.indexOf(task);
-
-                                const startX = 120 + ((parentTask.es || 0) + (parentTask.estimated_hours || 4)) * PIXELS_PER_HOUR;
+                                
+                                // Координаты начала (конец родительской задачи)
+                                const parentEndHour = (parentTask.es || 0) + (parentTask.estimated_hours || 4);
+                                const startX = 120 + parentEndHour * PIXELS_PER_HOUR;
                                 const startY = (parentIndex * ROW_HEIGHT) + 20;
                                 
+                                // Координаты конца (начало текущей задачи)
                                 const endX = 120 + (task.es || 0) * PIXELS_PER_HOUR;
                                 const endY = (taskIndex * ROW_HEIGHT) + 20;
 
                                 return (
-                                  <path 
-                                    key={`arrow-${task.id}`}
-                                    d={`M ${startX} ${startY} L ${endX} ${endY}`} 
-                                    stroke="#ef4444" 
-                                    strokeWidth="2" 
-                                    strokeDasharray="6 4" 
-                                    fill="none" 
-                                    markerEnd="url(#arrowhead)"
-                                  />
+                                  <g key={`arrow-${task.id}`}>
+                                    <path 
+                                      d={`M ${startX} ${startY} C ${startX + 20} ${startY}, ${endX - 20} ${endY}, ${endX} ${endY}`}
+                                      stroke="#ef4444" 
+                                      strokeWidth="2" 
+                                      strokeDasharray="5 3" 
+                                      fill="none" 
+                                      markerEnd="url(#arrowhead)"
+                                      style={{ filter: 'drop-shadow(0 1px 2px rgba(239,68,68,0.3))' }}
+                                    />
+                                  </g>
                                 );
                               }
                             }
