@@ -315,6 +315,9 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
         <ToolBtn onClick={() => handleAiAction('summary')} disabled={isAiLoading} style={aiBtnStyle}>
           📝 Краткое содержание
         </ToolBtn>
+         <ToolBtn onClick={() => handleAiAction('tasks')} disabled={isAiLoading} style={aiBtnStyle}>
+          ✅ Извлечь задачи
+        </ToolBtn>
       </div>
 
       {/* Attachments Panel */}
