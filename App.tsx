@@ -414,8 +414,8 @@ function App() {
                       <div>
                         <h2 style={{ fontSize: '20px', marginBottom: '24px', color: '#1e293b' }}>🧠 Mind Map</h2>
                         <div style={{ background: '#f8fafc', padding: '40px', borderRadius: '16px', border: '1px solid #e2e8f0', overflowX: 'auto', minHeight: '300px', display: 'flex', justifyContent: 'center' }}>
-                          {meeting.mind_map_ ? (
-                            <MindMapViewer node={meeting.mind_map_} />
+                          {meeting.mind_map_data ? (
+                            <MindMapViewer node={meeting.mind_map_data} />
                           ) : (
                             <p style={{ color: '#94a3b8' }}>Карта мыслей не сгенерирована.</p>
                           )}
