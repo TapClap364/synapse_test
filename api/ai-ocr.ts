@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Используем GPT-4 Vision или альтернативу
     const response = await openai.chat.completions.create({
-      model: "openai/gpt-4o", // Более доступная модель с vision
+      model: "google/gemini-pro-1.5", // Более доступная модель с vision
       messages: [
         {
           role: "user",

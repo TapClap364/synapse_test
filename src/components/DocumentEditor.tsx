@@ -189,31 +189,34 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
   };
 
   // --- AI OCR ---
-  const handleAiOcr = async (fileUrl: string, action: 'text' | 'table') => {
-    setIsAiLoading(true);
-    try {
-      const res = await fetch('/api/ai-ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: fileUrl, action }),
-      });
-      
-      if (!res.ok) throw new Error('OCR Error');
-      const data = await res.json();
-      
-      if (data.result) {
-        if (action === 'table') {
-          editor?.chain().focus().insertContent(data.result).run();
-        } else {
-          editor?.chain().focus().insertContent(`<p>${data.result}</p>`).run();
-        }
+const handleAiOcr = async (fileUrl: string, action: 'text' | 'table', fileType: string) => {
+  setIsAiLoading(true);
+  try {
+    const res = await fetch('/api/ai-ocr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        fileUrl, // <-- Gemini принимает именно fileUrl
+        action 
+      }),
+    });
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'OCR Error');
+    
+    if (data.result) {
+      if (action === 'table') {
+        editor?.chain().focus().insertContent(data.result).run();
+      } else {
+        editor?.chain().focus().insertContent(`<div style="white-space: pre-wrap;">${data.result}</div>`).run();
       }
-    } catch (e: any) {
-      alert(`Ошибка AI OCR: ${e.message}`);
-    } finally {
-      setIsAiLoading(false);
     }
-  };
+  } catch (e: any) {
+    alert(`Ошибка AI OCR: ${e.message}`);
+  } finally {
+    setIsAiLoading(false);
+  }
+};
 
   // --- AI ACTIONS ---
   const handleAiAction = async (action: string) => {
