@@ -13,31 +13,33 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
   return (
     <div style={{ 
       position: 'absolute', 
-      top: '70px', 
-      left: '20px', 
+      right: '20px', 
+      top: '280px', 
       zIndex: 10000,
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
-      maxWidth: '280px'
+      width: '220px'
     }}>
       <button
         onClick={() => onExtract(editor)}
         style={{
-          padding: '14px 28px',
+          padding: '14px 20px',
           background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
           color: '#fff',
           border: 'none',
-          borderRadius: '16px',
+          borderRadius: '14px',
           fontWeight: 700,
           cursor: 'pointer',
           boxShadow: '0 8px 24px rgba(59,130,246,0.35)',
-          fontSize: '16px',
+          fontSize: '15px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          justifyContent: 'center',
+          gap: '8px',
           transition: 'all 0.2s ease',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
+          width: '100%'
         }}
         onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)';
@@ -48,35 +50,32 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
             e.currentTarget.style.boxShadow = '0 8px 24px rgba(59,130,246,0.35)';
         }}
       >
-        ✈️ Перенести в задачи
+        ✈️ В задачи
       </button>
 
       <div style={{
         background: 'rgba(255,255,255,0.95)',
         backdropFilter: 'blur(12px)',
-        padding: '16px 18px',
-        borderRadius: '16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-        fontSize: '13px',
+        padding: '14px 16px',
+        borderRadius: '14px',
+        boxShadow: '0 6px 24px rgba(0,0,0,0.1)',
+        fontSize: '12px',
         color: '#64748b',
         border: '1px solid rgba(0,0,0,0.06)',
-        lineHeight: '1.6'
+        lineHeight: '1.5'
       }}>
-        <div style={{ marginBottom: '10px', color: '#1e293b', fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ marginBottom: '8px', color: '#1e293b', fontWeight: 700, fontSize: '13px' }}>
           📝 Горячие клавиши:
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', fontWeight: 700, fontSize: '12px', color: '#334155', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>N</span>
-            <span>Создать стикер</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '11px', color: '#334155' }}>N</span>
+            <span>Стикер</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', fontWeight: 700, fontSize: '12px', color: '#334155', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>T</span>
-            <span>Создать текст</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '11px', color: '#334155' }}>T</span>
+            <span>Текст</span>
           </div>
-        </div>
-        <div style={{ marginTop: '10px', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
-          Затем нажми кнопку выше ↗️
         </div>
       </div>
     </div>
