@@ -11,43 +11,69 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
   const editor = useEditor();
   
   return (
-    <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 1000 }}>
+    <div style={{ 
+      position: 'absolute', 
+      bottom: '30px', 
+      right: '30px', 
+      zIndex: 10000, 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'flex-end', 
+      gap: '12px' 
+    }}>
       <button
         onClick={() => onExtract(editor)}
         style={{
-          padding: '12px 24px',
-          background: '#3b82f6',
+          padding: '14px 28px',
+          background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
           color: '#fff',
           border: 'none',
-          borderRadius: '8px',
-          fontWeight: 600,
+          borderRadius: '16px',
+          fontWeight: 700,
           cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(59,130,246,0.4)',
-          fontSize: '14px',
+          boxShadow: '0 8px 24px rgba(59,130,246,0.4)',
+          fontSize: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 12px 28px rgba(59,130,246,0.5)';
+        }}
+        onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(59,130,246,0.4)';
         }}
       >
         ✈️ Перенести в задачи
       </button>
       
       <div style={{
-        position: 'absolute',
-        top: '60px',
-        right: '0',
-        background: '#fff',
-        padding: '12px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        fontSize: '12px',
+        background: 'rgba(255,255,255,0.9)',
+        backdropFilter: 'blur(8px)',
+        padding: '16px',
+        borderRadius: '16px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        fontSize: '13px',
         color: '#64748b',
-        maxWidth: '220px',
-        zIndex: 1001
+        maxWidth: '240px',
+        textAlign: 'right',
+        border: '1px solid rgba(0,0,0,0.05)'
       }}>
-        <strong style={{ display: 'block', marginBottom: '8px', color: '#1e293b' }}>Как создать стикер:</strong>
-        1. Нажми <strong>N</strong> (Sticky)<br/>
-        2. Или <strong>T</strong> (Text)<br/>
-        3. Кликни на доску и пиши<br/>
-        4. Кликни вне чтобы закончить<br/>
-        5. Нажми кнопку выше ↗️
+        <div style={{ marginBottom: '8px', color: '#1e293b', fontWeight: 700 }}>
+          📝 Горячие клавиши:
+        </div>
+        <div style={{ marginBottom: '4px' }}>
+          <span style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, fontSize: '12px' }}>N</span> — Создать стикер
+        </div>
+        <div style={{ marginBottom: '4px' }}>
+          <span style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, fontSize: '12px' }}>T</span> — Создать текст
+        </div>
+        <div style={{ marginTop: '8px', fontSize: '12px', opacity: 0.8 }}>
+          Затем нажми кнопку выше ↗️
+        </div>
       </div>
     </div>
   );
