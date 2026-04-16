@@ -105,20 +105,27 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       const fileExt = file.name.split('.').pop();
       const fileName = `${documentId}/${Date.now()}.${fileExt}`;
       
-      // Исправлено: явное указание имен переменных
-      const {  uploadData, error: uploadError } = await supabase.storage.from('document-attachments').upload(fileName, file);
+      // Исправлено: правильная обработка ответа Supabase Storage
+      const uploadResponse = await supabase.storage.from('document-attachments').upload(fileName, file);
       
-      if (uploadError) throw uploadError;
+      if (uploadResponse.error) throw uploadResponse.error;
       
-      // Исправлено: корректная деструктуризация вложенного объекта
-      const { data: urlData } = supabase.storage.from('document-attachments').getPublicUrl(fileName);
-      const publicUrl = urlData.publicUrl;
+      // Получаем публичный URL
+      const urlResponse = supabase.storage.from('document-attachments').getPublicUrl(fileName);
+      const publicUrl = urlResponse.data.publicUrl;
       
-      // Исправлено: явное указание имени переменной
-      const {  attachmentData } = await supabase.from('attachments').insert({
-        document_id: documentId, file_name: file.name, file_type: file.type,
-        file_size: file.size, file_url: publicUrl
+      // Сохраняем метаданные в базу
+      const insertResponse = await supabase.from('attachments').insert({
+        document_id: documentId, 
+        file_name: file.name, 
+        file_type: file.type,
+        file_size: file.size, 
+        file_url: publicUrl
       }).select().single();
+      
+      if (insertResponse.error) throw insertResponse.error;
+      
+      const attachmentData = insertResponse.data;
       
       if (attachmentData) {
         setAttachments([attachmentData, ...attachments]);
