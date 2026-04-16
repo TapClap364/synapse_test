@@ -17,7 +17,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!text || text.trim().length < 10) return res.status(400).json({ error: 'Text is too short' });
 
     // 1. Получаем существующие эпики для контекста
-    const {  existingEpics } = await supabase.from('epics').select('id, title') as any;
+    const responseEpics = await supabase.from('epics').select('id, title') as any;
+    const existingEpics = responseEpics.data;
     const epicList = existingEpics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design, Marketing';
 
     // 2. ИИ-Анализ с привязкой к эпикам
@@ -53,9 +54,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 3. Сохранение встречи
     const responseMeeting = await supabase
       .from('meetings')
-      .insert({ title: title || `Meeting ${new Date().toLocaleTimeString()}`, summary: aiResult.summary, mind_map_ aiResult.mind_map })
+      .insert({ 
+        title: title || `Meeting ${new Date().toLocaleTimeString()}`, 
+        summary: aiResult.summary, 
+        mind_map_data: aiResult.mind_map // ✅ ИСПРАВЛЕНО: двоеточие и правильное имя поля
+      })
       .select()
       .single() as any;
+    
     if (responseMeeting.error) throw responseMeeting.error;
 
     // 4. Создание задач с правильным распределением по эпикам
@@ -64,12 +70,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const task of aiResult.tasks) {
         // Найти или создать эпик
         let epicId = null;
-        const foundEpic = existingEpics?.find((e: any) => e.title.toLowerCase().includes(task.epic_title.toLowerCase()));
+        const foundEpic = existingEpics?.find((e: any) => 
+          e.title.toLowerCase().includes(task.epic_title?.toLowerCase()) ||
+          task.epic_title?.toLowerCase().includes(e.title.toLowerCase())
+        );
+        
         if (foundEpic) {
           epicId = foundEpic.id;
-        } else {
-          const {  newEpic } = await supabase.from('epics').insert({ title: task.epic_title }).select().single() as any;
-          epicId = newEpic?.id;
+        } else if (task.epic_title) {
+          const responseNewEpic = await supabase
+            .from('epics')
+            .insert({ title: task.epic_title })
+            .select()
+            .single() as any;
+          epicId = responseNewEpic.data?.id;
         }
 
         await supabase.from('tasks').insert({
