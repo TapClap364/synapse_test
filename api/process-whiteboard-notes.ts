@@ -33,7 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'No notes provided' });
     }
 
-    const {  epics } = await supabase.from('epics').select('id, title') as any;
+    const responseEpics = await supabase.from('epics').select('id, title') as any;
+    const epics = responseEpics.data;
     const epicList = epics?.map((e: any) => e.title).join(', ') || 'General, Backend, Frontend, Design';
 
     const analysisCompletion = await openai.chat.completions.create({
@@ -70,11 +71,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const aiResult = JSON.parse(analysisCompletion.choices[0].message.content || '{}');
     const tasks: TaskInput[] = Array.isArray(aiResult.tasks) ? aiResult.tasks : [];
 
-    // ИСПРАВЛЕНО: Явная типизация массива при инициализации
+    // ✅ ИСПРАВЛЕНО: Явная типизация массива
     const createdTasks: any[] = []; 
 
     for (const task of tasks) {
       let epicId = null;
+      
+      // Поиск эпика
       const foundEpic = epics?.find((e: any) => 
         e.title.toLowerCase().includes(task.epic_title?.toLowerCase()) ||
         task.epic_title?.toLowerCase().includes(e.title.toLowerCase())
@@ -83,15 +86,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (foundEpic) {
         epicId = foundEpic.id;
       } else if (task.epic_title) {
-        const {  newEpic } = await supabase
+        // ✅ ИСПРАВЛЕНО: Правильное извлечение данных из ответа Supabase
+        const responseNewEpic = await supabase
           .from('epics')
           .insert({ title: task.epic_title })
           .select()
           .single() as any;
-        epicId = newEpic?.id;
+        
+        const newEpic = responseNewEpic.data;
+        const epicError = responseNewEpic.error;
+        
+        if (!epicError && newEpic) {
+          epicId = newEpic.id;
+        }
       }
 
-      const {  newTask } = await supabase
+      // ✅ ИСПРАВЛЕНО: Правильное извлечение данных из ответа Supabase
+      const responseTask = await supabase
         .from('tasks')
         .insert({
           title: task.title,
@@ -105,7 +116,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .select()
         .single() as any;
 
-      if (newTask) createdTasks.push(newTask);
+      const newTask = responseTask.data;
+      const taskError = responseTask.error;
+
+      // ✅ ИСПРАВЛЕНО: Проверяем newTask, а не responseTask
+      if (!taskError && newTask) {
+        createdTasks.push(newTask);
+      }
     }
 
     return res.status(200).json({
