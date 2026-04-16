@@ -15,25 +15,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { fileUrl, action = 'extract', fileType = 'image' } = req.body;
+    const { fileUrl, action = 'extract' } = req.body;
 
     if (!fileUrl) {
       return res.status(400).json({ error: 'fileUrl is required' });
     }
 
-    console.log('🔍 OCR Request:', { fileUrl, action, fileType });
+    console.log('🚀 Starting OCR for:', fileUrl);
 
-    // Определяем модель: Gemini для PDF, GPT-4o для изображений (как фоллбэк)
-    const isPdf = fileType === 'application/pdf' || fileUrl.endsWith('.pdf');
-    const primaryModel = isPdf ? "google/gemini-1.5-pro-latest" : "openai/gpt-4o";
-    
-    let response;
-    let lastError: any;
-
-    // Пробуем основную модель
+    // 1. Пытаемся использовать Gemini (он умеет читать PDF)
+    // Важно: для OpenRouter всегда используем "image_url", даже для PDF
     try {
-      response = await openai.chat.completions.create({
-        model: primaryModel,
+      const response = await openai.chat.completions.create({
+        model: "google/gemini-1.5-pro", // Стандартное имя модели на OpenRouter
         messages: [
           {
             role: "user",
@@ -41,77 +35,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               { 
                 type: "text", 
                 text: action === 'table' 
-                  ? "Extract ALL tables from this document. Return them as valid HTML <table> code. Do NOT add explanations, markdown, or text outside the HTML."
-                  : "Extract all text from this document. Preserve original structure, line breaks, and formatting. Return clean text."
+                  ? "Extract ALL tables from this document. Return strictly as HTML <table> code."
+                  : "Extract all text from this document. Keep formatting."
               },
-              isPdf 
-                ? { type: "file", file: { url: fileUrl } }
-                : { type: "image_url", image_url: { url: fileUrl, detail: "high" } }
+              { 
+                type: "image_url", // <--- FIX: Всегда image_url для OpenRouter
+                image_url: { url: fileUrl } 
+              }
             ]
           }
         ],
-        max_tokens: 8000,
+        max_tokens: 8192,
         temperature: 0.1
       });
-    } catch (e: any) {
-      console.log('⚠️ Primary model failed, trying fallback:', e.message);
-      lastError = e;
+
+      const result = response.choices[0].message.content;
+      console.log('✅ Success with Gemini');
+      return res.status(200).json({ result });
+
+    } catch (geminiError: any) {
+      console.warn('⚠️ Gemini failed, trying fallback...', geminiError.message);
       
-      // Фоллбэк: если это изображение и первичная модель не сработала
-      if (!isPdf) {
-        try {
-          response = await openai.chat.completions.create({
-            model: "openai/gpt-4o-mini",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { 
-                    type: "text", 
-                    text: action === 'table' 
-                      ? "Extract tables as HTML <table> code only."
-                      : "Extract text preserving structure."
-                  },
-                  { type: "image_url", image_url: { url: fileUrl, detail: "high" } }
-                ]
-              }
-            ],
-            max_tokens: 4000
-          });
-        } catch (fallbackError: any) {
-          console.error('❌ Fallback also failed:', fallbackError.message);
-          throw new Error(`OCR failed: ${lastError.message}. Fallback: ${fallbackError.message}`);
-        }
-      } else {
-        throw e; // Для PDF не делаем фоллбэк на image-only модели
+      // 2. Фоллбэк на GPT-4o (работает только с картинками, не с PDF)
+      // Если это PDF, фоллбэк не сработает, и мы вернем ошибку Gemini
+      if (fileUrl.toLowerCase().endsWith('.pdf')) {
+        throw new Error(`Gemini failed: ${geminiError.message}`);
       }
-    }
 
-    if (!response?.choices?.[0]?.message?.content) {
-      throw new Error('Empty response from AI model');
-    }
+      // Если это картинка, пробуем GPT-4o
+      const fallbackResponse = await openai.chat.completions.create({
+        model: "openai/gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { 
+                type: "text", 
+                text: action === 'table' 
+                  ? "Extract tables as HTML." 
+                  : "Extract text." 
+              },
+              { 
+                type: "image_url", 
+                image_url: { url: fileUrl } 
+              }
+            ]
+          }
+        ],
+        max_tokens: 4000
+      });
 
-    const result = response.choices[0].message.content;
-    console.log('✅ OCR completed, result length:', result.length);
-    
-    return res.status(200).json({ result });
+      return res.status(200).json({ result: fallbackResponse.choices[0].message.content });
+    }
 
   } catch (error: any) {
-    console.error("OCR Error:", error);
-    
-    // Дружелюбные сообщения об ошибках
-    let userMessage = error.message;
-    if (error.message?.includes('401') || error.message?.includes('API key')) {
-      userMessage = 'Ошибка авторизации: проверь OPENROUTER_API_KEY';
-    } else if (error.message?.includes('404') || error.message?.includes('model')) {
-      userMessage = 'Модель недоступна. Попробуй позже или проверь доступные модели в OpenRouter.';
-    } else if (error.message?.includes('400') || error.message?.includes('invalid')) {
-      userMessage = 'Неподдерживаемый формат файла. Попробуй другой PDF или изображение.';
-    }
-    
-    return res.status(500).json({ 
-      error: userMessage,
-      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error("❌ OCR Error:", error);
+    return res.status(500).json({ error: error.message });
   }
 }
