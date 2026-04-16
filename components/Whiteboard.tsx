@@ -7,11 +7,14 @@ interface WhiteboardProps {
   onExtractTasks: (notes: string[]) => void;
 }
 
-const ExtractButton = ({ onExtract }: { onExtract: () => void }) => {
+// Компонент кнопки с доступом к editor через хук
+const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void }) => {
+  const editor = useEditor();
+  
   return (
     <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 1000 }}>
       <button
-        onClick={onExtract}
+        onClick={() => onExtract(editor)}
         style={{
           padding: '12px 24px',
           background: '#3b82f6',
@@ -22,16 +25,11 @@ const ExtractButton = ({ onExtract }: { onExtract: () => void }) => {
           cursor: 'pointer',
           boxShadow: '0 4px 12px rgba(59,130,246,0.4)',
           fontSize: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
         }}
-        title="Извлечь все стикеры и текст с доски"
       >
         ✈️ Перенести в задачи
       </button>
       
-      {/* Подсказка как пользоваться */}
       <div style={{
         position: 'absolute',
         top: '60px',
@@ -42,7 +40,7 @@ const ExtractButton = ({ onExtract }: { onExtract: () => void }) => {
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         fontSize: '12px',
         color: '#64748b',
-        maxWidth: '200px',
+        maxWidth: '220px',
         zIndex: 1001
       }}>
         <strong style={{ display: 'block', marginBottom: '8px', color: '#1e293b' }}>Как создать стикер:</strong>
@@ -56,51 +54,41 @@ const ExtractButton = ({ onExtract }: { onExtract: () => void }) => {
 };
 
 export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
-  const handleExtract = () => {
-    // Используем глобальный editor если он есть, или ищем через querySelector
-    const canvas = document.querySelector('.tldraw-canvas');
-    if (!canvas) {
-      alert('Доска еще не загрузилась');
-      return;
-    }
-
-    const notes: string[] = [];
-    
-    // В tldraw v2 стикеры и текст хранятся в SVG элементах с определенными классами
-    // Ищем все текстовые элементы
-    const textElements = canvas.querySelectorAll('text, .tl-text, [data-testid="text"]');
-    
-    textElements.forEach((el) => {
-      const text = el.textContent?.trim();
-      if (text && text.length > 0 && text.length < 500) { // Фильтр на разумную длину
-        // Убираем дубликаты
-        if (!notes.some(n => n.toLowerCase().includes(text.toLowerCase()) || text.toLowerCase().includes(n.toLowerCase()))) {
-          notes.push(text);
-        }
-      }
-    });
-
-    // Также ищем div элементы которые могут содержать текст стикеров
-    const divElements = canvas.querySelectorAll('div');
-    divElements.forEach((el) => {
-      // Проверяем по классам tldraw
-      const className = el.className?.toString() || '';
-      if (className.includes('sticky') || className.includes('geo') || className.includes('text')) {
-        const text = el.textContent?.trim();
-        if (text && text.length > 0 && text.length < 500) {
-          if (!notes.some(n => n.toLowerCase().includes(text.toLowerCase()) || text.toLowerCase().includes(n.toLowerCase()))) {
-            notes.push(text);
+  const handleExtract = (editor: any) => {
+    try {
+      const notes: string[] = [];
+      
+      // Получаем все shapes из store
+      const shapes = editor.store.getAllShapes();
+      
+      shapes.forEach((shape: any) => {
+        // Ищем текстовые shapes и sticky notes
+        if (shape.type === 'text' || shape.type === 'geo') {
+          const text = shape.props?.text?.trim();
+          if (text && text.length > 0 && text.length < 1000) {
+            // Проверяем на дубликаты
+            const isDuplicate = notes.some(n => 
+              n.toLowerCase().includes(text.toLowerCase()) || 
+              text.toLowerCase().includes(n.toLowerCase())
+            );
+            
+            if (!isDuplicate) {
+              notes.push(text);
+            }
           }
         }
+      });
+
+      console.log('📝 Extracted notes from whiteboard:', notes);
+
+      if (notes.length > 0) {
+        onExtractTasks(notes);
+      } else {
+        alert('На доске нет текста. Создай стикер (клавиша S) или текст (клавиша T)');
       }
-    });
-
-    console.log('Extracted notes:', notes); // Для отладки
-
-    if (notes.length > 0) {
-      onExtractTasks(notes);
-    } else {
-      alert('Не удалось найти текст на доске. Убедитесь, что создали стикеры (клавиша S) или текст (клавиша T)');
+    } catch (error) {
+      console.error('Error extracting notes:', error);
+      alert('Ошибка при извлечении текста. Проверь консоль.');
     }
   };
 
@@ -110,7 +98,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
         persistenceKey="synapse-whiteboard"
         autoFocus
       >
-        <ExtractButton onExtract={handleExtract} />
+        <ExtractButtonInner onExtract={handleExtract} />
       </Tldraw>
     </div>
   );
