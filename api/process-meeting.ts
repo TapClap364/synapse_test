@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 2. ИИ-Анализ с привязкой к эпикам
     const analysisCompletion = await openai.chat.completions.create({
-      model: process.env.OPENROUTER_API_KEY ? "meta-llama/llama-3.3-70b-instruct" : "gpt-4o-mini",
+      model: process.env.OPENROUTER_API_KEY ? "qwen/qwen3-235b-a22b-2507",
       messages: [
         {
           role: "system",

@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 2. Запрос к OpenRouter (Структурирование + Зависимости + Эпик)
     const completion = await openai.chat.completions.create({
-      model: "qwen/qwen3.6-plus", 
+      model: "qwen/qwen3-235b-a22b-2507", 
       messages: [
         {
           role: "system",
