@@ -3,7 +3,6 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { Whiteboard } from './components/Whiteboard';
 import { DocumentEditor } from './components/DocumentEditor';
-import { MindMapNode } from './components/MindMapNode'; // Вынесем MindMap в отдельный компонент или оставим тут
 
 // --- Типы ---
 interface Task {
