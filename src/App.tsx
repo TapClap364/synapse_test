@@ -426,7 +426,11 @@ function App() {
                 })()
               ) : selectedDocId ? (
                 /* DOCUMENT EDITOR VIEW */
-                <DocumentEditor documentId={selectedDocId} onSave={fetchDocuments} />
+                <DocumentEditor 
+  documentId={selectedDocId} 
+  onSave={fetchDocuments} 
+  onRefresh={fetchDocuments} 
+/>
               ) : (
                 /* EMPTY STATE */
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b' }}>
