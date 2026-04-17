@@ -1,4 +1,4 @@
-// src/App.tsx — С АВТОРИЗАЦИЕЙ И ДЕТАЛЯМИ ЗАДАЧ 🔐📝
+// src/App.tsx — С АВТОРИЗАЦИЕЙ, ПРОФИЛЯМИ И КОММЕНТАРИЯМИ 🔐👥💬
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { Whiteboard } from './components/Whiteboard';
@@ -32,6 +32,12 @@ interface MindMapNodeData {
   children?: MindMapNodeData[];
 }
 
+interface Profile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 const formatTaskId = (id: number) => `TASK-${String(id).padStart(3, '0')}`;
 
 function App() {
@@ -39,6 +45,7 @@ function App() {
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [epics, setEpics] = useState<Record<number, string>>({});
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   
   // Wiki State
   const [documents, setDocuments] = useState<any[]>([]);
@@ -65,12 +72,11 @@ function App() {
 
   // --- Auth Effect ---
   useEffect(() => {
-    // Исправлено: правильная деструктуризация
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({  { session } }) => {
       setSession(session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {  { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
@@ -99,11 +105,17 @@ function App() {
     if (data) setMeetings(data);
   };
 
+  const fetchProfiles = async () => {
+    const { data } = await supabase.from('profiles').select('*');
+    if (data) setProfiles(data);
+  };
+
   useEffect(() => {
     if (session) {
       fetchData();
       fetchDocuments();
       fetchMeetings();
+      fetchProfiles();
       
       const channel = supabase.channel('public-tasks')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
@@ -315,6 +327,9 @@ function App() {
     );
   };
 
+  // Helper для инициалов
+  const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+
   // Если нет сессии — показываем экран авторизации
   if (!session) return <Auth />;
 
@@ -333,12 +348,28 @@ function App() {
           <button onClick={() => setView('whiteboard')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'whiteboard' ? '#fff' : 'transparent', boxShadow: view === 'whiteboard' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'whiteboard' ? '#3b82f6' : '#64748b' }}>🎨 Доска</button>
           <button onClick={() => setView('wiki')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'wiki' ? '#fff' : 'transparent', boxShadow: view === 'wiki' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'wiki' ? '#3b82f6' : '#64748b' }}>📚 Вики</button>
         </div>
-        <button 
-          onClick={() => supabase.auth.signOut()}
-          style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }}
-        >
-          👋 Выйти
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Отображение текущего пользователя */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b' }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', overflow: 'hidden' }}>
+              {(() => {
+                const profile = profiles.find(p => p.id === session.user.id);
+                if (profile?.avatar_url) return <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+                return getInitials(profile?.full_name);
+              })()}
+            </div>
+            {(() => {
+              const profile = profiles.find(p => p.id === session.user.id);
+              return profile?.full_name || session.user.email?.split('@')[0] || 'Пользователь';
+            })()}
+          </div>
+          <button 
+            onClick={() => supabase.auth.signOut()}
+            style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }}
+          >
+            👋 Выйти
+          </button>
+        </div>
       </header>
 
       {/* Controls */}
@@ -485,37 +516,51 @@ function App() {
                       {status === 'backlog' ? '📥 Бэклог' : status === 'in_progress' ? '🔄 В работе' : '✅ Готово'}
                     </h3>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {tasks.filter(t => t.status === status).map(t => (
-                        <div 
-                          key={t.id} 
-                          draggable 
-                          onDragStart={e => onDragStart(e, t.id)} 
-                          onClick={() => setSelectedTask(t)}
-                          style={{ 
-                            background: '#fff', 
-                            padding: '12px', 
-                            borderRadius: '10px', 
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)', 
-                            cursor: 'pointer',
-                            borderLeft: `3px solid ${t.priority === 'critical' ? '#ef4444' : t.priority === 'high' ? '#f59e0b' : '#3b82f6'}`,
-                            transition: 'transform 0.1s',
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>{formatTaskId(t.id)}</span>
-                            {t.blocked_by && t.blocked_by.length > 0 && <span style={{ fontSize: '9px', background: '#fef2f2', color: '#dc2626', padding: '2px 6px', borderRadius: '4px' }}>🔗 Зависит</span>}
-                          </div>
-                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>{t.title}</div>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>{epics[t.epic_id || 0] || 'Без эпика'}</div>
-                          {t.assigned_to && (
-                            <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
-                              👤 {t.assigned_to}
+                      {tasks.filter(t => t.status === status).map(t => {
+                        const assignee = profiles.find(p => p.id === t.assigned_to);
+                        const initials = assignee?.full_name ? assignee.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) : '?';
+                        
+                        return (
+                          <div 
+                            key={t.id} 
+                            draggable 
+                            onDragStart={e => onDragStart(e, t.id)} 
+                            onClick={() => setSelectedTask(t)}
+                            style={{ 
+                              background: '#fff', 
+                              padding: '12px', 
+                              borderRadius: '10px', 
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)', 
+                              cursor: 'pointer',
+                              borderLeft: `3px solid ${t.priority === 'critical' ? '#ef4444' : t.priority === 'high' ? '#f59e0b' : '#3b82f6'}`,
+                              transition: 'transform 0.1s',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>{formatTaskId(t.id)}</span>
+                              {t.blocked_by && t.blocked_by.length > 0 && <span style={{ fontSize: '9px', background: '#fef2f2', color: '#dc2626', padding: '2px 6px', borderRadius: '4px' }}>🔗 Зависит</span>}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>{t.title}</div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>{epics[t.epic_id || 0] || 'Без эпика'}</div>
+                            
+                            {/* Ответственный с аватаром */}
+                            {t.assigned_to && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
+                                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, overflow: 'hidden', flexShrink: 0 }}>
+                                  {assignee?.avatar_url ? (
+                                    <img src={assignee.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ) : (
+                                    initials
+                                  )}
+                                </div>
+                                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>{assignee?.full_name || 'Пользователь'}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                       {tasks.filter(t => t.status === status).length === 0 && <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '20px' }}>Перетащи сюда</div>}
                     </div>
                   </div>
@@ -594,11 +639,13 @@ function App() {
         )}
       </main>
 
-      {/* Task Details Modal */}
+      {/* Task Details Modal с профилями и комментариями */}
       {selectedTask && (
         <TaskModal 
           task={selectedTask} 
           epics={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title }))}
+          profiles={profiles}
+          currentUser={session?.user || null}
           onClose={() => setSelectedTask(null)} 
           onUpdate={fetchData} 
         />
