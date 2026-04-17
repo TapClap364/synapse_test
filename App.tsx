@@ -16,7 +16,7 @@ interface Task {
   epic_id: number | null;
   estimated_hours: number | null;
   blocked_by: number[] | null;
-  assigned_to: string | null; // UUID ответственного
+  assigned_to: string | null;
   created_at: string;
   es?: number; ef?: number; ls?: number; lf?: number; slack?: number; isCritical?: boolean;
 }
@@ -65,26 +65,27 @@ function App() {
 
   // --- Auth Effect ---
   useEffect(() => {
-    supabase.auth.getSession().then(({  { session } }) => {
+    // Исправлено: правильная деструктуризация
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
-    const {  { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); };
   }, []);
 
   // --- Data Fetching ---
   const fetchData = async () => {
-    const resEpics = await supabase.from('epics').select('id, title') as any;
+    const resEpics = await supabase.from('epics').select('id, title');
     if (resEpics.data) {
       const map: Record<number, string> = {};
       resEpics.data.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
-    const resTasks = await supabase.from('tasks').select('*').order('created_at', { ascending: true }) as any;
+    const resTasks = await supabase.from('tasks').select('*').order('created_at', { ascending: true });
     if (resTasks.data) setTasks(resTasks.data as Task[]);
   };
 
@@ -107,7 +108,7 @@ function App() {
       const channel = supabase.channel('public-tasks')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
         .subscribe();
-      return () => { void supabase.removeChannel(channel); };
+      return () => { supabase.removeChannel(channel); };
     }
   }, [session]);
 
@@ -489,13 +490,13 @@ function App() {
                           key={t.id} 
                           draggable 
                           onDragStart={e => onDragStart(e, t.id)} 
-                          onClick={() => setSelectedTask(t)} // <-- Клик открывает модалку
+                          onClick={() => setSelectedTask(t)}
                           style={{ 
                             background: '#fff', 
                             padding: '12px', 
                             borderRadius: '10px', 
                             boxShadow: '0 1px 2px rgba(0,0,0,0.05)', 
-                            cursor: 'pointer', // <-- Курсор меняется
+                            cursor: 'pointer',
                             borderLeft: `3px solid ${t.priority === 'critical' ? '#ef4444' : t.priority === 'high' ? '#f59e0b' : '#3b82f6'}`,
                             transition: 'transform 0.1s',
                           }}
