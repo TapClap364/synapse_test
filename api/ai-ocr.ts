@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Используем Qwen-VL как основную модель. 
     // Она отлично понимает PDF и изображения через image_url.
     const response = await openai.chat.completions.create({
-      model: "qwen/qwen3-vl-30b-a3b-instruct", // Твоя рабочая модель
+      model: "qwen/qwen3-vl-235b-a22b-instruct", // Твоя рабочая модель
       messages: [
         {
           role: "user",
