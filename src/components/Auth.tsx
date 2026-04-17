@@ -10,8 +10,26 @@ export const Auth = () => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isLogin, setIsLogin] = useState(true);
 
-  const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', width: '100%', boxSizing: 'border-box' };
-  const btnStyle = { padding: '12px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: '#fff', fontWeight: 600, cursor: 'pointer', width: '100%' };
+  // Исправлено: явное приведение типов для CSS свойств
+  const inputStyle: React.CSSProperties = { 
+    padding: '12px', 
+    borderRadius: '8px', 
+    border: '1px solid #cbd5e1', 
+    outline: 'none', 
+    width: '100%', 
+    boxSizing: 'border-box' as const 
+  };
+  
+  const btnStyle: React.CSSProperties = { 
+    padding: '12px', 
+    borderRadius: '8px', 
+    border: 'none', 
+    background: '#3b82f6', 
+    color: '#fff', 
+    fontWeight: 600, 
+    cursor: 'pointer', 
+    width: '100%' 
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,25 +72,59 @@ export const Auth = () => {
           {/* Поля только для регистрации */}
           {!isLogin && (
             <>
-              <input type="text" placeholder="Полное имя" value={fullName} onChange={(e) => setFullName(e.target.value)} style={inputStyle} />
-              <input type="text" placeholder="Ссылка на аватар (URL)" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} style={inputStyle} />
+              <input 
+                type="text" 
+                placeholder="Полное имя" 
+                value={fullName} 
+                onChange={(e) => setFullName(e.target.value)} 
+                style={inputStyle} 
+              />
+              <input 
+                type="text" 
+                placeholder="Ссылка на аватар (URL)" 
+                value={avatarUrl} 
+                onChange={(e) => setAvatarUrl(e.target.value)} 
+                style={inputStyle} 
+              />
               {avatarUrl && (
                 <div style={{ textAlign: 'center', margin: '-8px 0 4px 0' }}>
-                  <img src={avatarUrl} alt="Preview" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0' }} />
+                  <img 
+                    src={avatarUrl} 
+                    alt="Preview" 
+                    style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0' }} 
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
                 </div>
               )}
             </>
           )}
 
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
-          <input type="password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
+          <input 
+            type="email" 
+            placeholder="Email" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            required 
+            style={inputStyle} 
+          />
+          <input 
+            type="password" 
+            placeholder="Пароль" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            required 
+            style={inputStyle} 
+          />
           
           <button type="submit" disabled={loading} style={btnStyle}>
             {loading ? '⏳ Загрузка...' : (isLogin ? 'Войти' : 'Создать аккаунт')}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#64748b', cursor: 'pointer', margin: '20px 0 0 0' }} onClick={() => setIsLogin(!isLogin)}>
+        <p 
+          style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#64748b', cursor: 'pointer', margin: '20px 0 0 0' }} 
+          onClick={() => setIsLogin(!isLogin)}
+        >
           {isLogin ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
         </p>
       </div>
