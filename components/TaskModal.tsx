@@ -1,31 +1,8 @@
 // src/components/TaskModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-
-interface Task {
-  id: number;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  epic_id: number | null;
-  assigned_to: string | null;
-}
-
-interface Profile {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-}
-
-interface Comment {
-  id: string;
-  task_id: number;
-  user_id: string;
-  content: string;
-  created_at: string;
-  profile?: Profile;
-}
+import type { Task, Profile, Comment } from '../types';
+import { getInitials } from '../types';
 
 interface TaskModalProps {
   task: Task;
@@ -96,7 +73,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
     if (!error) setNewComment('');
   };
 
-  const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
