@@ -132,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const task of tasks) {
       // ✅ ПРОВЕРКА НА ДУБЛИКАТЫ
-      const isDuplicate = existingTasks.some(existingTask => {
+      const isDuplicate = existingTasks.some((existingTask: { id: number; title: string; description: string }) => {
         // Проверяем схожесть заголовка
         const titleSimilar = isSimilarText(task.title, existingTask.title);
         
