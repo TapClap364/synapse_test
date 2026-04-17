@@ -39,16 +39,18 @@ export const Auth = () => {
       } else {
         const currentAvatarUrl = getAvatarUrl(selectedStyle);
         
+        // ✅ Исправлено: правильная структура options.data
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-             {
+            data: {
               full_name: fullName.trim() || null,
               avatar_url: currentAvatarUrl,
             },
           },
         });
+        
         if (error) throw error;
         alert('✅ Регистрация успешна! Проверьте почту для подтверждения входа.');
       }
