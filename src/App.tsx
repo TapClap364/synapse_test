@@ -72,6 +72,7 @@ function App() {
 
   // --- Auth Effect ---
   useEffect(() => {
+    // Исправлено: правильная деструктуризация
     supabase.auth.getSession().then(({  { session } }) => {
       setSession(session);
     });
