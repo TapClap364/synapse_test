@@ -1,8 +1,10 @@
-// src/App.tsx — С ИНТЕГРИРОВАННЫМ WIKI И ПРОТОКОЛАМИ 📚📝
+// src/App.tsx — С АВТОРИЗАЦИЕЙ И ДЕТАЛЯМИ ЗАДАЧ 🔐📝
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { Whiteboard } from './components/Whiteboard';
 import { DocumentEditor } from './components/DocumentEditor';
+import { Auth } from './components/Auth';
+import { TaskModal } from './components/TaskModal';
 
 // --- Типы ---
 interface Task {
@@ -14,6 +16,7 @@ interface Task {
   epic_id: number | null;
   estimated_hours: number | null;
   blocked_by: number[] | null;
+  assigned_to: string | null; // UUID ответственного
   created_at: string;
   es?: number; ef?: number; ls?: number; lf?: number; slack?: number; isCritical?: boolean;
 }
@@ -45,6 +48,12 @@ function App() {
   const [meetings, setMeetings] = useState<any[]>([]);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
 
+  // Auth State
+  const [session, setSession] = useState<any>(null);
+  
+  // Task Modal State
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -53,6 +62,19 @@ function App() {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [isProcessingMeeting, setIsProcessingMeeting] = useState(false);
   const recognitionRef = useRef<any>(null);
+
+  // --- Auth Effect ---
+  useEffect(() => {
+    supabase.auth.getSession().then(({  { session } }) => {
+      setSession(session);
+    });
+
+    const {  { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // --- Data Fetching ---
   const fetchData = async () => {
@@ -77,15 +99,17 @@ function App() {
   };
 
   useEffect(() => {
-    fetchData();
-    fetchDocuments();
-    fetchMeetings(); // Загружаем встречи
-    
-    const channel = supabase.channel('public-tasks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, []);
+    if (session) {
+      fetchData();
+      fetchDocuments();
+      fetchMeetings();
+      
+      const channel = supabase.channel('public-tasks')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
+        .subscribe();
+      return () => { void supabase.removeChannel(channel); };
+    }
+  }, [session]);
 
   // --- Handlers ---
   const handleCreate = async () => {
@@ -157,7 +181,7 @@ function App() {
       setLastMeetingResult(data);
       setShowMeetingModal(true);
       await fetchData();
-      await fetchMeetings(); // Обновить список встреч
+      await fetchMeetings();
     } catch (e: any) { alert(`Ошибка: ${e.message}`); }
     finally { setIsProcessingMeeting(false); }
   };
@@ -211,7 +235,6 @@ function App() {
 
   // --- Components ---
 
-  // Вспомогательный компонент для отображения Mind Map (можно вынести в файл)
   const MindMapViewer: React.FC<{ node: MindMapNodeData; branchColor?: string }> = ({ node, branchColor = '#3b82f6' }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
@@ -291,6 +314,9 @@ function App() {
     );
   };
 
+  // Если нет сессии — показываем экран авторизации
+  if (!session) return <Auth />;
+
   return (
     <div style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc', color: '#0f172a' }}>
       
@@ -306,6 +332,12 @@ function App() {
           <button onClick={() => setView('whiteboard')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'whiteboard' ? '#fff' : 'transparent', boxShadow: view === 'whiteboard' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'whiteboard' ? '#3b82f6' : '#64748b' }}>🎨 Доска</button>
           <button onClick={() => setView('wiki')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: view === 'wiki' ? '#fff' : 'transparent', boxShadow: view === 'wiki' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: 600, color: view === 'wiki' ? '#3b82f6' : '#64748b' }}>📚 Вики</button>
         </div>
+        <button 
+          onClick={() => supabase.auth.signOut()}
+          style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }}
+        >
+          👋 Выйти
+        </button>
       </header>
 
       {/* Controls */}
@@ -427,10 +459,10 @@ function App() {
               ) : selectedDocId ? (
                 /* DOCUMENT EDITOR VIEW */
                 <DocumentEditor 
-  documentId={selectedDocId} 
-  onSave={fetchDocuments} 
-  onRefresh={fetchDocuments} 
-/>
+                  documentId={selectedDocId} 
+                  onSave={fetchDocuments} 
+                  onRefresh={fetchDocuments} 
+                />
               ) : (
                 /* EMPTY STATE */
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b' }}>
@@ -442,7 +474,7 @@ function App() {
             </div>
           </div>
         ) : (
-          /* KANBAN & GANTT VIEWS (Existing Code) */
+          /* KANBAN & GANTT VIEWS */
           <div style={{ padding: '24px 32px', height: '100%', overflow: 'auto' }}>
             {view === 'board' ? (
               <div style={{ display: 'flex', gap: '24px', height: '100%' }}>
@@ -453,13 +485,34 @@ function App() {
                     </h3>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {tasks.filter(t => t.status === status).map(t => (
-                        <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} style={{ background: '#fff', padding: '12px', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: 'grab', borderLeft: `3px solid ${t.priority === 'critical' ? '#ef4444' : t.priority === 'high' ? '#f59e0b' : '#3b82f6'}` }}>
+                        <div 
+                          key={t.id} 
+                          draggable 
+                          onDragStart={e => onDragStart(e, t.id)} 
+                          onClick={() => setSelectedTask(t)} // <-- Клик открывает модалку
+                          style={{ 
+                            background: '#fff', 
+                            padding: '12px', 
+                            borderRadius: '10px', 
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)', 
+                            cursor: 'pointer', // <-- Курсор меняется
+                            borderLeft: `3px solid ${t.priority === 'critical' ? '#ef4444' : t.priority === 'high' ? '#f59e0b' : '#3b82f6'}`,
+                            transition: 'transform 0.1s',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                        >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                             <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>{formatTaskId(t.id)}</span>
                             {t.blocked_by && t.blocked_by.length > 0 && <span style={{ fontSize: '9px', background: '#fef2f2', color: '#dc2626', padding: '2px 6px', borderRadius: '4px' }}>🔗 Зависит</span>}
                           </div>
                           <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>{t.title}</div>
                           <div style={{ fontSize: '11px', color: '#64748b' }}>{epics[t.epic_id || 0] || 'Без эпика'}</div>
+                          {t.assigned_to && (
+                            <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
+                              👤 {t.assigned_to}
+                            </div>
+                          )}
                         </div>
                       ))}
                       {tasks.filter(t => t.status === status).length === 0 && <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '20px' }}>Перетащи сюда</div>}
@@ -523,7 +576,7 @@ function App() {
                               })}
                             </svg>
                             {epic.tasks.map((task, idx) => (
-                              <div key={task.id}>
+                              <div key={task.id} onClick={() => setSelectedTask(task)} style={{ cursor: 'pointer' }}>
                                 <div style={{ position: 'absolute', left: '-120px', top: `${idx * 56}px`, width: '110px', fontSize: '12px', fontWeight: 600, color: '#1e293b', textAlign: 'right', paddingRight: '10px', paddingTop: '12px' }}>{formatTaskId(task.id)}</div>
                                 <GanttBar task={task} index={idx} />
                               </div>
@@ -539,6 +592,16 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Task Details Modal */}
+      {selectedTask && (
+        <TaskModal 
+          task={selectedTask} 
+          epics={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title }))}
+          onClose={() => setSelectedTask(null)} 
+          onUpdate={fetchData} 
+        />
+      )}
 
       {/* Meeting Modal (For new meetings only) */}
       {showMeetingModal && lastMeetingResult && (
