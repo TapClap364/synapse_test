@@ -1,4 +1,4 @@
-// src/App.tsx — С АВТОРИЗАЦИЕЙ, ПРОФИЛЯМИ И КОММЕНТАРИЯМИ 🔐👥💬
+// src/App.tsx — С АВТОРИЗАЦИЕЙ, ПРОФИЛЯМИ И КОММЕНТАРИЯМИ 🔐💬
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { Whiteboard } from './components/Whiteboard';
@@ -72,28 +72,31 @@ function App() {
 
   // --- Auth Effect ---
   useEffect(() => {
-    // Исправлено: правильная деструктуризация
-    supabase.auth.getSession().then(({  { session } }) => {
+    // Получаем текущую сессию
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    // Подписываемся на изменения авторизации
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    const {  { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => { subscription.unsubscribe(); };
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // --- Data Fetching ---
   const fetchData = async () => {
-    const resEpics = await supabase.from('epics').select('id, title');
-    if (resEpics.data) {
+    const { data: resEpics } = await supabase.from('epics').select('id, title');
+    if (resEpics) {
       const map: Record<number, string> = {};
-      resEpics.data.forEach((e: any) => map[e.id] = e.title);
+      resEpics.forEach((e: any) => map[e.id] = e.title);
       setEpics(map);
     }
-    const resTasks = await supabase.from('tasks').select('*').order('created_at', { ascending: true });
-    if (resTasks.data) setTasks(resTasks.data as Task[]);
+    const { data: resTasks } = await supabase.from('tasks').select('*').order('created_at', { ascending: true });
+    if (resTasks) setTasks(resTasks as Task[]);
   };
 
   const fetchDocuments = async () => {
@@ -121,7 +124,9 @@ function App() {
       const channel = supabase.channel('public-tasks')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
+      return () => { 
+        supabase.removeChannel(channel); 
+      };
     }
   }, [session]);
 
