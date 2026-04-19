@@ -24,6 +24,7 @@ import { NotificationCenter } from './components/NotificationCenter';
 import { AIAssistant } from './components/AIAssistant';
 import { LandingPage } from './components/LandingPage';
 import { PresentationPage } from './components/PresentationPage';
+import { LegalPage } from './components/LegalPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
@@ -223,8 +224,9 @@ END:VCALENDAR`;
   }
 
   const isPresentation = location.pathname === '/presentation';
+  const isLegal = location.pathname.startsWith('/legal');
 
-  if (!session && !isPresentation) {
+  if (!session && !isPresentation && !isLegal) {
     if (showAuthForm) {
       return (
         <div className="auth-container">
@@ -254,14 +256,16 @@ END:VCALENDAR`;
 
   return (
     <div className="app-layout">
-      <Header
-        profile={currentProfile}
-        userEmail={session?.user?.email || ''}
-        onSignOut={signOut}
-        onSearchClick={() => setIsSearchOpen(true)}
-        onNotificationsClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-        unreadCount={notifications.filter(n => !n.read).length}
-      />
+      {!isPresentation && !isLegal && (
+        <Header
+          profile={currentProfile}
+          userEmail={session?.user?.email || ''}
+          onSignOut={signOut}
+          onSearchClick={() => setIsSearchOpen(true)}
+          onNotificationsClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+          unreadCount={notifications.filter(n => !n.read).length}
+        />
+      )}
 
       {isNotificationsOpen && (
         <NotificationCenter
@@ -271,7 +275,7 @@ END:VCALENDAR`;
         />
       )}
 
-      {!isWhiteboardOrWiki && !isPresentation && (
+      {!isWhiteboardOrWiki && !isPresentation && !isLegal && (
         <ControlBar
           isListening={recorder.isListening}
           isProcessing={recorder.isProcessing}
@@ -320,7 +324,7 @@ END:VCALENDAR`;
               element={
                 <EpicsView 
                   tasks={tasks} 
-                  epicsList={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title }))} 
+                  epicsList={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title, workspace_id: 'default' }))} 
                   onRefresh={fetchData} 
                 />
               }
@@ -344,6 +348,10 @@ END:VCALENDAR`;
               path="/presentation"
               element={<PresentationPage />}
             />
+            <Route
+              path="/legal/:type"
+              element={<LegalPage />}
+            />
           </Routes>
         </ErrorBoundary>
       </main>
@@ -352,7 +360,7 @@ END:VCALENDAR`;
       {selectedTask && session && (
         <TaskModal
           task={selectedTask}
-          epics={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title }))}
+          epics={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title, workspace_id: 'default' }))}
           profiles={profiles}
           currentUser={session.user}
           onClose={() => setSelectedTask(null)}

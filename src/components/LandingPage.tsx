@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 interface LandingPageProps {
   onSignIn: () => void;
@@ -85,11 +86,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
       </section>
 
       {/* Footer */}
-      <footer style={{ padding: '80px', borderTop: '1px solid var(--color-border)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-        <div style={{ marginBottom: '24px', fontSize: '20px', fontWeight: 800, color: 'var(--color-text)' }}>
-          🧠 Synapse AI
+      <footer style={{ padding: '80px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '40px' }}>
+          <div>
+            <div style={{ marginBottom: '24px', fontSize: '20px', fontWeight: 800, color: 'var(--color-text)' }}>
+              🧠 Synapse AI
+            </div>
+            <p style={{ color: 'var(--color-text-secondary)', maxWidth: '300px', lineHeight: '1.6' }}>
+              Интеллектуальная система управления проектами для команд будущего.
+            </p>
+          </div>
+          <div>
+            <h4 style={{ marginBottom: '20px', fontWeight: 700 }}>Юридическая информация</h4>
+            <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <li><Link to="/legal/privacy" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>Политика конфиденциальности</Link></li>
+              <li><Link to="/legal/terms" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>Пользовательское соглашение</Link></li>
+              <li><Link to="/legal/privacy" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>Обработка персональных данных</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 style={{ marginBottom: '20px', fontWeight: 700 }}>Контакты</h4>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.8' }}>
+              Email: support@synapse-ai.ru<br/>
+              ИНН: 7700000000<br/>
+              ОГРН: 1027700000000<br/>
+              ООО «Синапс Технологии»
+            </p>
+          </div>
         </div>
-        <p>© 2026 Synapse AI Project Management. Все права защищены.</p>
+        <div style={{ marginTop: '60px', textAlign: 'center', paddingTop: '40px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+          © 2026 Synapse AI Project Management. Все права защищены.
+        </div>
       </footer>
     </div>
   );
