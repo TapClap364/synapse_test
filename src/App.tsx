@@ -56,9 +56,20 @@ function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([
-    { id: '1', title: 'Добро пожаловать!', content: 'Вы перешли на SaaS-версию Synapse AI.', type: 'success', read: false, created_at: new Date().toISOString() },
-    { id: '2', title: 'Оркестратор', content: 'ИИ-оркестратор готов к работе.', type: 'info', read: true, created_at: new Date().toISOString() },
+    { id: '1', title: 'Добро пожаловать!', content: 'Вы перешли на SaaS-версию Synapse AI.', type: 'success', read: false, created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
   ]);
+
+  const addNotification = useCallback((title: string, content: string, type: 'info' | 'success' | 'warning' = 'info') => {
+    const newNotif = {
+      id: Math.random().toString(36).substring(7),
+      title,
+      content,
+      type,
+      read: false,
+      created_at: new Date().toISOString(),
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  }, []);
   const [showAuthForm, setShowAuthForm] = useState(false);
 
   // Keyboard Shortcuts
@@ -95,6 +106,7 @@ function App() {
       });
       if (!res.ok) throw new Error('API Error');
       await fetchData();
+      addNotification('Задача создана', 'ИИ успешно распознал голос и добавил новую задачу в бэклог.', 'success');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       alert(`Ошибка: ${msg}`);
@@ -106,6 +118,7 @@ function App() {
       const { error } = await supabase.from('epics').insert({ title });
       if (error) throw error;
       await fetchData();
+      addNotification('Эпик создан', `Новая крупная цель "${title}" добавлена в проект.`, 'success');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       alert(`Ошибка создания эпика: ${msg}`);
@@ -121,7 +134,7 @@ function App() {
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed');
       const data = await res.json();
-      alert(`✅ ${data.message}`);
+      addNotification('Доска обработана', `ИИ извлек и создал ${data.taskCount || ''} задач по вашим заметкам.`, 'success');
       await fetchData();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -167,7 +180,7 @@ END:VCALENDAR`;
       link.click();
       document.body.removeChild(link);
       
-      alert(`✅ Встреча спланирована и скачана!\\n\\nТема: ${data.meeting.title}\\nДлительность: ${data.meeting.duration_minutes} мин.\\n(Добавлено в Google/Apple Calendar)`);
+      addNotification('Встреча запланирована', `ИИ организовал "${data.meeting.title}" и подготовил файл календаря.`, 'success');
       await fetchMeetings();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -188,7 +201,7 @@ END:VCALENDAR`;
       });
       
       if (!res.ok) throw new Error('API Error');
-      alert('✅ ИИ-Оркестратор сгенерировал отчет! Он сохранен в разделе "Вики".');
+      addNotification('Отчет готов', 'ИИ-Оркестратор сгенерировал аналитический отчет. Он доступен в разделе Wiki.', 'info');
       await fetchDocuments();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -205,7 +218,7 @@ END:VCALENDAR`;
       const res = await fetch('/api/orchestrate-tasks', { method: 'POST' });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
-      alert(`✅ Магия случилась! Обновлено задач: ${data.updates}. ИИ назначил исполнителей и выстроил зависимости.`);
+      addNotification('Магия случилась!', `Обновлено ${data.updates} задач. ИИ выстроил зависимости и назначил исполнителей.`, 'success');
       await fetchData();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -298,8 +311,14 @@ END:VCALENDAR`;
           notifications={notifications}
           onClose={() => setIsNotificationsOpen(false)}
           onMarkAsRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
+          onClearAll={() => {
+            setNotifications([]);
+            setIsNotificationsOpen(false);
+          }}
         />
       )}
+
+      <AIAssistant />
 
       {!isWhiteboardOrWiki && !isPresentation && !isLegal && (
         <ControlBar
@@ -365,10 +384,6 @@ END:VCALENDAR`;
                   onRefreshDocuments={fetchDocuments}
                 />
               }
-            />
-            <Route
-              path="/ai"
-              element={<AIAssistant />}
             />
             <Route
               path="/presentation"

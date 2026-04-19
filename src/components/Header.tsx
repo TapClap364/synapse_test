@@ -82,14 +82,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           📚 Вики
         </NavLink>
-        <NavLink
-          to="/ai"
-          className={({ isActive }) =>
-            `header__nav-btn ${isActive ? 'header__nav-btn--active' : ''}`
-          }
-        >
-          🤖 AI
-        </NavLink>
       </nav>
 
       <div className="header__user">

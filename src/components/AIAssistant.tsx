@@ -6,152 +6,164 @@ interface Message {
 }
 
 export const AIAssistant: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Привет! Я твой ИИ-ассистент Synapse. Чем могу помочь сегодня?' }
+    { role: 'assistant', content: 'Привет! Я твой ИИ-ассистент Synapse. Могу помочь с задачами, анализом вики или отчетами. О чем хочешь поговорить?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
-  }, [messages]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isOpen]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMsg: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMsg]);
+    const userMsg = input.trim();
     setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/ai-assistant-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: input,
-          history: messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
-        }),
+        body: JSON.stringify({ message: userMsg, history: messages }),
       });
-
-      if (!res.ok) throw new Error('Ошибка API');
       const data = await res.json();
-      
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Извините, произошла ошибка при связи с сервером.' }]);
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Извини, произошла ошибка при связи с мозгом...' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--color-bg)' }}>
-      <div style={{ padding: '24px 40px', borderBottom: '1px solid var(--color-border)', background: '#fff' }}>
-        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>🤖 AI Ассистент</h2>
-        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>Ваш интеллектуальный помощник по проекту</p>
-      </div>
-
-      <div 
-        ref={scrollRef}
-        style={{ flex: 1, overflowY: 'auto', padding: '40px', display: 'flex', flexDirection: 'column', gap: '24px' }}
+    <>
+      {/* Кнопка вызова */}
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          position: 'fixed',
+          bottom: '30px',
+          right: '30px',
+          width: '60px',
+          height: '60px',
+          borderRadius: '30px',
+          background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+          color: 'white',
+          border: 'none',
+          boxShadow: '0 10px 25px rgba(59, 130, 246, 0.4)',
+          cursor: 'pointer',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px',
+          transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) rotate(0deg)'}
       >
-        <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {messages.map((m, i) => (
-            <div 
-              key={i} 
-              style={{ 
+        {isOpen ? '✕' : '🧠'}
+      </button>
+
+      {/* Окно чата */}
+      {isOpen && (
+        <div style={{
+          position: 'fixed',
+          bottom: '100px',
+          right: '30px',
+          width: '380px',
+          height: '550px',
+          background: '#fff',
+          borderRadius: '24px',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'slideUp 0.3s ease-out',
+          border: '1px solid rgba(0,0,0,0.05)'
+        }}>
+          {/* Header */}
+          <div style={{ padding: '20px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', color: 'white' }}>
+            <div style={{ fontWeight: 800, fontSize: '16px' }}>Synapse AI Assistant</div>
+            <div style={{ fontSize: '11px', opacity: 0.8 }}>Онлайн • Анализирует контекст проекта</div>
+          </div>
+
+          {/* Messages */}
+          <div 
+            ref={scrollRef}
+            style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8fafc' }}
+          >
+            {messages.map((m, i) => (
+              <div key={i} style={{ 
                 alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '80%',
-                display: 'flex',
-                gap: '12px',
-                flexDirection: m.role === 'user' ? 'row-reverse' : 'row'
-              }}
-            >
-              <div style={{ 
-                width: '32px', 
-                height: '32px', 
-                borderRadius: '8px', 
-                background: m.role === 'user' ? 'var(--color-primary)' : '#e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                flexShrink: 0
-              }}>
-                {m.role === 'user' ? '👤' : '🤖'}
-              </div>
-              <div style={{ 
-                padding: '16px 20px', 
-                borderRadius: '16px', 
-                background: m.role === 'user' ? 'var(--color-primary)' : '#fff',
-                color: m.role === 'user' ? '#fff' : 'var(--color-text)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                maxWidth: '85%',
+                padding: '12px 16px',
+                borderRadius: m.role === 'user' ? '16px 16px 0 16px' : '16px 16px 16px 0',
+                background: m.role === 'user' ? '#3b82f6' : '#fff',
+                color: m.role === 'user' ? 'white' : '#1e293b',
                 fontSize: '14px',
-                lineHeight: '1.6',
-                border: m.role === 'assistant' ? '1px solid #f1f5f9' : 'none'
+                lineHeight: '1.5',
+                boxShadow: m.role === 'user' ? 'none' : '0 2px 5px rgba(0,0,0,0.05)'
               }}>
                 {m.content}
               </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div style={{ alignSelf: 'flex-start', display: 'flex', gap: '12px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤖</div>
-              <div style={{ padding: '16px 20px', borderRadius: '16px', background: '#fff', border: '1px solid #f1f5f9' }}>
-                <div className="dot-typing">Печатает...</div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+            ))}
+            {isLoading && <div style={{ padding: '10px', fontSize: '12px', color: '#64748b' }}>ИИ думает...</div>}
+          </div>
 
-      <div style={{ padding: '24px 40px', background: '#fff', borderTop: '1px solid var(--color-border)' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
-          <textarea 
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder="Спроси меня о чем угодно... (Shift+Enter для новой строки)"
-            style={{
-              width: '100%',
-              padding: '16px 60px 16px 20px',
-              borderRadius: '12px',
-              border: '1px solid var(--color-border)',
-              outline: 'none',
-              resize: 'none',
-              fontSize: '14px',
-              background: 'var(--color-bg)',
-              minHeight: '56px',
-              maxHeight: '200px'
-            }}
-          />
-          <button 
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            style={{
-              position: 'absolute',
-              right: '12px',
-              bottom: '12px',
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'var(--color-primary)',
-              color: '#fff',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: input.trim() ? 1 : 0.5,
-              transition: 'all 0.2s'
-            }}
-          >
-            ✈️
-          </button>
+          {/* Input */}
+          <div style={{ padding: '15px', borderTop: '1px solid #f1f5f9', background: '#fff' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="text" 
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="Спроси меня о проекте..."
+                style={{
+                  flex: 1,
+                  padding: '10px 15px',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  outline: 'none',
+                  fontSize: '14px'
+                }}
+              />
+              <button 
+                onClick={handleSend}
+                disabled={isLoading}
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                ➔
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
+    </>
   );
 };

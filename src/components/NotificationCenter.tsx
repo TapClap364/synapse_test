@@ -13,9 +13,10 @@ interface NotificationCenterProps {
   notifications: Notification[];
   onClose: () => void;
   onMarkAsRead: (id: string) => void;
+  onClearAll: () => void;
 }
 
-export const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifications, onClose, onMarkAsRead }) => {
+export const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifications, onClose, onMarkAsRead, onClearAll }) => {
   return (
     <div 
       className="notification-center"
@@ -73,7 +74,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifica
       </div>
 
       <div style={{ padding: '12px', textAlign: 'center', background: '#f8fafc', borderTop: '1px solid var(--color-border)' }}>
-        <button style={{ border: 'none', background: 'transparent', color: 'var(--color-primary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+        <button 
+          onClick={onClearAll}
+          style={{ border: 'none', background: 'transparent', color: 'var(--color-primary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+        >
           Очистить всё
         </button>
       </div>
