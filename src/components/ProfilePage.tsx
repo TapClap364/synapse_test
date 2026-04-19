@@ -53,23 +53,33 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
     setMessage('⏳ Анализирую инструкцию...');
     
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      // Читаем файл прямо в браузере
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const text = event.target?.result as string;
+        
+        try {
+          const res = await fetch('/api/parse-job-description', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }),
+          });
 
-      const res = await fetch('/api/parse-job-description', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error('Ошибка при разборе файла');
+          if (!res.ok) throw new Error('Ошибка при разборе');
+          
+          const data = await res.json();
+          setRoleDescription(data.extracted_role);
+          setMessage('✅ Инструкция успешно проанализирована!');
+        } catch (err) {
+          setMessage('❌ Ошибка ИИ-анализа.');
+        } finally {
+          setIsSaving(false);
+        }
+      };
       
-      const data = await res.json();
-      setRoleDescription(data.extracted_role);
-      setMessage('✅ Инструкция успешно проанализирована!');
+      reader.readAsText(file);
     } catch (e) {
-      setMessage('❌ Не удалось разобрать файл. Попробуйте скопировать текст вручную.');
-      console.error(e);
-    } finally {
+      setMessage('❌ Не удалось прочитать файл.');
       setIsSaving(false);
     }
   };
