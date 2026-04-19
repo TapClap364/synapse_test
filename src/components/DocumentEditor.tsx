@@ -82,7 +82,11 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       const { data } = await supabase.from('documents').select('*').eq('id', documentId).single();
       if (data) {
         setTitle(data.title);
-        if (data.content) editor.commands.setContent(data.content);
+        // Обработка разных форматов контента (строка или JSON с полем html)
+        const content = typeof data.content === 'object' && data.content !== null && 'html' in data.content 
+          ? data.content.html 
+          : data.content;
+        if (content) editor.commands.setContent(content);
       }
     };
     fetchDoc();

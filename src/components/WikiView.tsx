@@ -35,14 +35,17 @@ export const WikiView: React.FC<WikiViewProps> = ({
 
   const selectedMeeting = meetings.find(m => m.id === selectedMeetingId);
 
+  const aiReports = documents.filter(doc => doc.title.includes('AI Project Report'));
+  const regularDocs = documents.filter(doc => !doc.title.includes('AI Project Report'));
+
   return (
     <div className="wiki">
       {/* Sidebar */}
       <div className="wiki__sidebar">
         <div className="wiki__section">
-          <h3 className="wiki__section-title">📄 Документы</h3>
+          <h3 className="wiki__section-title">📄 База знаний</h3>
           <ul className="wiki__list">
-            {documents.map(doc => (
+            {regularDocs.map(doc => (
               <li
                 key={doc.id}
                 className={`wiki__list-item ${selectedDocId === doc.id ? 'wiki__list-item--active' : ''}`}
@@ -57,8 +60,29 @@ export const WikiView: React.FC<WikiViewProps> = ({
           </button>
         </div>
 
+        {aiReports.length > 0 && (
+          <div className="wiki__section">
+            <h3 className="wiki__section-title">📊 Отчеты ИИ</h3>
+            <ul className="wiki__list">
+              {aiReports.map(doc => (
+                <li
+                  key={doc.id}
+                  className={`wiki__list-item ${selectedDocId === doc.id ? 'wiki__list-item--active' : ''}`}
+                  onClick={() => { setSelectedDocId(doc.id); setSelectedMeetingId(null); }}
+                  style={{ borderLeft: '3px solid #10b981' }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span>{doc.title.replace('AI Project Report - ', '')}</span>
+                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>Сгенерировано ИИ</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="wiki__section">
-          <h3 className="wiki__section-title">📝 Протоколы встреч</h3>
+          <h3 className="wiki__section-title">📅 Протоколы встреч</h3>
           <ul className="wiki__list">
             {meetings.map(meeting => (
               <li
