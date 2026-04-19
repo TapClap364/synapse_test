@@ -3,7 +3,12 @@ import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 
 const openai = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY || '',
+  defaultHeaders: {
+    "HTTP-Referer": "https://synapse-app.vercel.app",
+    "X-Title": "Synapse AI Calendar Agent",
+  },
 });
 
 const supabaseUrl = process.env.SUPABASE_URL || '';

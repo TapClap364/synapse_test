@@ -94,7 +94,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
 
       {onOrchestrateTasks && (
         <button className="btn btn--primary" style={{ background: '#8b5cf6' }} onClick={onOrchestrateTasks}>
-          🪄 Магия ИИ
+          ⚡️ AI-Оркестратор
         </button>
       )}
     </div>

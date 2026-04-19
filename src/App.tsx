@@ -218,7 +218,7 @@ END:VCALENDAR`;
       const res = await fetch('/api/orchestrate-tasks', { method: 'POST' });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
-      addNotification('Магия случилась!', `Обновлено ${data.updates} задач. ИИ выстроил зависимости и назначил исполнителей.`, 'success');
+      addNotification('Оптимизация завершена', `Обновлено ${data.updates} задач. ИИ-Оркестратор выстроил зависимости и назначил исполнителей.`, 'success');
       await fetchData();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
