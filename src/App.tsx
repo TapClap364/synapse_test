@@ -27,17 +27,23 @@ import { PresentationPage } from './components/PresentationPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
-  const { session, signOut } = useAuth();
+  const { session, signOut, loading: authLoading } = useAuth();
   const {
     tasks, setTasks,
     epics, profiles,
     documents, setDocuments,
     meetings,
     fetchData, fetchDocuments, fetchMeetings,
+    isLoading,
   } = useData(!!session);
 
   const cpmData = useCpm(tasks, epics);
-  const location = useLocation();
+  let location;
+  try {
+    location = useLocation();
+  } catch (e) {
+    location = { pathname: window.location.pathname };
+  }
 
   // Modals
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -208,7 +214,14 @@ END:VCALENDAR`;
     }
   };
 
-  // Auth gate
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--color-bg)' }}>
+        <div className="dot-typing">Загрузка Synapse AI...</div>
+      </div>
+    );
+  }
+
   const isPresentation = location.pathname === '/presentation';
 
   if (!session && !isPresentation) {
@@ -233,8 +246,11 @@ END:VCALENDAR`;
     return <LandingPage onSignIn={() => setShowAuthForm(true)} />;
   }
 
-  const currentProfile = (session && profiles) ? profiles.find(p => p.id === session.user.id) : undefined;
-  const isWhiteboardOrWiki = location.pathname === '/whiteboard' || location.pathname === '/wiki';
+  const currentProfile = (session && profiles.length > 0) 
+    ? profiles.find(p => p.id === session.user.id) 
+    : undefined;
+    
+  const isWhiteboardOrWiki = window.location.pathname === '/whiteboard' || window.location.pathname === '/wiki';
 
   return (
     <div className="app-layout">

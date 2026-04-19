@@ -35,16 +35,18 @@ export function useCpm(tasks: Task[], epics: Record<number, string>): CpmData {
     const dur = Math.max(...Array.from(map.values()).map(t => t.ef || 0), 1);
 
     // Backward pass
-    const calcLate = (id: number, visited: Set<number>): number => {
-      if (visited.has(id)) return map.get(id)?.ls ?? 0;
-      visited.add(id);
+    const v2 = new Set<number>();
+    const calcLate = (id: number): number => {
+      if (v2.has(id)) return map.get(id)?.ls ?? 0;
+      v2.add(id);
       const t = map.get(id);
       if (!t) return dur;
+      
       const succ = Array.from(map.values()).filter(s => s.blocked_by?.includes(id));
       if (succ.length === 0) {
         t.lf = dur;
       } else {
-        succ.forEach(s => calcLate(s.id, visited));
+        succ.forEach(s => calcLate(s.id));
         t.lf = Math.min(...succ.map(s => s.ls ?? dur));
       }
       t.ls = t.lf - (t.estimated_hours || 4);
@@ -54,7 +56,11 @@ export function useCpm(tasks: Task[], epics: Record<number, string>): CpmData {
     };
 
     const ends = tasks.filter(t => !tasks.some(o => o.blocked_by?.includes(t.id)));
-    (ends.length ? ends : tasks).forEach(t => calcLate(t.id, new Set()));
+    ends.forEach(t => calcLate(t.id));
+    // Fallback for isolated tasks
+    tasks.forEach(t => {
+      if (!v2.has(t.id)) calcLate(t.id);
+    });
 
     // Group by epics
     const groups: Record<string, EpicGroup> = {};
