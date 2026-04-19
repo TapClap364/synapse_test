@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
+  apiKey: process.env.OPENROUTER_API_KEY || '',
 });
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
@@ -65,7 +65,7 @@ Output must be pure JSON:
 `;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'meta-llama/llama-3.3-70b-instruct',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt || 'Analyze tasks and schedule a sync.' }
@@ -75,7 +75,7 @@ Output must be pure JSON:
 
     const aiResult = response.choices[0].message.content;
     if (!aiResult) throw new Error('No AI response');
-    
+
     const parsedData = JSON.parse(aiResult);
 
     const { data: meeting, error: meetingError } = await supabase

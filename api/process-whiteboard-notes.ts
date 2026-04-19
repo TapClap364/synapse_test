@@ -22,6 +22,7 @@ interface TaskInput {
   epic_title: string;
   estimated_hours: number;
   blocked_by?: number[];
+  subtasks?: string[];
 }
 
 // Функция для нормализации текста (убираем лишние пробелы, приводим к нижнему регистру)
@@ -112,7 +113,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 "priority": "low" | "medium" | "high" | "critical",
                 "epic_title": "Название эпика",
                 "estimated_hours": number,
-                "blocked_by": number[]
+                "blocked_by": number[],
+                "subtasks": string[]
               }
             ]
           }`
@@ -178,7 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .from('tasks')
         .insert({
           title: task.title,
-          description: `${task.description} (С whiteboard)`,
+          description: `${task.description} (С whiteboard)\n\n### Подзадачи (AI):\n${task.subtasks?.map((s: string) => `- [ ] ${s}`).join('\n') || ''}`,
           priority: task.priority || 'medium',
           estimated_hours: task.estimated_hours || 4,
           status: 'backlog',

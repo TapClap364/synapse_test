@@ -83,7 +83,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             "priority": "low" | "medium" | "high" | "critical",
             "epic_title": "Название эпика (выбери из списка или создай новый)",
             "estimated_hours": number,
-            "blocked_by": number[] // Массив ID задач-предшественников. Если нет, верни []
+            "blocked_by": number[], // Массив ID задач-предшественников. Если нет, верни []
+            "subtasks": string[] // Список из 3-5 конкретных подзадач для выполнения этой задачи
           }`
         },
         { role: "user", content: voice_text }
@@ -127,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('tasks')
       .insert({
         title: aiData.title,
-        description: aiData.description,
+        description: `${aiData.description}\n\n### Подзадачи (AI):\n${aiData.subtasks?.map((s: string) => `- [ ] ${s}`).join('\n') || ''}`,
         priority: aiData.priority,
         estimated_hours: aiData.estimated_hours,
         epic_id: epicId,

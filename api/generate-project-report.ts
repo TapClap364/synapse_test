@@ -52,7 +52,7 @@ ${noEpicStr}
 
     // 3. Generate Report via AI
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'meta-llama/llama-3.3-70b-instruct',
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.3,
     });

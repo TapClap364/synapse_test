@@ -21,7 +21,7 @@ export const GanttBar: React.FC<GanttBarProps> = ({ task, index }) => {
   if (task.status === 'done') bgColor = '#10b981';
 
   return (
-    <div style={{ position: 'absolute', left: `${120 + left}px`, top: `${top}px`, height: '40px', zIndex: 10 }}>
+    <div style={{ position: 'absolute', left: `${left}px`, top: `${top}px`, height: '40px', zIndex: 10 }}>
       <div
         className="gantt__bar"
         title={`${task.title}\nДлительность: ${duration}ч`}

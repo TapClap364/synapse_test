@@ -64,7 +64,7 @@ Expected Output Format:
 
     // 3. AI Execution
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'meta-llama/llama-3.3-70b-instruct',
       messages: [{ role: 'system', content: systemPrompt }],
       response_format: { type: 'json_object' } // Workaround to ensure JSON. Let's ask for an object containing an array.
     });

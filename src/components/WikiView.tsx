@@ -93,10 +93,25 @@ export const WikiView: React.FC<WikiViewProps> = ({
             onRefresh={onRefreshDocuments}
           />
         ) : (
-          <div className="wiki__empty">
-            <div className="wiki__empty-icon">📚</div>
-            <h2 style={{ margin: '0 0 8px 0', color: '#1e293b' }}>База Знаний Synapse</h2>
-            <p>Выберите документ или протокол встречи слева.</p>
+          <div className="wiki__empty" style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            height: '100%', 
+            textAlign: 'center',
+            color: 'var(--color-text-secondary)',
+            animation: 'fadeIn 0.5s ease-out'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '24px', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.1))' }}>📚</div>
+            <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', marginBottom: '12px' }}>Центр знаний проекта</h2>
+            <p style={{ maxWidth: '400px', lineHeight: '1.6', marginBottom: '32px' }}>
+              Здесь хранятся все важные документы, идеи и протоколы ваших встреч. 
+              Выберите существующий файл или создайте новый, чтобы начать.
+            </p>
+            <button className="btn btn--primary" onClick={handleNewDoc}>
+              Создать первый документ
+            </button>
           </div>
         )}
       </div>

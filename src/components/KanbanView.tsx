@@ -3,6 +3,7 @@ import React from 'react';
 import { supabase } from '../lib/supabase';
 import type { Task, Profile } from '../types';
 import { formatTaskId, getInitials } from '../types';
+import { TaskSkeleton } from './Skeleton';
 
 interface KanbanViewProps {
   tasks: Task[];
@@ -10,6 +11,7 @@ interface KanbanViewProps {
   profiles: Profile[];
   onTaskClick: (task: Task) => void;
   onTasksChange: (updater: (tasks: Task[]) => Task[]) => void;
+  isLoading?: boolean;
 }
 
 const COLUMNS = [
@@ -19,7 +21,7 @@ const COLUMNS = [
 ] as const;
 
 export const KanbanView: React.FC<KanbanViewProps> = ({
-  tasks, epics, profiles, onTaskClick, onTasksChange,
+  tasks, epics, profiles, onTaskClick, onTasksChange, isLoading
 }) => {
   const onDragStart = (e: React.DragEvent, id: number) => {
     e.dataTransfer.setData('id', id.toString());
@@ -45,53 +47,66 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
         >
           <h3 className="kanban__column-title">{col.label}</h3>
           <div className="kanban__cards">
-            {tasks
-              .filter(t => t.status === col.key)
-              .map(t => {
-                const assignee = profiles.find(p => p.id === t.assigned_to);
-                const cardClass = `kanban__card ${
-                  t.priority === 'critical' ? 'kanban__card--critical' :
-                  t.priority === 'high' ? 'kanban__card--high' : ''
-                }`;
+            {isLoading ? (
+              <>
+                <TaskSkeleton />
+                <TaskSkeleton />
+                <TaskSkeleton />
+              </>
+            ) : (
+              <>
+                {tasks
+                  .filter(t => t.status === col.key)
+                  .map(t => {
+                    const assignee = profiles.find(p => p.id === t.assigned_to);
+                    const cardClass = `kanban__card ${
+                      t.priority === 'critical' ? 'kanban__card--critical' :
+                      t.priority === 'high' ? 'kanban__card--high' : ''
+                    }`;
 
-                return (
-                  <div
-                    key={t.id}
-                    className={cardClass}
-                    draggable
-                    onDragStart={e => onDragStart(e, t.id)}
-                    onClick={() => onTaskClick(t)}
-                  >
-                    <div className="kanban__card-header">
-                      <span className="kanban__card-id">{formatTaskId(t.id)}</span>
-                      {t.blocked_by && t.blocked_by.length > 0 && (
-                        <span className="kanban__card-dep" title={`Зависит от: ${t.blocked_by.map(id => formatTaskId(id)).join(', ')}`}>
-                          🔗 Зависит: {t.blocked_by.map(id => formatTaskId(id)).join(', ')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="kanban__card-title">{t.title}</div>
-                    <div className="kanban__card-epic">{epics[t.epic_id || 0] || 'Без эпика'}</div>
-
-                    {t.assigned_to && (
-                      <div className="kanban__card-assignee">
-                        <div className="avatar avatar--sm avatar--purple">
-                          {assignee?.avatar_url ? (
-                            <img src={assignee.avatar_url} alt="" />
-                          ) : (
-                            getInitials(assignee?.full_name)
+                    return (
+                      <div
+                        key={t.id}
+                        className={cardClass}
+                        draggable
+                        onDragStart={e => onDragStart(e, t.id)}
+                        onClick={() => onTaskClick(t)}
+                      >
+                        <div className="kanban__card-header">
+                          <span className="kanban__card-id">{formatTaskId(t.id)}</span>
+                          {t.blocked_by && t.blocked_by.length > 0 && (
+                            <span className="kanban__card-dep" title={`Зависит от: ${t.blocked_by.map(id => formatTaskId(id)).join(', ')}`}>
+                              🔗 Зависит: {t.blocked_by.map(id => formatTaskId(id)).join(', ')}
+                            </span>
                           )}
                         </div>
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
-                          {assignee?.full_name || 'Пользователь'}
-                        </span>
+                        <div className="kanban__card-title">{t.title}</div>
+                        <div className="kanban__card-epic">{epics[t.epic_id || 0] || 'Без эпика'}</div>
+
+                        {t.assigned_to && (
+                          <div className="kanban__card-assignee">
+                            <div className="avatar avatar--sm avatar--purple">
+                              {assignee?.avatar_url ? (
+                                <img src={assignee.avatar_url} alt="" />
+                              ) : (
+                                getInitials(assignee?.full_name)
+                              )}
+                            </div>
+                            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
+                              {assignee?.full_name || 'Пользователь'}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    );
+                  })}
+                {tasks.filter(t => t.status === col.key).length === 0 && (
+                  <div className="kanban__empty">
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>✨</div>
+                    Пусто
                   </div>
-                );
-              })}
-            {tasks.filter(t => t.status === col.key).length === 0 && (
-              <div className="kanban__empty">Перетащи сюда</div>
+                )}
+              </>
             )}
           </div>
         </div>

@@ -19,6 +19,11 @@ import { EpicsView } from './components/EpicsView';
 import { Whiteboard } from './components/Whiteboard';
 import { TaskModal } from './components/TaskModal';
 import { MeetingModal } from './components/MeetingModal';
+import { SearchModal } from './components/SearchModal';
+import { NotificationCenter } from './components/NotificationCenter';
+import { AIAssistant } from './components/AIAssistant';
+import { LandingPage } from './components/LandingPage';
+import { PresentationPage } from './components/PresentationPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
@@ -41,6 +46,25 @@ function App() {
   const [isScheduling, setIsScheduling] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isOrchestrating, setIsOrchestrating] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([
+    { id: '1', title: 'Добро пожаловать!', content: 'Вы перешли на SaaS-версию Synapse AI.', type: 'success', read: false, created_at: new Date().toISOString() },
+    { id: '2', title: 'Оркестратор', content: 'ИИ-оркестратор готов к работе.', type: 'info', read: true, created_at: new Date().toISOString() },
+  ]);
+  const [showAuthForm, setShowAuthForm] = useState(false);
+
+  // Keyboard Shortcuts
+  React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleMeetingResult = useCallback((result: MeetingResult) => {
     setMeetingResult(result);
@@ -185,20 +209,53 @@ END:VCALENDAR`;
   };
 
   // Auth gate
-  if (!session) return <Auth />;
+  const isPresentation = location.pathname === '/presentation';
 
-  const currentProfile = profiles.find(p => p.id === session.user.id);
+  if (!session && !isPresentation) {
+    if (showAuthForm) {
+      return (
+        <div className="auth-container">
+          <div className="auth-card">
+            <h1 className="auth-title">Synapse AI</h1>
+            <p className="auth-subtitle">Войдите, чтобы начать работу</p>
+            <Auth />
+            <button 
+              className="btn btn--text" 
+              style={{ marginTop: '20px', width: '100%', color: 'var(--color-primary)' }} 
+              onClick={() => setShowAuthForm(false)}
+            >
+              ← Вернуться к описанию
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return <LandingPage onSignIn={() => setShowAuthForm(true)} />;
+  }
+
+  const currentProfile = (session && profiles) ? profiles.find(p => p.id === session.user.id) : undefined;
   const isWhiteboardOrWiki = location.pathname === '/whiteboard' || location.pathname === '/wiki';
 
   return (
     <div className="app-layout">
       <Header
         profile={currentProfile}
-        userEmail={session.user.email}
+        userEmail={session?.user?.email || ''}
         onSignOut={signOut}
+        onSearchClick={() => setIsSearchOpen(true)}
+        onNotificationsClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+        unreadCount={notifications.filter(n => !n.read).length}
       />
 
-      {!isWhiteboardOrWiki && (
+      {isNotificationsOpen && (
+        <NotificationCenter
+          notifications={notifications}
+          onClose={() => setIsNotificationsOpen(false)}
+          onMarkAsRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
+        />
+      )}
+
+      {!isWhiteboardOrWiki && !isPresentation && (
         <ControlBar
           isListening={recorder.isListening}
           isProcessing={recorder.isProcessing}
@@ -224,6 +281,7 @@ END:VCALENDAR`;
                   profiles={profiles}
                   onTaskClick={setSelectedTask}
                   onTasksChange={setTasks}
+                  isLoading={isLoading}
                 />
               }
             />
@@ -262,12 +320,20 @@ END:VCALENDAR`;
                 />
               }
             />
+            <Route
+              path="/ai"
+              element={<AIAssistant />}
+            />
+            <Route
+              path="/presentation"
+              element={<PresentationPage />}
+            />
           </Routes>
         </ErrorBoundary>
       </main>
 
       {/* Task Modal */}
-      {selectedTask && (
+      {selectedTask && session && (
         <TaskModal
           task={selectedTask}
           epics={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title }))}
@@ -283,6 +349,16 @@ END:VCALENDAR`;
         <MeetingModal
           result={meetingResult}
           onClose={() => setShowMeetingModal(false)}
+        />
+      )}
+
+      {/* Global Search */}
+      {isSearchOpen && (
+        <SearchModal
+          tasks={tasks}
+          documents={documents}
+          onClose={() => setIsSearchOpen(false)}
+          onSelectTask={setSelectedTask}
         />
       )}
     </div>

@@ -23,6 +23,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   // Загрузка комментариев + Realtime подписка
@@ -99,6 +101,27 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
     }
   };
 
+  const handleGetAiSuggestions = async () => {
+    setIsSuggesting(true);
+    try {
+      const res = await fetch('/api/ai-comment-helper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task_title: title,
+          task_description: description,
+          comments: comments.slice(-5)
+        })
+      });
+      const data = await res.json();
+      setAiSuggestions(data.suggestions || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -135,6 +158,50 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
                   style={{ width: '100%', marginTop: '8px', minHeight: '100px', resize: 'vertical', fontFamily: 'inherit' }} 
                 />
               </div>
+
+              {/* Interactive Subtasks */}
+              {description.includes('- [ ]') || description.includes('- [x]') ? (
+                <div style={{ background: 'var(--color-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '12px' }}>
+                    ✅ Чек-лист подзадач
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {description.split('\n').map((line, idx) => {
+                      const isTask = line.trim().startsWith('- [ ]') || line.trim().startsWith('- [x]');
+                      if (!isTask) return null;
+                      const isDone = line.trim().startsWith('- [x]');
+                      const text = line.replace('- [ ]', '').replace('- [x]', '').trim();
+                      
+                      const toggleTask = () => {
+                        const newLines = description.split('\n');
+                        newLines[idx] = isDone ? line.replace('- [x]', '- [ ]') : line.replace('- [ ]', '- [x]');
+                        setDescription(newLines.join('\n'));
+                      };
+
+                      return (
+                        <div key={idx} onClick={toggleTask} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', color: isDone ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
+                          <div style={{ 
+                            width: '18px', 
+                            height: '18px', 
+                            borderRadius: '4px', 
+                            border: '2px solid', 
+                            borderColor: isDone ? 'var(--color-primary)' : '#cbd5e1',
+                            background: isDone ? 'var(--color-primary)' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            fontSize: '12px'
+                          }}>
+                            {isDone && '✓'}
+                          </div>
+                          <span style={{ textDecoration: isDone ? 'line-through' : 'none' }}>{text}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Эпик</label>
@@ -206,6 +273,44 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
                   </div>
                 )}
                 <div ref={commentsEndRef} />
+              </div>
+
+              {/* AI Suggestions */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>✨ ИИ-подсказки</label>
+                  <button 
+                    onClick={handleGetAiSuggestions} 
+                    disabled={isSuggesting}
+                    style={{ border: 'none', background: 'transparent', color: 'var(--color-primary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {isSuggesting ? 'Думаю...' : 'Сгенерировать'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {aiSuggestions.map((s, idx) => (
+                    <button 
+                      key={idx} 
+                      onClick={() => setNewComment(s)}
+                      style={{ 
+                        background: '#f8faff', 
+                        border: '1px solid #e2e8f0', 
+                        padding: '6px 12px', 
+                        borderRadius: '20px', 
+                        fontSize: '12px', 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+                      onMouseOut={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                  {aiSuggestions.length === 0 && !isSuggesting && (
+                    <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>Нажмите «Сгенерировать» для получения идей</span>
+                  )}
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '12px' }}>

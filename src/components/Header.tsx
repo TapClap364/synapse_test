@@ -3,21 +3,41 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import type { Profile } from '../types';
 import { getInitials } from '../types';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   profile: Profile | undefined;
   userEmail: string | undefined;
   onSignOut: () => void;
+  onSearchClick: () => void;
+  onNotificationsClick: () => void;
+  unreadCount: number;
 }
 
-export const Header: React.FC<HeaderProps> = ({ profile, userEmail, onSignOut }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  profile, userEmail, onSignOut, onSearchClick, onNotificationsClick, unreadCount 
+}) => {
   const displayName = profile?.full_name || userEmail?.split('@')[0] || 'Пользователь';
 
   return (
     <header className="header">
       <div className="header__logo">
         <div className="header__logo-icon">🧠</div>
-        <h1 className="header__title">Synapse AI - от идей к задачам</h1>
+        <h1 className="header__title">Synapse AI</h1>
+      </div>
+
+      <div className="header__search-trigger" onClick={onSearchClick}>
+        <span style={{ fontSize: '14px' }}>🔍</span>
+        <span style={{ fontSize: '13px', color: '#64748b' }}>Поиск...</span>
+        <kbd style={{ 
+          marginLeft: 'auto', 
+          fontSize: '10px', 
+          background: '#f1f5f9', 
+          padding: '2px 4px', 
+          borderRadius: '4px',
+          border: '1px solid #e2e8f0',
+          color: '#94a3b8'
+        }}>⌘K</kbd>
       </div>
 
       <nav className="header__nav">
@@ -29,6 +49,14 @@ export const Header: React.FC<HeaderProps> = ({ profile, userEmail, onSignOut })
           }
         >
           📋 Задачи
+        </NavLink>
+        <NavLink
+          to="/epics"
+          className={({ isActive }) =>
+            `header__nav-btn ${isActive ? 'header__nav-btn--active' : ''}`
+          }
+        >
+          🎯 Эпики
         </NavLink>
         <NavLink
           to="/gantt"
@@ -55,16 +83,21 @@ export const Header: React.FC<HeaderProps> = ({ profile, userEmail, onSignOut })
           📚 Вики
         </NavLink>
         <NavLink
-          to="/epics"
+          to="/ai"
           className={({ isActive }) =>
             `header__nav-btn ${isActive ? 'header__nav-btn--active' : ''}`
           }
         >
-          🎯 Эпики
+          🤖 AI
         </NavLink>
       </nav>
 
       <div className="header__user">
+        <ThemeToggle />
+        <button className="header__notification-btn" onClick={onNotificationsClick}>
+          🔔
+          {unreadCount > 0 && <span className="header__notification-badge"></span>}
+        </button>
         <div className="header__user-info">
           <div className="avatar avatar--md avatar--purple">
             {profile?.avatar_url ? (

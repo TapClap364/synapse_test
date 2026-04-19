@@ -9,19 +9,25 @@ export function useData(isAuthenticated: boolean) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const { data: resEpics } = await supabase.from('epics').select('id, title');
-    if (resEpics) {
-      const map: Record<number, string> = {};
-      resEpics.forEach((e: { id: number; title: string }) => (map[e.id] = e.title));
-      setEpics(map);
+    setIsLoading(true);
+    try {
+      const { data: resEpics } = await supabase.from('epics').select('id, title');
+      if (resEpics) {
+        const map: Record<number, string> = {};
+        resEpics.forEach((e: { id: number; title: string }) => (map[e.id] = e.title));
+        setEpics(map);
+      }
+      const { data: resTasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (resTasks) setTasks(resTasks as Task[]);
+    } finally {
+      setIsLoading(false);
     }
-    const { data: resTasks } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: true });
-    if (resTasks) setTasks(resTasks as Task[]);
   }, []);
 
   const fetchDocuments = useCallback(async () => {
@@ -72,5 +78,6 @@ export function useData(isAuthenticated: boolean) {
     fetchData,
     fetchDocuments,
     fetchMeetings,
+    isLoading,
   };
 }

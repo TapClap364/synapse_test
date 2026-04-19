@@ -47,82 +47,65 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
   return (
     <div style={{ 
       position: 'absolute', 
-      right: '20px', 
-      top: '80px', 
+      left: '50%',
+      top: '20px',
+      transform: 'translateX(-50%)',
       zIndex: 10000,
       display: 'flex',
-      flexDirection: 'column',
-      gap: '12px',
-      width: '220px'
+      alignItems: 'center',
+      gap: '8px',
+      background: 'rgba(255, 255, 255, 0.9)',
+      backdropFilter: 'blur(12px)',
+      padding: '6px',
+      borderRadius: '20px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+      border: '1px solid rgba(255,255,255,0.5)',
     }}>
       <button
         onClick={startVoiceInput}
         style={{
-          padding: '14px 20px',
-          background: isListening ? '#fef2f2' : '#ffffff',
-          color: isListening ? '#ef4444' : '#0f172a',
-          border: isListening ? '1px solid #fecaca' : '1px solid #e2e8f0',
-          borderRadius: '14px',
-          fontWeight: 700,
+          padding: '10px 18px',
+          background: isListening ? '#fef2f2' : 'transparent',
+          color: isListening ? '#ef4444' : '#1e293b',
+          border: 'none',
+          borderRadius: '16px',
+          fontWeight: 600,
           cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-          fontSize: '14px',
+          fontSize: '13px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
           gap: '8px',
           transition: 'all 0.2s ease',
         }}
       >
-        {isListening ? '🎙 Слушаю...' : '🎙 Голос в стикер'}
+        <span style={{ fontSize: '16px' }}>{isListening ? '🛑' : '🎙️'}</span>
+        {isListening ? 'Слушаю...' : 'Голос'}
       </button>
+
+      <div style={{ width: '1px', height: '20px', background: '#e2e8f0' }} />
 
       <button
         onClick={() => onExtract(editor)}
         style={{
-          padding: '14px 20px',
-          background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+          padding: '10px 18px',
+          background: 'var(--color-primary)',
           color: '#fff',
           border: 'none',
-          borderRadius: '14px',
-          fontWeight: 700,
+          borderRadius: '16px',
+          fontWeight: 600,
           cursor: 'pointer',
-          boxShadow: '0 8px 24px rgba(59,130,246,0.35)',
-          fontSize: '15px',
+          fontSize: '13px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
           gap: '8px',
           transition: 'all 0.2s ease',
+          boxShadow: '0 4px 12px rgba(59,130,246,0.2)',
         }}
       >
-        ✈️ В задачи
+        <span>✈️</span>
+        В задачи
       </button>
 
-      <div style={{
-        background: 'rgba(255,255,255,0.95)',
-        backdropFilter: 'blur(12px)',
-        padding: '14px 16px',
-        borderRadius: '14px',
-        boxShadow: '0 6px 24px rgba(0,0,0,0.1)',
-        fontSize: '12px',
-        color: '#64748b',
-        border: '1px solid rgba(0,0,0,0.06)',
-      }}>
-        <div style={{ marginBottom: '8px', color: '#1e293b', fontWeight: 700, fontSize: '13px' }}>
-          📝 Горячие клавиши:
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '11px', color: '#334155' }}>N</span>
-            <span>Стикер</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '11px', color: '#334155' }}>T</span>
-            <span>Текст</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
@@ -165,7 +148,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
   };
 
   return (
-    <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
+    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
       <Tldraw persistenceKey="synapse-whiteboard" autoFocus>
         <ExtractButtonInner onExtract={handleExtract} />
       </Tldraw>

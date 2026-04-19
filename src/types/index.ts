@@ -11,6 +11,7 @@ export interface Task {
   blocked_by: number[] | null;
   assigned_to: string | null;
   created_at: string;
+  workspace_id: string;
   // CPM-поля (вычисляемые)
   es?: number;
   ef?: number;
@@ -23,6 +24,7 @@ export interface Task {
 export interface Epic {
   id: number;
   title: string;
+  workspace_id: string;
 }
 
 export interface EpicGroup {
@@ -41,6 +43,7 @@ export interface Document {
   id: string;
   title: string;
   content: string;
+  workspace_id: string;
   created_at: string;
   updated_at: string;
 }

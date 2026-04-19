@@ -13,19 +13,26 @@ const PIXELS_PER_HOUR = 12;
 const ROW_HEIGHT = 56;
 
 export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) => {
+  const globalMaxDuration = Math.max(
+    ...cpmData.epics.flatMap(epic => epic.tasks.map(t => (t.es || 0) + (t.estimated_hours || 4))),
+    100
+  );
+  
+  const chartWidth = (globalMaxDuration * PIXELS_PER_HOUR) + 100;
+  const totalContainerWidth = chartWidth + 150; // 120px for labels + margin
+
   return (
     <div className="gantt">
       <div className="gantt__header">
         <h2 className="gantt__title">📅 Диаграмма Ганта</h2>
         <div className="gantt__stats">
-          Длительность: <strong>{cpmData.projectDuration}ч</strong> | Критических:{' '}
-          <strong style={{ color: '#ef4444' }}>{cpmData.criticalCount} 🔥</strong>
+          Длительность проекта: <strong>{cpmData.projectDuration}ч</strong>
         </div>
       </div>
 
       <div className="gantt__container">
-        <div style={{ minWidth: '1200px' }}>
-          <div className="gantt__legend">
+        <div style={{ minWidth: `${Math.max(1200, totalContainerWidth)}px` }}>
+          <div className="gantt__legend" style={{ marginLeft: '120px', width: `${chartWidth}px` }}>
             <span className="gantt__legend-item">
               <svg width="20" height="12">
                 <line x1="0" y1="6" x2="20" y2="6" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 2" />
@@ -43,7 +50,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
           </div>
 
           {cpmData.epics.map(epic => {
-            const maxDuration = Math.max(
+            const epicMaxDuration = Math.max(
               ...epic.tasks.map(t => (t.es || 0) + (t.estimated_hours || 4)),
               1
             );
@@ -53,7 +60,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
                 <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   📁 {epic.title}
                   <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>
-                    ({epic.tasks.length} задач, {maxDuration}ч)
+                    ({epic.tasks.length} задач, {epicMaxDuration}ч)
                   </span>
                 </h3>
 
@@ -62,6 +69,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
                     position: 'relative',
                     minHeight: `${Math.max(epic.tasks.length * ROW_HEIGHT, 100)}px`,
                     marginLeft: '120px',
+                    width: `${chartWidth}px`,
                     background: '#f8fafc',
                     borderRadius: '8px',
                     border: '1px solid #e2e8f0',
@@ -69,7 +77,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
                 >
                   {/* Day grid lines */}
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%', display: 'flex', pointerEvents: 'none', zIndex: 1 }}>
-                    {Array.from({ length: Math.ceil(maxDuration / 8) + 1 }).map((_, i) => (
+                    {Array.from({ length: Math.ceil(globalMaxDuration / 8) + 1 }).map((_, i) => (
                       <div key={i} style={{ width: '96px', flexShrink: 0, borderLeft: i === 0 ? 'none' : '1px dashed #cbd5e1', height: '100%', position: 'relative' }}>
                         <span style={{ position: 'absolute', top: '-20px', left: '4px', fontSize: '11px', color: '#64748b' }}>
                           День {i + 1}
@@ -93,9 +101,9 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
                       const parentIndex = epic.tasks.indexOf(parentTask);
                       const taskIndex = epic.tasks.indexOf(task);
                       const parentEndHour = (parentTask.es || 0) + (parentTask.estimated_hours || 4);
-                      const startX = 120 + parentEndHour * PIXELS_PER_HOUR;
+                      const startX = parentEndHour * PIXELS_PER_HOUR;
                       const startY = parentIndex * ROW_HEIGHT + 20;
-                      const endX = 120 + (task.es || 0) * PIXELS_PER_HOUR;
+                      const endX = (task.es || 0) * PIXELS_PER_HOUR;
                       const endY = taskIndex * ROW_HEIGHT + 20;
 
                       return (
