@@ -388,7 +388,7 @@ END:VCALENDAR`;
             />
             <Route
               path="/profile"
-              element={<ProfilePage profile={currentProfile} onRefresh={fetchProfiles} />}
+              element={<ProfilePage profile={currentProfile} onRefresh={fetchData} />}
             />
             <Route
               path="/presentation"

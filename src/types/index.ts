@@ -48,8 +48,13 @@ export interface Meeting {
   id: number;
   title: string | null;
   summary: string | null;
-  mind_map_data: any | null;
+  mind_map_data: MindMapNodeData | null;
   created_at: string;
+}
+
+export interface MindMapNodeData {
+  label: string;
+  children?: MindMapNodeData[];
 }
 
 // Дополнительные интерфейсы для работы приложения

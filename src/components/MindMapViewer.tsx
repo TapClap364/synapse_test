@@ -41,7 +41,7 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({ node, branchColor 
             />
           )}
           <div className="mindmap__children">
-            {node.children!.map((child, idx) => {
+            {node.children!.map((child: MindMapNodeData, idx: number) => {
               const childColor = BRANCH_COLORS[(node.label.length + idx) % BRANCH_COLORS.length];
               return (
                 <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
