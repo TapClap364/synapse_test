@@ -25,6 +25,7 @@ import { AIAssistant } from './components/AIAssistant';
 import { LandingPage } from './components/LandingPage';
 import { PresentationPage } from './components/PresentationPage';
 import { LegalPage } from './components/LegalPage';
+import { ProfilePage } from './components/ProfilePage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
@@ -369,7 +370,7 @@ END:VCALENDAR`;
               element={
                 <EpicsView 
                   tasks={tasks} 
-                  epicsList={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title, workspace_id: 'default' }))} 
+                  epicsList={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title } as any))} 
                   onRefresh={fetchData} 
                 />
               }
@@ -384,6 +385,10 @@ END:VCALENDAR`;
                   onRefreshDocuments={fetchDocuments}
                 />
               }
+            />
+            <Route
+              path="/profile"
+              element={<ProfilePage profile={currentProfile} onRefresh={fetchProfiles} />}
             />
             <Route
               path="/presentation"
@@ -401,7 +406,7 @@ END:VCALENDAR`;
       {selectedTask && session && (
         <TaskModal
           task={selectedTask}
-          epics={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title, workspace_id: 'default' }))}
+          epics={Object.entries(epics).map(([id, title]) => ({ id: Number(id), title } as any))}
           profiles={profiles}
           currentUser={session.user}
           onClose={() => setSelectedTask(null)}

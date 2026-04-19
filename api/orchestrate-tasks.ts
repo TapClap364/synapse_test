@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: tasks, error: tasksError } = await supabase.from('tasks').select('id, title, description, assigned_to, blocked_by');
     if (tasksError) throw tasksError;
 
-    const { data: profiles, error: profilesError } = await supabase.from('profiles').select('id, full_name');
+    const { data: profiles, error: profilesError } = await supabase.from('profiles').select('id, full_name, role_description');
     if (profilesError) throw profilesError;
 
     if (!tasks || tasks.length === 0) {
@@ -38,11 +38,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const tasksJson = JSON.stringify(tasks.map(t => ({ id: t.id, title: t.title, description: t.description })));
-    const profilesJson = JSON.stringify(profiles.map(p => ({ id: p.id, name: p.full_name || 'Unknown User' })));
+    const profilesJson = JSON.stringify(profiles.map(p => ({ 
+      id: p.id, 
+      name: p.full_name || 'Unknown User',
+      skills_and_role: p.role_description || 'No description provided'
+    })));
 
     // 2. Prepare Prompt
     const systemPrompt = `You are the Synapse AI Task Orchestrator.
-Your goal is to organize a project backlog by assigning tasks to the most suitable team members and determining dependencies (which task blocks which).
+Your goal is to organize a project backlog by assigning tasks to the most suitable team members and determining dependencies.
+
+CRITICAL: Analyze the 'skills_and_role' of each profile. Assign tasks based on expertise. 
+For example, if a task is about 'React UI' and a profile has 'React' in their description, they are the best fit.
+If a task is about 'Database' and a profile is a 'Backend Engineer', assign it to them.
 
 Available Profiles:
 ${profilesJson}

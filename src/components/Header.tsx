@@ -1,6 +1,6 @@
 // src/components/Header.tsx
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import type { Profile } from '../types';
 import { getInitials } from '../types';
 import { ThemeToggle } from './ThemeToggle';
@@ -90,16 +90,21 @@ export const Header: React.FC<HeaderProps> = ({
           🔔
           {unreadCount > 0 && <span className="header__notification-badge"></span>}
         </button>
-        <div className="header__user-info">
-          <div className="avatar avatar--md avatar--purple">
+        <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', color: 'inherit' }}>
+          <div className="header__user-info">
+            <div className="header__user-name">{profile?.full_name || userEmail?.split('@')[0]}</div>
+            {userEmail && <div className="header__user-email">{userEmail}</div>}
+          </div>
+          <div className="header__avatar">
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" />
+              <img src={profile.avatar_url} alt="Avatar" />
             ) : (
-              getInitials(profile?.full_name)
+              <div className="header__avatar-placeholder">
+                {userEmail ? userEmail[0].toUpperCase() : 'U'}
+              </div>
             )}
           </div>
-          {displayName}
-        </div>
+        </Link>
         <button className="btn--outline" onClick={onSignOut}>
           👋 Выйти
         </button>

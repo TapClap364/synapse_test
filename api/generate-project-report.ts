@@ -70,8 +70,7 @@ ${noEpicStr}
       .from('documents')
       .insert({
         title,
-        content: aiReportHtml,
-        workspace_id: 'default',
+        content: { html: aiReportHtml }, // Сохраняем как JSON объект для jsonb
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })

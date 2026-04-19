@@ -1,17 +1,16 @@
-// src/types/index.ts — Общие типы проекта Synapse AI
-
+// src/types/index.ts — Обновлено под реальную схему БД
 export interface Task {
   id: number;
   title: string;
-  description: string;
+  description: string | null;
+  status: 'draft' | 'backlog' | 'todo' | 'in_progress' | 'done'; // Добавил draft как в схеме
   priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'backlog' | 'in_progress' | 'done';
   epic_id: number | null;
   estimated_hours: number | null;
   blocked_by: number[] | null;
   assigned_to: string | null;
   created_at: string;
-  workspace_id: string;
+  updated_at: string;
   // CPM-поля (вычисляемые)
   es?: number;
   ef?: number;
@@ -24,69 +23,31 @@ export interface Task {
 export interface Epic {
   id: number;
   title: string;
-  workspace_id: string;
-}
-
-export interface EpicGroup {
-  id: number | null;
-  title: string;
-  tasks: Task[];
+  description: string | null;
+  created_at: string;
 }
 
 export interface Profile {
   id: string;
+  email: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  role_description?: string | null; // Оставляем опционально, пока не добавлена колонка
 }
 
 export interface Document {
   id: string;
   title: string;
-  content: string;
-  workspace_id: string;
+  content: any; // jsonb в схеме
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface Meeting {
-  id: string;
-  title: string;
+  id: number; // bigint в схеме
+  title: string | null;
   summary: string | null;
-  mind_map_data: MindMapNodeData | null;
+  mind_map_data: any | null;
   created_at: string;
 }
-
-export interface MindMapNodeData {
-  label: string;
-  children?: MindMapNodeData[];
-}
-
-export interface Comment {
-  id: string;
-  task_id: number;
-  user_id: string;
-  content: string;
-  created_at: string;
-  profile?: Profile;
-}
-
-export interface MeetingResult {
-  summary: string;
-  mindMap: MindMapNodeData | null;
-  tasksCreated: number;
-}
-
-export interface CpmData {
-  epics: EpicGroup[];
-  projectDuration: number;
-  criticalCount: number;
-}
-
-// Утилиты
-export const formatTaskId = (id: number): string =>
-  `TASK-${String(id).padStart(3, '0')}`;
-
-export const getInitials = (name?: string | null): string =>
-  name
-    ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : '?';
