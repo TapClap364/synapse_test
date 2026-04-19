@@ -229,17 +229,43 @@ END:VCALENDAR`;
   if (!session && !isPresentation && !isLegal) {
     if (showAuthForm) {
       return (
-        <div className="auth-container">
-          <div className="auth-card">
-            <h1 className="auth-title">Synapse AI</h1>
-            <p className="auth-subtitle">Войдите, чтобы начать работу</p>
+        <div style={{ 
+          minHeight: '100vh', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          background: 'radial-gradient(circle at top right, #eef2ff 0%, #f8fafc 50%, #f1f5f9 100%)',
+          padding: '20px'
+        }}>
+          {/* Декоративные элементы */}
+          <div style={{ position: 'absolute', top: '10%', left: '5%', width: '300px', height: '300px', background: 'rgba(59,130,246,0.05)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: '10%', right: '5%', width: '400px', height: '400px', background: 'rgba(139,92,246,0.05)', borderRadius: '50%', filter: 'blur(100px)', pointerEvents: 'none' }} />
+
+          <div style={{ 
+            background: 'rgba(255, 255, 255, 0.8)', 
+            backdropFilter: 'blur(20px)',
+            padding: '50px', 
+            borderRadius: '32px', 
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.08)', 
+            width: '100%', 
+            maxWidth: '480px',
+            border: '1px solid rgba(255,255,255,0.5)',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧠</div>
+              <h1 style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '-0.5px', color: '#0f172a' }}>Synapse AI</h1>
+            </div>
+            
             <Auth />
+            
             <button 
               className="btn btn--text" 
-              style={{ marginTop: '20px', width: '100%', color: 'var(--color-primary)' }} 
+              style={{ marginTop: '24px', width: '100%', color: '#94a3b8', fontSize: '13px', fontWeight: 500 }} 
               onClick={() => setShowAuthForm(false)}
             >
-              ← Вернуться к описанию
+              ← Вернуться к описанию продукта
             </button>
           </div>
         </div>

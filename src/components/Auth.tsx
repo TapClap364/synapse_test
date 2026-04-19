@@ -63,84 +63,108 @@ export const Auth = () => {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f8fafc', padding: '20px' }}>
-      <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', width: '100%', maxWidth: '400px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '24px', color: '#1e293b', margin: 0 }}>
-          {isLogin ? '👋 Вход в Synapse' : '🚀 Регистрация'}
-        </h2>
+    <div style={{ width: '100%' }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '28px', fontWeight: 800, color: '#1e293b' }}>
+        {isLogin ? '👋 С возвращением' : '🚀 Создать аккаунт'}
+      </h2>
+      <p style={{ textAlign: 'center', color: '#64748b', marginBottom: '32px', fontSize: '14px' }}>
+        {isLogin ? 'Войдите в свою учетную запись Synapse AI' : 'Присоединяйтесь к будущему управления проектами'}
+      </p>
+      
+      <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          {/* Поля только для регистрации */}
-          {!isLogin && (
-            <>
-              <input 
-                type="text" 
-                placeholder="Полное имя" 
-                value={fullName} 
-                onChange={(e) => setFullName(e.target.value)} 
-                style={inputStyle} 
-              />
-              
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '8px', display: 'block' }}>Выберите аватар:</label>
-                
-                {/* Сетка выбора аватарок */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '10px' }}>
-                  {AVATAR_STYLES.map((style) => (
-                    <div 
-                      key={style}
-                      onClick={() => setSelectedStyle(style)}
-                      style={{
-                        cursor: 'pointer',
-                        border: selectedStyle === style ? '2px solid #3b82f6' : '2px solid transparent',
-                        borderRadius: '8px',
-                        padding: '4px',
-                        background: selectedStyle === style ? '#eff6ff' : '#f1f5f9',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <img 
-                        src={getAvatarUrl(style)} 
-                        alt={style} 
-                        style={{ width: '100%', height: 'auto', borderRadius: '6px' }} 
-                      />
-                    </div>
-                  ))}
-                </div>
+        {!isLogin && (
+          <>
+            <input 
+              type="text" 
+              placeholder="Полное имя" 
+              value={fullName} 
+              onChange={(e) => setFullName(e.target.value)} 
+              style={{ ...inputStyle, background: '#f8fafc' }} 
+            />
+            
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', marginBottom: '12px', display: 'block' }}>Ваш аватар:</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', marginBottom: '10px' }}>
+                {AVATAR_STYLES.map((style) => (
+                  <div 
+                    key={style}
+                    onClick={() => setSelectedStyle(style)}
+                    style={{
+                      cursor: 'pointer',
+                      border: selectedStyle === style ? '2px solid #3b82f6' : '2px solid transparent',
+                      borderRadius: '10px',
+                      padding: '2px',
+                      background: selectedStyle === style ? '#eff6ff' : '#f1f5f9',
+                      transition: 'all 0.2s',
+                      aspectRatio: '1/1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <img 
+                      src={getAvatarUrl(style)} 
+                      alt={style} 
+                      style={{ width: '100%', height: '100%', borderRadius: '8px' }} 
+                    />
+                  </div>
+                ))}
               </div>
-            </>
-          )}
+            </div>
+          </>
+        )}
 
-          <input 
-            type="email" 
-            placeholder="Email" 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
-            required 
-            style={inputStyle} 
-          />
-          <input 
-            type="password" 
-            placeholder="Пароль" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            required 
-            style={inputStyle} 
-          />
-          
-          <button type="submit" disabled={loading} style={btnStyle}>
-            {loading ? '⏳ Загрузка...' : (isLogin ? 'Войти' : 'Создать аккаунт')}
-          </button>
-        </form>
+        <input 
+          type="email" 
+          placeholder="Email адрес" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+          required 
+          style={{ ...inputStyle, background: '#f8fafc' }} 
+        />
+        <input 
+          type="password" 
+          placeholder="Пароль" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)} 
+          required 
+          style={{ ...inputStyle, background: '#f8fafc' }} 
+        />
+        
+        {!isLogin && (
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+            <input type="checkbox" required id="consent" style={{ marginTop: '4px' }} />
+            <label htmlFor="consent" style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
+              Я согласен с <a href="/legal/privacy" target="_blank" style={{ color: 'var(--color-primary)' }}>Политикой конфиденциальности</a> и <a href="/legal/terms" target="_blank" style={{ color: 'var(--color-primary)' }}>Условиями использования</a>.
+            </label>
+          </div>
+        )}
 
-        <p 
-          style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#64748b', cursor: 'pointer', margin: '20px 0 0 0' }} 
-          onClick={() => setIsLogin(!isLogin)}
+        <button 
+          type="submit" 
+          disabled={loading} 
+          style={{ 
+            ...btnStyle, 
+            background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+            marginTop: '10px'
+          }}
         >
-          {isLogin ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
-        </p>
-      </div>
+          {loading ? '⏳ Загрузка...' : (isLogin ? 'Войти в Synapse' : 'Начать работу')}
+        </button>
+      </form>
+
+      <p 
+        style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#64748b', cursor: 'pointer' }} 
+        onClick={() => setIsLogin(!isLogin)}
+      >
+        {isLogin ? (
+          <>Нет аккаунта? <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Зарегистрироваться</span></>
+        ) : (
+          <>Уже есть аккаунт? <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Войти</span></>
+        )}
+      </p>
     </div>
   );
 };
