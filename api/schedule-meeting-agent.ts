@@ -88,7 +88,7 @@ Output must be pure JSON:
       .insert({
         title: parsedData.title,
         summary: `Justification: ${parsedData.justification}\n\nAgenda:\n${parsedData.agenda.map((a: string) => '- ' + a).join('\n')}`,
-        date: new Date().toISOString()
+        created_at: new Date().toISOString()
       })
       .select()
       .single();

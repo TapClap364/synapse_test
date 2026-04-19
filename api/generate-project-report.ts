@@ -71,7 +71,7 @@ ${noEpicStr}
       .insert({
         title,
         content: aiReportHtml,
-        author_id: req.body.user_id || profiles?.[0]?.id || null, // Best effort to assign an author
+        workspace_id: 'default',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
