@@ -16,7 +16,7 @@ export const WikiView: React.FC<WikiViewProps> = ({
   documents, meetings, onDocumentsChange, onRefreshDocuments,
 }) => {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<number | null>(null);
 
   const handleNewDoc = async () => {
     const title = prompt('Название новой страницы:', 'Новая страница');

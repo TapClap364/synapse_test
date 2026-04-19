@@ -1,9 +1,9 @@
-// src/types/index.ts — Обновлено под реальную схему БД
+// src/types/index.ts — Полная версия под схему БД
 export interface Task {
   id: number;
   title: string;
   description: string | null;
-  status: 'draft' | 'backlog' | 'todo' | 'in_progress' | 'done'; // Добавил draft как в схеме
+  status: 'draft' | 'backlog' | 'todo' | 'in_progress' | 'done';
   priority: 'low' | 'medium' | 'high' | 'critical';
   epic_id: number | null;
   estimated_hours: number | null;
@@ -32,22 +32,59 @@ export interface Profile {
   email: string | null;
   full_name: string | null;
   avatar_url: string | null;
-  role_description?: string | null; // Оставляем опционально, пока не добавлена колонка
+  role_description?: string | null;
 }
 
 export interface Document {
   id: string;
   title: string;
-  content: any; // jsonb в схеме
+  content: any; // jsonb
   parent_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface Meeting {
-  id: number; // bigint в схеме
+  id: number;
   title: string | null;
   summary: string | null;
   mind_map_data: any | null;
   created_at: string;
 }
+
+// Дополнительные интерфейсы для работы приложения
+export interface EpicGroup {
+  id: number | null;
+  title: string;
+  tasks: Task[];
+}
+
+export interface MeetingResult {
+  summary: string;
+  mindMap: any | null;
+  tasksCreated: number;
+}
+
+export interface CpmData {
+  epics: EpicGroup[];
+  projectDuration: number;
+  criticalCount: number;
+}
+
+export interface Comment {
+  id: string;
+  task_id: number;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profile?: Profile;
+}
+
+// Утилиты
+export const formatTaskId = (id: number): string =>
+  `TASK-${String(id).padStart(3, '0')}`;
+
+export const getInitials = (name?: string | null): string =>
+  name
+    ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : '?';

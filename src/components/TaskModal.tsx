@@ -15,8 +15,8 @@ interface TaskModalProps {
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, currentUser, onClose, onUpdate }) => {
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description);
+  const [title, setTitle] = useState(task.title || '');
+  const [description, setDescription] = useState(task.description || '');
   const [epicId, setEpicId] = useState(task.epic_id);
   const [assignedTo, setAssignedTo] = useState(task.assigned_to || '');
   const [loading, setLoading] = useState(false);
