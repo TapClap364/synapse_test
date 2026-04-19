@@ -45,6 +45,35 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSaving(true);
+    setMessage('⏳ Анализирую инструкцию...');
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/parse-job-description', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Ошибка при разборе файла');
+      
+      const data = await res.json();
+      setRoleDescription(data.extracted_role);
+      setMessage('✅ Инструкция успешно проанализирована!');
+    } catch (e) {
+      setMessage('❌ Не удалось разобрать файл. Попробуйте скопировать текст вручную.');
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', height: 'calc(100vh - 80px)', overflowY: 'auto' }}>
       <div style={{ background: 'var(--color-bg)', padding: '40px', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--color-border)', marginBottom: '40px' }}>
@@ -79,7 +108,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontWeight: 600, fontSize: '14px' }}>Ваша роль и компетенции (для ИИ)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ fontWeight: 600, fontSize: '14px' }}>Ваша роль и компетенции (для ИИ)</label>
+              <label style={{ 
+                fontSize: '13px', 
+                color: 'var(--color-primary)', 
+                cursor: 'pointer', 
+                fontWeight: 600,
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: 'rgba(59, 130, 246, 0.1)'
+              }}>
+                📄 Загрузить инструкцию
+                <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept=".txt,.pdf,.docx,.md" />
+              </label>
+            </div>
             <textarea 
               value={roleDescription}
               onChange={(e) => setRoleDescription(e.target.value)}
