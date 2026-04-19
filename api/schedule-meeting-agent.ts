@@ -51,21 +51,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const systemPrompt = `You are an AI Calendar Scheduling Agent for a project management tool called Synapse AI.
 Your goal is to analyze the provided Epic/Tasks context and schedule a productive sync meeting.
-You must return the meeting details in valid JSON format.
+
+CRITICAL: All text fields (title, agenda, justification) MUST be in RUSSIAN language.
 
 Context / Epic: ${epicTitle}
 Description: ${epicDescription}
 
 Tasks to discuss:
-${tasksStr || 'General project status'}
+${tasksStr || 'Общий статус проекта'}
 
-Based on this context and the user's prompt (if any), propose a meeting title, agenda (bullet points), duration in minutes, and a justification for why this meeting is needed.
+Based on this context, propose a meeting title, agenda (bullet points), duration in minutes, and a justification.
 Output must be pure JSON:
 {
-  "title": "Proposed meeting title",
-  "agenda": ["Point 1", "Point 2"],
+  "title": "Заголовок встречи на русском",
+  "agenda": ["Пункт 1", "Пункт 2"],
   "duration_minutes": 45,
-  "justification": "Why we need this meeting based on tasks"
+  "justification": "Обоснование на русском"
 }
 `;
 

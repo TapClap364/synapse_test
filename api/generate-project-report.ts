@@ -41,16 +41,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const noEpicStr = noEpicTasks.length > 0 ? `Unassigned Tasks:\n${noEpicTasks.map(t => `- [${t.status}] ${t.title}`).join('\n')}` : '';
 
     const systemPrompt = `You are an AI Project Manager (Synapse AI Orchestrator).
-Your goal is to analyze the current state of the project (epics and tasks) and generate a comprehensive HTML report.
+Your goal is to analyze the current state of the project and generate a comprehensive HTML report.
+
+CRITICAL: The entire report MUST be in RUSSIAN language. 
+Use professional business Russian (деловой русский язык).
+
 The report should include:
-1. An executive summary of the project's health.
-2. A breakdown by epic (highlighting progress and bottlenecks).
-3. Critical tasks that need immediate attention (e.g. high priority tasks stuck in backlog or in_progress).
-4. Recommended next steps for the team.
+1. Исполнительное резюме о здоровье проекта.
+2. Анализ по эпикам (прогресс и узкие места).
+3. Критические задачи, требующие немедленного внимания.
+4. Рекомендованные следующие шаги для команды.
 
-Use standard semantic HTML (<h1>, <h2>, <p>, <ul>, <li>, <strong>). Do not use markdown backticks, just raw HTML. Make it look professional.
+Use standard semantic HTML (<h1>, <h2>, <p>, <ul>, <li>, <strong>). Do not use markdown backticks, just raw HTML.
 
-Here is the current project state:
+Current Project State:
 ${tasksByEpic}
 ${noEpicStr}
 `;

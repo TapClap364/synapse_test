@@ -46,8 +46,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ background: 'var(--color-bg)', padding: '40px', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--color-border)' }}>
+    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', height: 'calc(100vh - 80px)', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--color-bg)', padding: '40px', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--color-border)', marginBottom: '40px' }}>
         <h1 style={{ fontSize: '32px', fontWeight: 800, marginBottom: '8px', color: 'var(--color-text)' }}>Личный кабинет</h1>
         <p style={{ color: 'var(--color-text-secondary)', marginBottom: '40px' }}>Настройте свои данные и опишите роль для обучения AI-Оркестратора</p>
 

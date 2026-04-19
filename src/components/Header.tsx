@@ -93,7 +93,6 @@ export const Header: React.FC<HeaderProps> = ({
         <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', color: 'inherit' }}>
           <div className="header__user-info">
             <div className="header__user-name">{profile?.full_name || userEmail?.split('@')[0]}</div>
-            {userEmail && <div className="header__user-email">{userEmail}</div>}
           </div>
           <div className="header__avatar">
             {profile?.avatar_url ? (
