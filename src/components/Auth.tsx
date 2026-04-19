@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Auth.tsx
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';

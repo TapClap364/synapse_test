@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/DocumentEditor.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -268,6 +269,22 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
         }}>
           ✅ Извлечь задачи
         </button>
+
+        <button onClick={() => handleAiAction('continue')} disabled={isAiLoading} style={{
+          padding: '8px 16px', borderRadius: '8px', border: '1px solid #c4b5fd',
+          background: '#fff', color: '#7c3aed', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        }}>
+          ✍️ Продолжить мысль
+        </button>
+
+        <button onClick={() => handleAiAction('translate')} disabled={isAiLoading} style={{
+          padding: '8px 16px', borderRadius: '8px', border: '1px solid #fcd34d',
+          background: '#fff', color: '#d97706', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        }}>
+          🌍 Перевести
+        </button>
       </div>
 
      {/* Attachments - Compact */}
@@ -313,22 +330,47 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
   </div>
 )}
       {/* Editor Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '48px', background: '#fff' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', minHeight: '600px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '40px', background: 'var(--color-bg)' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <EditorContent editor={editor} />
         </div>
       </div>
 
       <style>{`
-        .ProseMirror { outline: none; }
-        .ProseMirror p { margin-bottom: 1em; line-height: 1.7; color: #334155; }
-        .ProseMirror h1 { font-size: 2.25em; font-weight: 700; margin: 1.5em 0 0.75em; color: #0f172a; }
-        .ProseMirror h2 { font-size: 1.75em; font-weight: 600; margin: 1.25em 0 0.5em; color: #1e293b; }
-        .ProseMirror table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-        .ProseMirror td, .ProseMirror th { border: 1px solid #e2e8f0; padding: 10px; }
-        .ProseMirror th { background: #f8fafc; font-weight: 600; }
-        .ProseMirror img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .ProseMirror a { color: #4f46e5; text-decoration: underline; }
+        .ProseMirror { 
+          outline: none; 
+          min-height: 600px; 
+          padding: 60px 80px; 
+          background: #fff; 
+          border-radius: 16px; 
+          border: 1px solid var(--color-border);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+          transition: all 0.3s ease;
+        }
+        .ProseMirror:focus-within {
+          border-color: #cbd5e1;
+          box-shadow: 0 15px 40px rgba(0,0,0,0.06);
+        }
+        .ProseMirror p { margin-bottom: 1.2em; line-height: 1.8; color: #334155; font-size: 16px; }
+        .ProseMirror h1 { font-size: 2.5em; font-weight: 800; margin: 1.5em 0 0.75em; color: #0f172a; line-height: 1.2; letter-spacing: -0.02em; }
+        .ProseMirror h2 { font-size: 1.75em; font-weight: 700; margin: 1.25em 0 0.5em; color: #1e293b; line-height: 1.3; letter-spacing: -0.01em; }
+        .ProseMirror h3 { font-size: 1.25em; font-weight: 600; margin: 1em 0 0.5em; color: #334155; }
+        .ProseMirror table { border-collapse: collapse; width: 100%; margin: 2em 0; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px #e2e8f0; }
+        .ProseMirror td, .ProseMirror th { border: 1px solid #e2e8f0; padding: 12px 16px; }
+        .ProseMirror th { background: #f8fafc; font-weight: 600; text-align: left; color: #475569; }
+        .ProseMirror img { max-width: 100%; height: auto; border-radius: 12px; margin: 20px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .ProseMirror a { color: #3b82f6; text-decoration: none; font-weight: 500; transition: color 0.2s; }
+        .ProseMirror a:hover { color: #2563eb; text-decoration: underline; }
+        
+        /* Tiptap Placeholder Extension styles */
+        .ProseMirror p.is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          float: left;
+          color: #94a3b8;
+          pointer-events: none;
+          height: 0;
+          font-style: italic;
+        }
       `}</style>
     </div>
   );

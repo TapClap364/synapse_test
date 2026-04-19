@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/TaskModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Task, Profile, Comment } from '../types';
-import { getInitials } from '../types';
+import { getInitials, formatTaskId } from '../types';
 
 interface TaskModalProps {
   task: Task;
@@ -38,8 +39,17 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
 
     const channel = supabase.channel(`comments-${task.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `task_id=eq.${task.id}` }, async (payload) => {
-        const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', payload.new.user_id).single();
-        setComments(prev => [...prev, { ...payload.new, profile: data } as Comment]);
+        setComments(prev => {
+          if (prev.some(c => c.id === payload.new.id)) return prev;
+          
+          supabase.from('profiles').select('full_name, avatar_url').eq('id', payload.new.user_id).single().then(({ data }) => {
+            setComments(current => {
+              if (current.some(c => c.id === payload.new.id)) return current;
+              return [...current, { ...payload.new, profile: data } as Comment];
+            });
+          });
+          return prev;
+        });
       })
       .subscribe();
 
@@ -69,78 +79,160 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !currentUser) return;
-    const { error } = await supabase.from('comments').insert({ task_id: task.id, user_id: currentUser.id, content: newComment.trim() });
-    if (!error) setNewComment('');
+    const contentToSave = newComment.trim();
+    setNewComment('');
+    
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({ task_id: task.id, user_id: currentUser.id, content: contentToSave })
+      .select('*, profiles(full_name, avatar_url)')
+      .single();
+      
+    if (!error && data) {
+      setComments(prev => {
+        if (prev.some(c => c.id === data.id)) return prev;
+        return [...prev, { ...data, profile: data.profiles as Profile }];
+      });
+    } else if (error) {
+      console.error(error);
+      setNewComment(contentToSave); // Restore on error
+    }
   };
 
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-      <div style={{ background: '#fff', width: '600px', maxHeight: '85vh', borderRadius: '16px', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ width: '600px', display: 'flex', flexDirection: 'column' }}>
         
         {/* Header */}
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: '20px' }}>📝 Задача #{task.id}</h2>
-          <button onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer' }}>✕</button>
+        <div className="modal__header">
+          <h2 style={{ margin: 0, fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '24px' }}>📝</span>
+            Задача #{task.id}
+          </h2>
+          <button className="modal__close" onClick={onClose}>✕</button>
         </div>
 
-        {/* Scrollable Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Название</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', marginTop: '4px', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Описание</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', marginTop: '4px', minHeight: '60px', resize: 'vertical', boxSizing: 'border-box' }} />
-            </div>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Эпик</label>
-                <select value={epicId || ''} onChange={(e) => setEpicId(e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', marginTop: '4px' }}>
-                  <option value="">Без эпика</option>
-                  {epics.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
-                </select>
+        {/* Body */}
+        <div className="modal__body" style={{ flex: 1, padding: 0 }}>
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Название</label>
+                <input 
+                  value={title} 
+                  onChange={(e) => setTitle(e.target.value)} 
+                  className="control-bar__input" 
+                  style={{ width: '100%', marginTop: '8px' }} 
+                />
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Ответственный</label>
-                <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', marginTop: '4px' }}>
-                  <option value="">Не назначен</option>
-                  {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name || 'Пользователь'}</option>)}
-                </select>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Описание</label>
+                <textarea 
+                  value={description} 
+                  onChange={(e) => setDescription(e.target.value)} 
+                  className="control-bar__input"
+                  style={{ width: '100%', marginTop: '8px', minHeight: '100px', resize: 'vertical', fontFamily: 'inherit' }} 
+                />
               </div>
-            </div>
-          </div>
-
-          {/* Comments */}
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e293b' }}>💬 Комментарии ({comments.length})</h3>
-            <div style={{ maxHeight: '180px', overflowY: 'auto', marginBottom: '12px', paddingRight: '4px' }}>
-              {comments.length === 0 ? <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>Пока нет комментариев</p> : comments.map(c => (
-                <div key={c.id} style={{ display: 'flex', gap: '10px', marginBottom: '12px', alignItems: 'flex-start' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '12px', flexShrink: 0, overflow: 'hidden' }}>
-                    {c.profile?.avatar_url ? <img src={c.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : getInitials(c.profile?.full_name)}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>{c.profile?.full_name || 'Пользователь'} <span style={{ fontWeight: 400, color: '#94a3b8' }}>• {new Date(c.created_at).toLocaleString()}</span></div>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#334155', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>{c.content}</p>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Эпик</label>
+                  <select 
+                    value={epicId || ''} 
+                    onChange={(e) => setEpicId(e.target.value ? Number(e.target.value) : null)} 
+                    className="control-bar__input"
+                    style={{ width: '100%', marginTop: '8px', appearance: 'none', background: 'var(--color-surface) url("data:image/svg+xml;utf8,<svg fill=\'%2364748b\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>") no-repeat right 12px center' }}
+                  >
+                    <option value="">Без эпика</option>
+                    {epics.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ответственный</label>
+                  <select 
+                    value={assignedTo} 
+                    onChange={(e) => setAssignedTo(e.target.value)} 
+                    className="control-bar__input"
+                    style={{ width: '100%', marginTop: '8px', appearance: 'none', background: 'var(--color-surface) url("data:image/svg+xml;utf8,<svg fill=\'%2364748b\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>") no-repeat right 12px center' }}
+                  >
+                    <option value="">Не назначен</option>
+                    {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name || 'Пользователь'}</option>)}
+                  </select>
+                </div>
+              </div>
+              {task.blocked_by && task.blocked_by.length > 0 && (
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Зависит от</label>
+                  <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {task.blocked_by.map(id => (
+                      <span key={id} style={{ background: 'var(--color-surface-alt)', color: 'var(--color-text)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500 }}>
+                        <span style={{ color: 'var(--color-danger)' }}>🔗</span> {formatTaskId(id)}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              ))}
-              <div ref={commentsEndRef} />
+              )}
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddComment()} placeholder="Написать комментарий..." style={{ flex: 1, padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
-              <button onClick={handleAddComment} style={{ padding: '10px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}>Отправить</button>
+
+            {/* Comments Section */}
+            <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--color-border)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                💬 Обсуждение <span style={{ background: 'var(--color-surface-alt)', padding: '2px 8px', borderRadius: '10px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>{comments.length}</span>
+              </h3>
+              
+              <div style={{ maxHeight: '240px', overflowY: 'auto', marginBottom: '16px', paddingRight: '8px' }}>
+                {comments.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>💭</div>
+                    <p style={{ fontSize: '13px' }}>Здесь пока нет комментариев.<br/>Напишите первый!</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {comments.map(c => (
+                      <div key={c.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div className="avatar avatar--md avatar--purple">
+                          {c.profile?.avatar_url ? <img src={c.profile.avatar_url} alt="" /> : getInitials(c.profile?.full_name)}
+                        </div>
+                        <div style={{ flex: 1, background: 'var(--color-surface-alt)', padding: '12px', borderRadius: '0 12px 12px 12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>{c.profile?.full_name || 'Пользователь'}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{new Date(c.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text)', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{c.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div ref={commentsEndRef} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <input 
+                  value={newComment} 
+                  onChange={(e) => setNewComment(e.target.value)} 
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddComment()} 
+                  placeholder="Написать комментарий..." 
+                  className="control-bar__input"
+                />
+                <button onClick={handleAddComment} className="btn btn--primary" style={{ padding: '0 20px' }}>
+                  Отправить
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-          <button onClick={handleDelete} style={{ padding: '10px 16px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>🗑️ Удалить</button>
-          <button onClick={handleSave} disabled={loading} style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>{loading ? '💾 Сохранение...' : '💾 Сохранить'}</button>
+        <div className="modal__footer">
+          <button onClick={handleDelete} className="btn btn--danger-soft">
+            <span style={{ marginRight: '4px' }}>🗑️</span> Удалить
+          </button>
+          <button onClick={handleSave} disabled={loading} className="btn btn--primary">
+            <span style={{ marginRight: '6px' }}>{loading ? '⏳' : '💾'}</span> 
+            {loading ? 'Сохранение...' : 'Сохранить изменения'}
+          </button>
         </div>
       </div>
     </div>

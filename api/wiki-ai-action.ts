@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // api/wiki-ai-action.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
@@ -35,6 +36,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         break;
       case 'tasks':
         systemPrompt = 'Извлеки из текста список задач. Верни их в виде HTML списка задач с чекбоксами (используй <input type="checkbox">).';
+        break;
+      case 'continue':
+        systemPrompt = 'Ты соавтор документа. Продолжи мысль, сохраняя стиль и контекст текста. Напиши 1-2 абзаца логичного продолжения. Верни ТОЛЬКО HTML текст продолжения, без вводных слов.';
+        break;
+      case 'translate':
+        systemPrompt = 'Переведи текст на английский язык (если он на русском) или на русский язык (если он на английском). Верни ТОЛЬКО HTML текст перевода, без пояснений.';
         break;
       default:
         systemPrompt = 'Выполни запрос пользователя.';

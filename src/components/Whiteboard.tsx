@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Whiteboard.tsx
 import React from 'react';
 import { Tldraw, useEditor } from 'tldraw';
@@ -9,18 +10,73 @@ interface WhiteboardProps {
 
 const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void }) => {
   const editor = useEditor();
+  const [isListening, setIsListening] = React.useState(false);
+
+  const startVoiceInput = () => {
+    const win = window as any;
+    const SpeechRecognitionCtor = win.SpeechRecognition || win.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      alert('Голосовой ввод поддерживается только в Chrome/Edge');
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'ru-RU';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event: any) => {
+      const text = event.results[0][0].transcript;
+      if (text) {
+        editor.createShape({
+          type: 'note',
+          x: editor.getCamera().x + window.innerWidth / 2 - 100 + (Math.random() * 50 - 25),
+          y: editor.getCamera().y + window.innerHeight / 2 - 100 + (Math.random() * 50 - 25),
+          props: { text: text },
+        });
+      }
+    };
+
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
+  };
   
   return (
     <div style={{ 
       position: 'absolute', 
-      right: '9px', 
-      top: '500px', 
+      right: '20px', 
+      top: '80px', 
       zIndex: 10000,
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
       width: '220px'
     }}>
+      <button
+        onClick={startVoiceInput}
+        style={{
+          padding: '14px 20px',
+          background: isListening ? '#fef2f2' : '#ffffff',
+          color: isListening ? '#ef4444' : '#0f172a',
+          border: isListening ? '1px solid #fecaca' : '1px solid #e2e8f0',
+          borderRadius: '14px',
+          fontWeight: 700,
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        {isListening ? '🎙 Слушаю...' : '🎙 Голос в стикер'}
+      </button>
+
       <button
         onClick={() => onExtract(editor)}
         style={{
@@ -38,16 +94,6 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
           justifyContent: 'center',
           gap: '8px',
           transition: 'all 0.2s ease',
-          whiteSpace: 'nowrap',
-          width: '100%'
-        }}
-        onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 12px 28px rgba(59,130,246,0.45)';
-        }}
-        onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 8px 24px rgba(59,130,246,0.35)';
         }}
       >
         ✈️ В задачи
@@ -62,7 +108,6 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
         fontSize: '12px',
         color: '#64748b',
         border: '1px solid rgba(0,0,0,0.06)',
-        lineHeight: '1.5'
       }}>
         <div style={{ marginBottom: '8px', color: '#1e293b', fontWeight: 700, fontSize: '13px' }}>
           📝 Горячие клавиши:

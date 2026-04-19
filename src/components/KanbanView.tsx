@@ -65,7 +65,9 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                     <div className="kanban__card-header">
                       <span className="kanban__card-id">{formatTaskId(t.id)}</span>
                       {t.blocked_by && t.blocked_by.length > 0 && (
-                        <span className="kanban__card-dep">🔗 Зависит</span>
+                        <span className="kanban__card-dep" title={`Зависит от: ${t.blocked_by.map(id => formatTaskId(id)).join(', ')}`}>
+                          🔗 Зависит: {t.blocked_by.map(id => formatTaskId(id)).join(', ')}
+                        </span>
                       )}
                     </div>
                     <div className="kanban__card-title">{t.title}</div>

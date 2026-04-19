@@ -54,6 +54,14 @@ export const Header: React.FC<HeaderProps> = ({ profile, userEmail, onSignOut })
         >
           📚 Вики
         </NavLink>
+        <NavLink
+          to="/epics"
+          className={({ isActive }) =>
+            `header__nav-btn ${isActive ? 'header__nav-btn--active' : ''}`
+          }
+        >
+          🎯 Эпики
+        </NavLink>
       </nav>
 
       <div className="header__user">

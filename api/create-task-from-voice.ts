@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // api/create-task-from-voice.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';

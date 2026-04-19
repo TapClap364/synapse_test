@@ -7,6 +7,10 @@ interface ControlBarProps {
   onCreateTask: (text: string) => Promise<void>;
   onStartRecording: () => void;
   onStopRecording: () => void;
+  onScheduleMeeting?: () => void;
+  onGenerateReport?: () => void;
+  onOrchestrateTasks?: () => void;
+  onCreateEpic?: (title: string) => Promise<void>;
 }
 
 export const ControlBar: React.FC<ControlBarProps> = ({
@@ -15,6 +19,10 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   onCreateTask,
   onStartRecording,
   onStopRecording,
+  onScheduleMeeting,
+  onGenerateReport,
+  onOrchestrateTasks,
+  onCreateEpic,
 }) => {
   const [inputText, setInputText] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -27,6 +35,14 @@ export const ControlBar: React.FC<ControlBarProps> = ({
       setInputText('');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleCreateEpicClick = async () => {
+    if (!onCreateEpic) return;
+    const epicTitle = window.prompt('Введите название нового Эпика:');
+    if (epicTitle && epicTitle.trim()) {
+      await onCreateEpic(epicTitle.trim());
     }
   };
 
@@ -47,6 +63,12 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         {isCreating ? '⏳ Создание...' : '➕ Создать'}
       </button>
 
+      {onCreateEpic && (
+        <button className="btn btn--outline btn--lg" onClick={handleCreateEpicClick}>
+          ➕ Эпик
+        </button>
+      )}
+
       <div className="control-bar__divider" />
 
       <button
@@ -57,6 +79,24 @@ export const ControlBar: React.FC<ControlBarProps> = ({
       >
         {isProcessing ? '⏳ Анализ...' : isListening ? '⏹ Остановить' : '🎙 Запись встречи'}
       </button>
+
+      {onScheduleMeeting && (
+        <button className="btn btn--outline" onClick={onScheduleMeeting}>
+          📅 Спланировать синк
+        </button>
+      )}
+
+      {onGenerateReport && (
+        <button className="btn btn--outline" onClick={onGenerateReport}>
+          📝 Отчет в Вики
+        </button>
+      )}
+
+      {onOrchestrateTasks && (
+        <button className="btn btn--primary" style={{ background: '#8b5cf6' }} onClick={onOrchestrateTasks}>
+          🪄 Магия ИИ
+        </button>
+      )}
     </div>
   );
 };
