@@ -48,7 +48,18 @@ export const Auth = () => {
         alert('Регистрация успешна! Проверьте почту для подтверждения входа.');
       }
     } catch (error: any) {
-      alert(error.message || 'Ошибка авторизации');
+      const raw = error?.message || '';
+      let friendly = raw || 'Ошибка авторизации';
+      if (/invalid login credentials/i.test(raw)) {
+        friendly = 'Email или пароль неверны. Если забыли пароль — нажмите «Забыли пароль?» ниже.';
+      } else if (/email not confirmed/i.test(raw)) {
+        friendly = 'Email не подтверждён. Откройте письмо подтверждения в почте.';
+      } else if (/user already registered|already in use/i.test(raw)) {
+        friendly = 'Аккаунт с таким email уже существует — попробуйте войти.';
+      } else if (/password should be at least/i.test(raw)) {
+        friendly = 'Пароль слишком короткий — минимум 8 символов.';
+      }
+      alert(friendly);
     } finally {
       setLoading(false);
     }
