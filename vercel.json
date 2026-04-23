@@ -1,5 +1,31 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(self), geolocation=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex" }
+      ]
+    }
+  ],
+  "functions": {
+    "api/stripe-webhook.ts": { "maxDuration": 30 },
+    "api/process-meeting.ts": { "maxDuration": 60 },
+    "api/process-whiteboard-notes.ts": { "maxDuration": 60 },
+    "api/orchestrate-tasks.ts": { "maxDuration": 60 },
+    "api/generate-project-report.ts": { "maxDuration": 60 },
+    "api/ai-ocr.ts": { "maxDuration": 60 }
+  }
 }

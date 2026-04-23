@@ -1,47 +1,72 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import OpenAI from 'openai';
+import { z } from 'zod';
+import { createHandler } from './_lib/handler';
+import { getServiceSupabase } from './_lib/supabase';
+import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai';
+import { HttpError } from './_lib/errors';
 
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": "https://synapse-app.vercel.app",
-    "X-Title": "Synapse AI Comment Helper",
-  },
+const InputSchema = z.object({
+  task_id: z.number().int().positive(),
 });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+const ResultSchema = z.object({
+  suggestions: z.array(z.string().max(500)).max(5),
+});
 
-  const { task_title, task_description, comments = [] } = req.body;
+export default createHandler(
+  { method: 'POST', schema: InputSchema, rateLimit: 'ai' },
+  async ({ auth, body, res }) => {
+    const supabase = getServiceSupabase();
 
-  try {
+    // Load the task scoped to the current workspace
+    const { data: task, error: taskErr } = await supabase
+      .from('tasks')
+      .select('title, description')
+      .eq('id', body.task_id)
+      .eq('workspace_id', auth.workspaceId)
+      .maybeSingle();
+    if (taskErr) throw new HttpError(500, 'Failed to load task');
+    if (!task) throw new HttpError(404, 'Task not found');
+
+    const { data: comments } = await supabase
+      .from('comments')
+      .select('content, profiles(full_name)')
+      .eq('task_id', body.task_id)
+      .eq('workspace_id', auth.workspaceId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    const commentLines =
+      comments
+        ?.map((c) => {
+          const name =
+            (c.profiles as { full_name?: string | null } | null)?.full_name ?? 'User';
+          return `${name}: ${c.content}`;
+        })
+        .reverse()
+        .join('\n') ?? '';
+
     const context = `
-Задача: ${task_title}
-Описание: ${task_description}
+Задача: ${task.title}
+Описание: ${task.description ?? ''}
 Последние комментарии:
-${comments.map((c: any) => `${c.profile?.full_name || 'User'}: ${c.content}`).join('\n')}
-    `;
+${commentLines}
+    `.trim();
 
-    const completion = await openai.chat.completions.create({
-      model: "meta-llama/llama-3.3-70b-instruct",
+    const completion = await getOpenAI().chat.completions.create({
+      model: AI_MODEL,
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: `Ты помощник в обсуждении задач. Проанализируй контекст и предложи 3 коротких варианта ответа или следующее действие.
-          Верни СТРОГО JSON: { "suggestions": ["Вариант 1", "Вариант 2", "Вариант 3"] }`
+Верни СТРОГО JSON: { "suggestions": ["Вариант 1", "Вариант 2", "Вариант 3"] }`,
         },
-        { role: "user", content: context }
+        { role: 'user', content: context },
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: 'json_object' },
     });
 
-    const result = JSON.parse(completion.choices[0].message.content || '{"suggestions": []}');
-    return res.status(200).json(result);
-
-  } catch (error: any) {
-    console.error("AI Comment Helper Error:", error);
-    return res.status(500).json({ error: error.message });
+    const raw = safeParseAiJson(completion.choices[0]?.message?.content);
+    const parsed = ResultSchema.safeParse(raw ?? { suggestions: [] });
+    res.status(200).json(parsed.success ? parsed.data : { suggestions: [] });
   }
-}
+);

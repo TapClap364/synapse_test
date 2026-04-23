@@ -2,7 +2,6 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import type { Profile } from '../types';
-import { getInitials } from '../types';
 import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
@@ -14,10 +13,11 @@ interface HeaderProps {
   unreadCount: number;
 }
 
-export const Header: React.FC<HeaderProps> = ({ 
-  profile, userEmail, onSignOut, onSearchClick, onNotificationsClick, unreadCount 
+export const Header: React.FC<HeaderProps> = ({
+  profile, userEmail, onSignOut, onSearchClick, onNotificationsClick, unreadCount,
 }) => {
-  const displayName = profile?.full_name || userEmail?.split('@')[0] || 'Пользователь';
+  void profile;
+  void userEmail;
 
   return (
     <header className="header">

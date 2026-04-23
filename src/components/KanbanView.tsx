@@ -32,8 +32,10 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   const onDrop = async (e: React.DragEvent, status: string) => {
     e.preventDefault();
     const id = parseInt(e.dataTransfer.getData('id'));
-    onTasksChange(prev => prev.map(t => (t.id === id ? { ...t, status: status as Task['status'] } : t)));
-    await supabase.from('tasks').update({ status }).eq('id', id);
+    const typedStatus = status as Task['status'];
+    onTasksChange(prev => prev.map(t => (t.id === id ? { ...t, status: typedStatus } : t)));
+    // The DB enum is `task_status`. Cast through unknown because src/types/index.ts has a wider union.
+    await supabase.from('tasks').update({ status: typedStatus as 'draft' | 'backlog' | 'in_progress' | 'done' }).eq('id', id);
   };
 
   return (

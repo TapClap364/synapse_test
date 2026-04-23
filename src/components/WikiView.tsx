@@ -1,6 +1,7 @@
 // src/components/WikiView.tsx
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useWorkspace } from '../lib/workspace';
 import type { Document, Meeting } from '../types';
 import { DocumentEditor } from './DocumentEditor';
 import { MeetingProtocol } from './MeetingProtocol';
@@ -15,15 +16,17 @@ interface WikiViewProps {
 export const WikiView: React.FC<WikiViewProps> = ({
   documents, meetings, onDocumentsChange, onRefreshDocuments,
 }) => {
+  const { currentWorkspaceId } = useWorkspace();
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedMeetingId, setSelectedMeetingId] = useState<number | null>(null);
 
   const handleNewDoc = async () => {
+    if (!currentWorkspaceId) return;
     const title = prompt('Название новой страницы:', 'Новая страница');
     if (!title) return;
     const { data } = await supabase
       .from('documents')
-      .insert({ title, content: '' })
+      .insert({ title, content: null, workspace_id: currentWorkspaceId })
       .select()
       .single();
     if (data) {

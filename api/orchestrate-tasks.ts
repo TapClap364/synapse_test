@@ -1,56 +1,74 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import { createHandler } from './_lib/handler';
+import { getServiceSupabase } from './_lib/supabase';
+import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai';
 
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY || '',
-  defaultHeaders: {
-    "HTTP-Referer": "https://synapse-app.vercel.app",
-    "X-Title": "Synapse AI Orchestrator",
-  },
+const InputSchema = z.object({}).optional().default({});
+
+const UpdateSchema = z.object({
+  task_id: z.number().int().positive(),
+  assigned_to: z.string().uuid().optional(),
+  blocked_by: z.array(z.number().int().positive()).max(50).optional(),
 });
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const ResultSchema = z.object({
+  updates: z.array(UpdateSchema).max(500),
+});
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+export default createHandler(
+  { method: 'POST', schema: InputSchema, rateLimit: 'ai', requireWrite: true },
+  async ({ auth, res }) => {
+    const supabase = getServiceSupabase();
 
-  try {
-    // 1. Fetch tasks and profiles
-    const { data: tasks, error: tasksError } = await supabase.from('tasks').select('id, title, description, assigned_to, blocked_by');
-    if (tasksError) throw tasksError;
-
-    const { data: profiles, error: profilesError } = await supabase.from('profiles').select('id, full_name, role_description');
-    if (profilesError) throw profilesError;
+    const { data: tasks, error: tasksErr } = await supabase
+      .from('tasks')
+      .select('id, title, description, assigned_to, blocked_by')
+      .eq('workspace_id', auth.workspaceId);
+    if (tasksErr) throw tasksErr;
 
     if (!tasks || tasks.length === 0) {
-      return res.status(200).json({ success: true, message: 'No tasks to orchestrate', updates: 0 });
+      return void res.status(200).json({ success: true, message: 'No tasks to orchestrate', updates: 0 });
     }
 
-    if (!profiles || profiles.length === 0) {
-      return res.status(200).json({ success: true, message: 'No profiles available for assignment', updates: 0 });
+    // Profiles must be members of this workspace (2-step query for type safety).
+    const { data: members } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', auth.workspaceId);
+    const memberIds = (members ?? []).map((m) => m.user_id);
+    const profiles = memberIds.length === 0
+      ? []
+      : (await supabase
+          .from('profiles')
+          .select('id, full_name, role_description')
+          .in('id', memberIds)
+        ).data ?? [];
+
+    if (profiles.length === 0) {
+      return void res.status(200).json({ success: true, message: 'No profiles available for assignment', updates: 0 });
     }
 
-    const tasksJson = JSON.stringify(tasks.map(t => ({ id: t.id, title: t.title, description: t.description })));
-    const profilesJson = JSON.stringify(profiles.map(p => ({ 
-      id: p.id, 
-      name: p.full_name || 'Unknown User',
-      skills_and_role: p.role_description || 'No description provided'
-    })));
+    const validUserIds = new Set(profiles.map((p) => p.id));
+    const validTaskIds = new Set(tasks.map((t) => t.id));
 
-    // 2. Prepare Prompt
-    const systemPrompt = `You are the Synapse AI Task Orchestrator.
+    const tasksJson = JSON.stringify(tasks.map((t) => ({ id: t.id, title: t.title, description: t.description })));
+    const profilesJson = JSON.stringify(
+      profiles.map((p) => ({
+        id: p.id,
+        name: p.full_name ?? 'Unknown User',
+        skills_and_role: p.role_description ?? 'No description provided',
+      }))
+    );
+
+    const completion = await getOpenAI().chat.completions.create({
+      model: AI_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: `You are the Synapse AI Task Orchestrator.
 Your goal is to organize a project backlog by assigning tasks to the most suitable team members and determining dependencies.
 
-CRITICAL: Analyze the 'skills_and_role' of each profile. Assign tasks based on expertise. 
-For example, if a task is about 'React UI' and a profile has 'React' in their description, they are the best fit.
-If a task is about 'Database' and a profile is a 'Backend Engineer', assign it to them.
+CRITICAL: Analyze the 'skills_and_role' of each profile. Assign tasks based on expertise.
 
 Available Profiles:
 ${profilesJson}
@@ -59,65 +77,44 @@ Available Tasks:
 ${tasksJson}
 
 Rules:
-1. Assign a 'profile_id' to each task based on logical distribution. If roles are unclear, distribute evenly among available users to ensure everyone has work.
-2. Determine dependencies ('blocked_by'). If Task A cannot start before Task B finishes, then Task A's 'blocked_by' array should include Task B's ID.
-3. Return a pure JSON object with a single key 'updates' containing an array of update objects.
-
-Expected Output Format:
-{
-  "updates": [
-    {
-      "task_id": 123,
-      "assigned_to": "profile-uuid-here",
-      "blocked_by": [120, 121]
-    }
-  ]
-}
-`;
-
-    // 3. AI Execution
-    const response = await openai.chat.completions.create({
-      model: 'meta-llama/llama-3.3-70b-instruct',
-      messages: [{ role: 'system', content: systemPrompt }],
-      response_format: { type: 'json_object' } // Workaround to ensure JSON. Let's ask for an object containing an array.
+1. Assign a 'profile_id' to each task based on logical distribution.
+2. Determine dependencies ('blocked_by').
+3. Return a pure JSON object: { "updates": [{"task_id": 123, "assigned_to": "uuid", "blocked_by": [1,2]}] }`,
+        },
+      ],
+      response_format: { type: 'json_object' },
     });
 
-    const aiResultStr = response.choices[0].message.content || '{"updates":[]}';
-    let parsedData;
-    try {
-      parsedData = JSON.parse(aiResultStr);
-    } catch {
-      // In case the AI returned raw array despite json_object
-      const match = aiResultStr.match(/\[.*\]/s);
-      if (match) parsedData = { updates: JSON.parse(match[0]) };
-      else throw new Error('Failed to parse AI response');
-    }
+    const raw = safeParseAiJson(completion.choices[0]?.message?.content);
+    const parsed = ResultSchema.safeParse(raw ?? { updates: [] });
+    const updates = parsed.success ? parsed.data.updates : [];
 
-    const updates = Array.isArray(parsedData) ? parsedData : (parsedData.updates || []);
-
-    // 4. Update Database
     let updatedCount = 0;
     for (const update of updates) {
-      if (!update.task_id) continue;
+      if (!validTaskIds.has(update.task_id)) continue;
 
-      const payload: any = {};
-      if (update.assigned_to) payload.assigned_to = update.assigned_to;
-      if (update.blocked_by && Array.isArray(update.blocked_by)) payload.blocked_by = update.blocked_by;
-
-      if (Object.keys(payload).length > 0) {
-        await supabase.from('tasks').update(payload).eq('id', update.task_id);
-        updatedCount++;
+      const payload: { assigned_to?: string; blocked_by?: number[] } = {};
+      if (update.assigned_to && validUserIds.has(update.assigned_to)) {
+        payload.assigned_to = update.assigned_to;
       }
+      if (update.blocked_by) {
+        // Reject any blocker that isn't a real task in this workspace
+        payload.blocked_by = update.blocked_by.filter((id) => validTaskIds.has(id) && id !== update.task_id);
+      }
+      if (Object.keys(payload).length === 0) continue;
+
+      const { error } = await supabase
+        .from('tasks')
+        .update(payload)
+        .eq('id', update.task_id)
+        .eq('workspace_id', auth.workspaceId);
+      if (!error) updatedCount += 1;
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: `Successfully orchestrated ${updatedCount} tasks.`,
-      updates: updatedCount
+      updates: updatedCount,
     });
-
-  } catch (error: any) {
-    console.error('Orchestrator Error:', error);
-    return res.status(500).json({ error: error.message || 'Unknown error' });
   }
-}
+);

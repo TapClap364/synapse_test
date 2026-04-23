@@ -32,6 +32,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ tasks, documents, onCl
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // handleSelect captures props/state via closure; deps below cover what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [results, selectedIndex, onClose]);
 
   useEffect(() => {
@@ -47,7 +49,15 @@ export const SearchModal: React.FC<SearchModalProps> = ({ tasks, documents, onCl
       .map(t => ({ type: 'task' as const, item: t }));
 
     const docResults = documents
-      .filter(d => d.title.toLowerCase().includes(q) || d.content?.toLowerCase().includes(q))
+      .filter(d => {
+        if (d.title.toLowerCase().includes(q)) return true;
+        const c = d.content;
+        if (typeof c === 'string') return c.toLowerCase().includes(q);
+        if (c && typeof c === 'object' && 'html' in c && typeof (c as { html: unknown }).html === 'string') {
+          return ((c as { html: string }).html).toLowerCase().includes(q);
+        }
+        return false;
+      })
       .slice(0, 5)
       .map(d => ({ type: 'doc' as const, item: d }));
 
