@@ -1,7 +1,8 @@
 import type { VercelRequest } from '@vercel/node';
-import type { WorkspaceRole } from '../../src/types/database';
 import { HttpError } from './errors';
 import { getServiceSupabase } from './supabase';
+
+export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 export interface AuthContext {
   userId: string;

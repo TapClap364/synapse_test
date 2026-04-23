@@ -3,7 +3,6 @@ import { createHandler } from './_lib/handler';
 import { getServiceSupabase } from './_lib/supabase';
 import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai';
 import { HttpError } from './_lib/errors';
-import type { Json } from '../src/types/database';
 
 const InputSchema = z.object({
   text: z.string().min(10).max(50_000),
@@ -89,8 +88,8 @@ export default createHandler(
       .insert({
         title: body.title ?? `Meeting ${new Date().toLocaleString('ru-RU')}`,
         summary: aiResult.summary,
-        // mind_map_data is jsonb — Zod validates structure, cast through unknown for the Json type
-        mind_map_data: (aiResult.mind_map ?? null) as unknown as Json,
+        // mind_map_data is jsonb — Zod has validated structure
+        mind_map_data: aiResult.mind_map ?? null,
         workspace_id: auth.workspaceId,
       })
       .select()
