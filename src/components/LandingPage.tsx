@@ -9,6 +9,10 @@ import {
   BookOpen,
   Bot,
   ShieldCheck,
+  Inbox,
+  Loader,
+  CheckCircle2,
+  Link as LinkIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -47,6 +51,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
           <button className="btn btn--primary btn--lg" onClick={onSignIn}>Попробовать бесплатно</button>
           <Link to="/presentation" className="btn btn--outline btn--lg">Смотреть pitch&nbsp;deck</Link>
         </div>
+
+        <ProductMockup />
       </section>
 
       {/* Features */}
@@ -123,6 +129,69 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
     </div>
   );
 };
+
+// Inline product mockup — visual representation of the Kanban board
+// without depending on external screenshot assets.
+const MOCK_COLUMNS: { Icon: LucideIcon; label: string; color: string; cards: { id: string; title: string; epic: string; deps?: string }[] }[] = [
+  {
+    Icon: Inbox, label: 'Бэклог', color: 'var(--color-text-muted)',
+    cards: [
+      { id: 'TASK-014', title: 'Голосовой ввод задач', epic: 'AI-фичи' },
+      { id: 'TASK-016', title: 'Workspace switcher', epic: 'Multi-tenancy', deps: 'TASK-012' },
+      { id: 'TASK-020', title: 'Stripe billing', epic: 'Монетизация' },
+    ],
+  },
+  {
+    Icon: Loader, label: 'В работе', color: 'var(--color-primary)',
+    cards: [
+      { id: 'TASK-009', title: 'Auth + JWT middleware', epic: 'Security' },
+      { id: 'TASK-011', title: 'RLS policies', epic: 'Security' },
+    ],
+  },
+  {
+    Icon: CheckCircle2, label: 'Готово', color: 'var(--color-success)',
+    cards: [
+      { id: 'TASK-001', title: 'Базовая схема БД', epic: 'Foundation' },
+      { id: 'TASK-005', title: 'Vercel deploy', epic: 'DevOps' },
+    ],
+  },
+];
+
+const ProductMockup: React.FC = () => (
+  <div className="hero-mock" aria-hidden="true">
+    <div className="hero-mock__chrome">
+      <span className="hero-mock__dot" style={{ background: '#ef4444' }} />
+      <span className="hero-mock__dot" style={{ background: '#f59e0b' }} />
+      <span className="hero-mock__dot" style={{ background: '#10b981' }} />
+      <span className="hero-mock__url">synapse.app/board</span>
+    </div>
+    <div className="hero-mock__board">
+      {MOCK_COLUMNS.map(({ Icon, label, color, cards }) => (
+        <div key={label} className="hero-mock__col">
+          <h4 className="hero-mock__col-title">
+            <Icon size={14} style={{ color }} aria-hidden="true" />
+            {label}
+            <span className="hero-mock__count">{cards.length}</span>
+          </h4>
+          {cards.map(card => (
+            <div key={card.id} className="hero-mock__card">
+              <div className="hero-mock__card-head">
+                <span className="hero-mock__card-id">{card.id}</span>
+                {card.deps && (
+                  <span className="hero-mock__card-dep">
+                    <LinkIcon size={9} aria-hidden="true" /> {card.deps}
+                  </span>
+                )}
+              </div>
+              <div className="hero-mock__card-title">{card.title}</div>
+              <div className="hero-mock__card-epic">{card.epic}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 const FeatureCard: React.FC<{ Icon: LucideIcon; title: string; desc: string }> = ({ Icon, title, desc }) => (
   <div className="feature-card">

@@ -136,7 +136,20 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
                   {/* Task bars */}
                   {epic.tasks.map((task, idx) => (
                     <div key={task.id} onClick={() => onTaskClick(task)} style={{ cursor: 'pointer' }}>
-                      <div style={{ position: 'absolute', left: '-120px', top: `${idx * ROW_HEIGHT}px`, width: '110px', fontSize: '12px', fontWeight: 600, color: '#1e293b', textAlign: 'right', paddingRight: '10px', paddingTop: '12px' }}>
+                      <div style={{
+                        position: 'absolute',
+                        left: '-130px',
+                        top: `${idx * ROW_HEIGHT}px`,
+                        height: `${ROW_HEIGHT}px`,
+                        width: '120px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: 'var(--color-text)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        paddingRight: 12,
+                      }}>
                         {formatTaskId(task.id)}
                       </div>
                       <GanttBar task={task} index={idx} />
