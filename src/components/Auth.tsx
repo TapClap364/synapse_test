@@ -27,13 +27,14 @@ export const Auth = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
       } else {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: {
             data: {
@@ -88,21 +89,30 @@ export const Auth = () => {
           </>
         )}
 
-        <input 
-          type="email" 
-          placeholder="Email адрес" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-          required 
-          style={{ ...inputStyle, background: '#f8fafc' }} 
+        <input
+          type="email"
+          placeholder="Email адрес"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="email"
+          style={{ ...inputStyle, background: '#f8fafc' }}
         />
-        <input 
-          type="password" 
-          placeholder="Пароль" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-          required 
-          style={{ ...inputStyle, background: '#f8fafc' }} 
+        <input
+          type="password"
+          placeholder="Пароль"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete={isLogin ? 'current-password' : 'new-password'}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          style={{ ...inputStyle, background: '#f8fafc' }}
         />
         
         {!isLogin && (
