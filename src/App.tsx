@@ -38,6 +38,7 @@ const ProfilePage = lazy(() => import('./components/ProfilePage').then((m) => ({
 const OnboardingTour = lazy(() => import('./components/OnboardingTour').then((m) => ({ default: m.OnboardingTour })));
 const WorkspaceMembers = lazy(() => import('./components/WorkspaceMembers').then((m) => ({ default: m.WorkspaceMembers })));
 const AuthGate = lazy(() => import('./components/AuthGate').then((m) => ({ default: m.AuthGate })));
+const ResetPasswordPage = lazy(() => import('./components/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 
 const HIDE_CONTROL_BAR = ['/whiteboard', '/wiki', '/profile', '/members', '/billing'];
 
@@ -142,7 +143,17 @@ function AppContent({ auth }: { auth: AuthBag }) {
 
   const isPresentation = location.pathname === '/presentation';
   const isLegal = location.pathname.startsWith('/legal');
+  const isResetPassword = location.pathname === '/reset-password';
   const isHiddenControlBar = HIDE_CONTROL_BAR.some((p) => location.pathname.startsWith(p));
+
+  // Password recovery — render even without a normal session
+  if (isResetPassword) {
+    return (
+      <Suspense fallback={<Loader />}>
+        <ResetPasswordPage />
+      </Suspense>
+    );
+  }
 
   // Not authenticated → landing or auth form
   if (!session && !isPresentation && !isLegal) {

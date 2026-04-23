@@ -54,6 +54,25 @@ export const Auth = () => {
     }
   };
 
+  const handlePasswordReset = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      alert('Введите email — мы отправим ссылку для сброса пароля.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+      if (error) throw error;
+      alert(`Если аккаунт ${normalizedEmail} существует — ссылка для сброса пароля отправлена на почту.`);
+    } catch (error: any) {
+      alert(error.message || 'Не удалось отправить ссылку');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ width: '100%' }}>
       <h2 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '24px', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.5px' }}>
@@ -137,8 +156,21 @@ export const Auth = () => {
         </button>
       </form>
 
-      <p 
-        style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#64748b', cursor: 'pointer' }} 
+      {isLogin && (
+        <p style={{ textAlign: 'center', marginTop: '14px', fontSize: '13px' }}>
+          <button
+            type="button"
+            onClick={handlePasswordReset}
+            disabled={loading}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-primary)', fontWeight: 500, fontSize: '13px' }}
+          >
+            Забыли пароль?
+          </button>
+        </p>
+      )}
+
+      <p
+        style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#64748b', cursor: 'pointer' }}
         onClick={() => setIsLogin(!isLogin)}
       >
         {isLogin ? (
