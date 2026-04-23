@@ -1,6 +1,6 @@
 import type { VercelRequest } from '@vercel/node';
-import { HttpError } from './errors';
-import { getServiceSupabase } from './supabase';
+import { HttpError } from './errors.js';
+import { getServiceSupabase } from './supabase.js';
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 

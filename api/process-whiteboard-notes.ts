@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { createHandler } from './_lib/handler';
-import { getServiceSupabase } from './_lib/supabase';
-import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai';
-import { HttpError } from './_lib/errors';
+import { createHandler } from './_lib/handler.js';
+import { getServiceSupabase } from './_lib/supabase.js';
+import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai.js';
+import { HttpError } from './_lib/errors.js';
 
 const InputSchema = z.object({
   notes: z.array(z.string().min(1).max(2_000)).min(1).max(100),

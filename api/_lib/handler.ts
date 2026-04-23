@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { ZodSchema, infer as zInfer } from 'zod';
-import { applyCors } from './cors';
-import { verifyAuth, requireWriteAccess, AuthContext } from './auth';
-import { enforceRateLimit, LimiterKind } from './ratelimit';
-import { initSentry, captureError } from './sentry';
-import { HttpError } from './errors';
+import { applyCors } from './cors.js';
+import { verifyAuth, requireWriteAccess, AuthContext } from './auth.js';
+import { enforceRateLimit, LimiterKind } from './ratelimit.js';
+import { initSentry, captureError } from './sentry.js';
+import { HttpError } from './errors.js';
 
 interface HandlerOptions<S extends ZodSchema | undefined> {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

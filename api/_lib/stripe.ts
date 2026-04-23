@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { HttpError } from './errors';
+import { HttpError } from './errors.js';
 
 let cached: Stripe | null = null;
 

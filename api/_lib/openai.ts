@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { HttpError } from './errors';
+import { HttpError } from './errors.js';
 
 let cached: OpenAI | null = null;
 

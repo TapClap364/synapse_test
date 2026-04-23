@@ -1,6 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
-import { HttpError } from './errors';
+import { HttpError } from './errors.js';
 
 let limiter: Ratelimit | null = null;
 let aiLimiter: Ratelimit | null = null;

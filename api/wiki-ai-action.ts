@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { createHandler } from './_lib/handler';
-import { getOpenAI, AI_MODEL } from './_lib/openai';
+import { createHandler } from './_lib/handler.js';
+import { getOpenAI, AI_MODEL } from './_lib/openai.js';
 
 const ACTIONS = [
   'improve',

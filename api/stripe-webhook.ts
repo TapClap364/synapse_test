@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type Stripe from 'stripe';
-import { getStripe, STRIPE_WEBHOOK_SECRET } from './_lib/stripe';
-import { getServiceSupabase } from './_lib/supabase';
-import { initSentry, captureError } from './_lib/sentry';
+import { getStripe, STRIPE_WEBHOOK_SECRET } from './_lib/stripe.js';
+import { getServiceSupabase } from './_lib/supabase.js';
+import { initSentry, captureError } from './_lib/sentry.js';
 
 // Stripe requires the raw body to verify the signature.
 export const config = {

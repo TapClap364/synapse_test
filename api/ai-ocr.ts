@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { createHandler } from './_lib/handler';
-import { getOpenAI } from './_lib/openai';
-import { HttpError } from './_lib/errors';
+import { createHandler } from './_lib/handler.js';
+import { getOpenAI } from './_lib/openai.js';
+import { HttpError } from './_lib/errors.js';
 
 const InputSchema = z.object({
   fileUrl: z.string().url().max(2_000),

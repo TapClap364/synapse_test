@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { createHandler } from './_lib/handler';
-import { getServiceSupabase } from './_lib/supabase';
-import { getOpenAI, AI_MODEL } from './_lib/openai';
+import { createHandler } from './_lib/handler.js';
+import { getServiceSupabase } from './_lib/supabase.js';
+import { getOpenAI, AI_MODEL } from './_lib/openai.js';
 
 const HistoryMessage = z.object({
   role: z.enum(['user', 'assistant', 'system']),

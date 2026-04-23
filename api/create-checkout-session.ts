@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { createHandler } from './_lib/handler';
-import { getServiceSupabase } from './_lib/supabase';
-import { getStripe } from './_lib/stripe';
-import { HttpError } from './_lib/errors';
+import { createHandler } from './_lib/handler.js';
+import { getServiceSupabase } from './_lib/supabase.js';
+import { getStripe } from './_lib/stripe.js';
+import { HttpError } from './_lib/errors.js';
 
 const InputSchema = z.object({
   priceId: z.string().min(1).max(200),
