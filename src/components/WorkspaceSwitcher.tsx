@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Plus, X, Briefcase, Users as UsersIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useWorkspace } from '../lib/workspace'
 
 export function WorkspaceSwitcher() {
+  const { t } = useTranslation()
   const { workspaces, currentWorkspaceId, setCurrentWorkspaceId, createWorkspace, loading } = useWorkspace()
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
@@ -11,10 +14,13 @@ export function WorkspaceSwitcher() {
   if (loading) {
     return (
       <span aria-busy="true" style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-        Загрузка…
+        {t('common.loading')}
       </span>
     )
   }
+
+  const current = workspaces.find((m) => m.workspace.id === currentWorkspaceId)
+  const memberCount = workspaces.length
 
   const handleCreate = async (): Promise<void> => {
     if (!newName.trim()) return
@@ -24,19 +30,28 @@ export function WorkspaceSwitcher() {
       setNewName('')
       setCreating(false)
     } catch (err) {
-      alert(`Ошибка создания: ${err instanceof Error ? err.message : 'unknown'}`)
+      alert(`${t('workspace.createError')}: ${err instanceof Error ? err.message : 'unknown'}`)
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-      <label htmlFor="workspace-select" className="sr-only">Workspace</label>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)',
+        textTransform: 'uppercase', letterSpacing: 0.5,
+      }}>
+        <Briefcase size={13} aria-hidden="true" /> {t('workspace.title')}
+      </span>
+
+      <label htmlFor="workspace-select" className="sr-only">{t('workspace.switcher')}</label>
       <select
         id="workspace-select"
         value={currentWorkspaceId ?? ''}
         onChange={(e) => setCurrentWorkspaceId(e.target.value)}
+        title={memberCount > 1 ? t('workspace.switcher') : current?.workspace.name}
         style={{
           padding: '6px 10px',
           fontSize: 13,
@@ -45,23 +60,24 @@ export function WorkspaceSwitcher() {
           background: 'var(--color-surface)',
           color: 'var(--color-text)',
           cursor: 'pointer',
-          fontWeight: 500,
+          fontWeight: 600,
         }}
       >
         {workspaces.map((m) => (
           <option key={m.workspace.id} value={m.workspace.id}>
-            {m.workspace.name} ({m.role})
+            {m.workspace.name} ({t(`workspace.roles.${m.role}`)})
           </option>
         ))}
       </select>
+
       {creating ? (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Название workspace"
-            aria-label="New workspace name"
+            placeholder={t('workspace.createPlaceholder')}
+            aria-label={t('workspace.create')}
             disabled={busy}
             autoFocus
             style={{
@@ -76,13 +92,13 @@ export function WorkspaceSwitcher() {
             onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setCreating(false); }}
           />
           <button onClick={handleCreate} disabled={busy} className="btn btn--primary">
-            {busy ? '…' : 'Создать'}
+            {busy ? '…' : t('common.create')}
           </button>
           <button
             onClick={() => setCreating(false)}
             disabled={busy}
             className="btn btn--ghost"
-            aria-label="Отмена"
+            aria-label={t('common.cancel')}
             style={{ padding: '6px 8px' }}
           >
             <X size={14} />
@@ -92,12 +108,21 @@ export function WorkspaceSwitcher() {
         <button
           onClick={() => setCreating(true)}
           className="btn btn--ghost"
-          aria-label="Создать новый workspace"
+          aria-label={t('workspace.create')}
           style={{ padding: '6px 10px', fontSize: 13 }}
         >
-          <Plus size={14} /> Новый
+          <Plus size={14} /> {t('workspace.newWorkspace')}
         </button>
       )}
+
+      <Link
+        to="/members"
+        className="btn btn--ghost"
+        style={{ padding: '6px 10px', fontSize: 13, textDecoration: 'none' }}
+        title={t('workspace.membersTitle')}
+      >
+        <UsersIcon size={14} /> {t('workspace.members')}
+      </Link>
     </div>
   )
 }
