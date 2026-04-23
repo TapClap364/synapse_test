@@ -72,8 +72,17 @@ export function WorkspaceProvider({ userId, children }: { userId: string | null;
 
   const createWorkspace = async (name: string): Promise<WorkspaceMembership> => {
     if (!userId) throw new Error('Not authenticated')
+    // Force a fresh JWT before INSERT — RLS uses auth.uid(), and a stale/expired
+    // session silently downgrades the request to anon, which fails ws_insert.
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (!sessionData.session) {
+      const refreshed = await supabase.auth.refreshSession()
+      if (refreshed.error || !refreshed.data.session) {
+        throw new Error('Сессия истекла, войдите заново')
+      }
+    }
     const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).slice(2, 8)}`
-    // The membership row is created by the AFTER INSERT trigger handle_workspace_created (migration 009).
+    // The owner membership row is created by trg_handle_workspace_created (migration 009).
     const { data: ws, error: wsErr } = await supabase
       .from('workspaces')
       .insert({ name, slug, created_by: userId })

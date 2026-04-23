@@ -4,6 +4,16 @@ import { Plus, X, Briefcase, Users as UsersIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '../lib/workspace'
 
+function describeError(err: unknown): string {
+  if (!err) return 'unknown'
+  if (err instanceof Error) return err.message
+  if (typeof err === 'object') {
+    const e = err as { message?: string; details?: string; hint?: string; code?: string }
+    return e.message || e.details || e.hint || e.code || JSON.stringify(err)
+  }
+  return String(err)
+}
+
 export function WorkspaceSwitcher() {
   const { t } = useTranslation()
   const { workspaces, currentWorkspaceId, setCurrentWorkspaceId, createWorkspace, loading } = useWorkspace()
@@ -30,7 +40,8 @@ export function WorkspaceSwitcher() {
       setNewName('')
       setCreating(false)
     } catch (err) {
-      alert(`${t('workspace.createError')}: ${err instanceof Error ? err.message : 'unknown'}`)
+      const message = describeError(err)
+      alert(`${t('workspace.createError')}: ${message}`)
     } finally {
       setBusy(false)
     }
