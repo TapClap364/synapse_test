@@ -1,4 +1,11 @@
 import React from 'react';
+import { CheckCircle2, AlertTriangle, Info, type LucideIcon } from 'lucide-react';
+
+const TYPE_META: Record<'info' | 'success' | 'warning', { Icon: LucideIcon; color: string }> = {
+  success: { Icon: CheckCircle2,   color: 'var(--color-success)' },
+  warning: { Icon: AlertTriangle,  color: 'var(--color-warning)' },
+  info:    { Icon: Info,           color: 'var(--color-primary)' },
+};
 
 interface Notification {
   id: string;
@@ -58,9 +65,12 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifica
                 transition: 'background 0.2s'
               }}
             >
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ fontSize: '18px' }}>
-                  {n.type === 'success' ? '✅' : n.type === 'warning' ? '⚠️' : 'ℹ️'}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <div style={{ flexShrink: 0, marginTop: 2 }}>
+                  {(() => {
+                    const { Icon, color } = TYPE_META[n.type] ?? TYPE_META.info;
+                    return <Icon size={16} style={{ color }} aria-hidden="true" />;
+                  })()}
                 </div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{n.title}</div>

@@ -1,6 +1,6 @@
 // src/components/GanttView.tsx
 import React from 'react';
-import { GanttChartSquare } from 'lucide-react';
+import { GanttChartSquare, Folder } from 'lucide-react';
 import type { Task, CpmData } from '../types';
 import { formatTaskId } from '../types';
 import { GanttBar } from './GanttBar';
@@ -60,9 +60,9 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
 
             return (
               <div key={epic.title} style={{ marginBottom: '32px', position: 'relative' }}>
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  📁 {epic.title}
-                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Folder size={16} aria-hidden="true" /> {epic.title}
+                  <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 400 }}>
                     ({epic.tasks.length} задач, {epicMaxDuration}ч)
                   </span>
                 </h3>

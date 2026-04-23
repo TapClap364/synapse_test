@@ -15,6 +15,22 @@ import TextAlign from '@tiptap/extension-text-align';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
+import {
+  Paperclip,
+  Trash2,
+  Table as TableIcon,
+  Link as LinkIcon,
+  Sparkles,
+  Wand2,
+  ListChecks,
+  FileText,
+  Languages,
+  PenLine,
+  ScanText,
+  FileImage,
+  X,
+  Check,
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useWorkspace } from '../lib/workspace';
 import { apiPost } from '../lib/apiClient';
@@ -201,21 +217,21 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onRe
           placeholder="Название документа"
         />
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {isSaving && <span style={{ fontSize: '14px', color: '#10b981' }}>💚 Сохранено</span>}
+          {isSaving && (
+            <span style={{ fontSize: '13px', color: 'var(--color-success)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Check size={14} aria-hidden="true" /> Сохранено
+            </span>
+          )}
           <button onClick={() => fileInputRef.current?.click()} style={{
-            padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1',
-            background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '14px', fontWeight: 500,
-            display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)',
+            background: 'var(--color-surface)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: 'var(--shadow-sm)',
           }}>
-            📎 Прикрепить
+            <Paperclip size={14} aria-hidden="true" /> Прикрепить
           </button>
           <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
-          <button onClick={handleDelete} style={{
-            padding: '10px 20px', borderRadius: '8px', border: 'none',
-            background: '#fee2e2', color: '#ef4444', cursor: 'pointer', fontSize: '14px', fontWeight: 500,
-            display: 'flex', alignItems: 'center', gap: '6px'
-          }}>
-            🗑️ Удалить
+          <button onClick={handleDelete} className="btn btn--danger-soft" style={{ padding: '8px 14px' }}>
+            <Trash2 size={14} aria-hidden="true" /> Удалить
           </button>
         </div>
       </div>
@@ -243,104 +259,91 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onRe
         
         <div style={{ width: '1px', height: '28px', background: '#e2e8f0', margin: '0 8px' }} />
         
-        <ToolBtn onClick={() => editor?.chain().focus().toggleBulletList().run()} title="Список">• Список</ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().toggleOrderedList().run()} title="Нумерация">1. Список</ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Таблица">📊</ToolBtn>
-        
+        <ToolBtn onClick={() => editor?.chain().focus().toggleBulletList().run()} title="Маркированный список">• Список</ToolBtn>
+        <ToolBtn onClick={() => editor?.chain().focus().toggleOrderedList().run()} title="Нумерованный список">1. Список</ToolBtn>
+        <ToolBtn onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Таблица">
+          <TableIcon size={16} aria-hidden="true" />
+        </ToolBtn>
+
         <div style={{ width: '1px', height: '28px', background: '#e2e8f0', margin: '0 8px' }} />
-        
-        <ToolBtn onClick={() => { const url = prompt('URL:'); if (url) editor?.chain().focus().setLink({ href: url }).run(); }} title="Ссылка">🔗</ToolBtn>
+
+        <ToolBtn onClick={() => { const url = prompt('URL:'); if (url) editor?.chain().focus().setLink({ href: url }).run(); }} title="Ссылка">
+          <LinkIcon size={16} aria-hidden="true" />
+        </ToolBtn>
       </div>
 
       {/* AI Toolbar */}
-      <div style={{ padding: '12px 48px', background: '#f0f9ff', borderBottom: '1px solid #e0f2fe', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: '#0369a1', marginRight: '8px' }}>✨ AI:</span>
-        
-        <button onClick={() => handleAiAction('improve')} disabled={isAiLoading} style={{
-          padding: '8px 16px', borderRadius: '8px', border: '1px solid #7dd3fc',
-          background: '#fff', color: '#0284c7', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-        }}>
-          ✍️ Улучшить стиль
-        </button>
-        
-        <button onClick={() => handleAiAction('table')} disabled={isAiLoading} style={{
-          padding: '8px 16px', borderRadius: '8px', border: '1px solid #7dd3fc',
-          background: '#fff', color: '#0284c7', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-        }}>
-          📊 Текст → Таблица
-        </button>
-        
-        <button onClick={() => handleAiAction('summary')} disabled={isAiLoading} style={{
-          padding: '8px 16px', borderRadius: '8px', border: '1px solid #7dd3fc',
-          background: '#fff', color: '#0284c7', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-        }}>
-          📝 Краткое содержание
-        </button>
-        
-        <button onClick={() => handleAiAction('tasks')} disabled={isAiLoading} style={{
-          padding: '8px 16px', borderRadius: '8px', border: '1px solid #7dd3fc',
-          background: '#fff', color: '#0284c7', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-        }}>
-          ✅ Извлечь задачи
-        </button>
-
-        <button onClick={() => handleAiAction('continue')} disabled={isAiLoading} style={{
-          padding: '8px 16px', borderRadius: '8px', border: '1px solid #c4b5fd',
-          background: '#fff', color: '#7c3aed', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-        }}>
-          ✍️ Продолжить мысль
-        </button>
-
-        <button onClick={() => handleAiAction('translate')} disabled={isAiLoading} style={{
-          padding: '8px 16px', borderRadius: '8px', border: '1px solid #fcd34d',
-          background: '#fff', color: '#d97706', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-        }}>
-          🌍 Перевести
-        </button>
+      <div style={{ padding: '10px 48px', background: 'var(--color-ai-bg)', borderBottom: '1px solid var(--color-ai-border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-ai)', textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Sparkles size={12} aria-hidden="true" /> AI
+        </span>
+        {([
+          { action: 'improve',   Icon: Wand2,     label: 'Улучшить стиль' },
+          { action: 'table',     Icon: TableIcon, label: 'Текст → Таблица' },
+          { action: 'summary',   Icon: FileText,  label: 'Краткое содержание' },
+          { action: 'tasks',     Icon: ListChecks,label: 'Извлечь задачи' },
+          { action: 'continue',  Icon: PenLine,   label: 'Продолжить мысль' },
+          { action: 'translate', Icon: Languages, label: 'Перевести' },
+        ] as const).map(({ action, Icon, label }) => (
+          <button
+            key={action}
+            onClick={() => handleAiAction(action)}
+            disabled={isAiLoading}
+            style={{
+              padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-ai-border)',
+              background: 'var(--color-surface)', color: 'var(--color-ai)', cursor: 'pointer',
+              fontSize: 13, fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              boxShadow: 'var(--shadow-sm)', transition: 'var(--transition)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--color-ai)')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--color-ai-border)')}
+          >
+            <Icon size={13} aria-hidden="true" /> {label}
+          </button>
+        ))}
       </div>
 
      {/* Attachments - Compact */}
 {attachments.length > 0 && (
-  <div style={{ padding: '12px 48px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-    <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>
-      📎 Вложения ({attachments.length})
+  <div style={{ padding: '12px 48px', background: 'var(--color-surface-alt)', borderBottom: '1px solid var(--color-border)' }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <Paperclip size={12} aria-hidden="true" /> Вложения ({attachments.length})
     </div>
-    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       {attachments.map(att => {
         const isPdf = att.file_type === 'application/pdf' || att.file_url.endsWith('.pdf');
         return (
           <div key={att.id} style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '6px 10px', background: '#fff', borderRadius: '6px',
-            border: '1px solid #e2e8f0', fontSize: '12px',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 10px', background: 'var(--color-surface)', borderRadius: 8,
+            border: '1px solid var(--color-border)', fontSize: 12,
+            boxShadow: 'var(--shadow-sm)',
           }}>
-            <span style={{ fontWeight: 500, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {isPdf ? '📄' : '🖼️'} {att.file_name}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isPdf ? <FileText size={13} aria-hidden="true" /> : <FileImage size={13} aria-hidden="true" />}
+              {att.file_name}
             </span>
-            <button onClick={() => handleAiOcr(att.file_url, 'text')}
-              disabled={isAiLoading} style={{
-                padding: '3px 8px', borderRadius: '4px', border: '1px solid #bae6fd',
-                background: '#eff6ff', color: '#0284c7', cursor: 'pointer', fontSize: '11px', fontWeight: 500
-              }}>
-              {isPdf ? '📝 Распознать' : '📝 Текст'}
+            <button onClick={() => handleAiOcr(att.file_url, 'text')} disabled={isAiLoading} style={{
+              padding: '3px 8px', borderRadius: 6, border: '1px solid var(--color-ai-border)',
+              background: 'var(--color-ai-bg)', color: 'var(--color-ai)', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              <ScanText size={11} aria-hidden="true" /> Текст
             </button>
-            <button onClick={() => handleAiOcr(att.file_url, 'table')} 
-              disabled={isAiLoading} style={{
-                padding: '3px 8px', borderRadius: '4px', border: '1px solid #bbf7d0',
-                background: '#f0fdf4', color: '#16a34a', cursor: 'pointer', fontSize: '11px', fontWeight: 500
-              }}>
-              📊 Таблица
+            <button onClick={() => handleAiOcr(att.file_url, 'table')} disabled={isAiLoading} style={{
+              padding: '3px 8px', borderRadius: 6, border: '1px solid #bbf7d0',
+              background: '#f0fdf4', color: '#16a34a', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              <TableIcon size={11} aria-hidden="true" /> Таблица
             </button>
-            <button onClick={() => handleDeleteAttachment(att.id)} 
-              style={{ padding: '3px 6px', border: 'none', background: 'transparent', 
-                color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}>×</button>
+            <button onClick={() => handleDeleteAttachment(att.id)} aria-label="Удалить вложение" style={{
+              padding: 3, border: 'none', background: 'transparent',
+              color: 'var(--color-text-muted)', cursor: 'pointer', display: 'inline-flex',
+            }}>
+              <X size={13} aria-hidden="true" />
+            </button>
           </div>
         );
       })}
