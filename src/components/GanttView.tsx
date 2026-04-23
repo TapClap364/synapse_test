@@ -67,7 +67,7 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
                 border: '1px solid var(--color-border-light)',
                 borderRadius: 12,
               }}>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <h3 style={{ margin: '0 0 32px 0', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   <Folder size={14} aria-hidden="true" style={{ color: 'var(--color-text-secondary)' }} />
                   {epic.title}
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>
@@ -81,16 +81,16 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
                     minHeight: `${Math.max(epic.tasks.length * ROW_HEIGHT, 100)}px`,
                     marginLeft: '120px',
                     width: `${chartWidth}px`,
-                    background: '#f8fafc',
+                    background: 'var(--color-bg)',
                     borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--color-border)',
                   }}
                 >
                   {/* Day grid lines */}
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%', display: 'flex', pointerEvents: 'none', zIndex: 1 }}>
                     {Array.from({ length: Math.ceil(globalMaxDuration / 8) + 1 }).map((_, i) => (
-                      <div key={i} style={{ width: '96px', flexShrink: 0, borderLeft: i === 0 ? 'none' : '1px dashed #cbd5e1', height: '100%', position: 'relative' }}>
-                        <span style={{ position: 'absolute', top: '-20px', left: '4px', fontSize: '11px', color: '#64748b' }}>
+                      <div key={i} style={{ width: '96px', flexShrink: 0, borderLeft: i === 0 ? 'none' : '1px dashed var(--color-border)', height: '100%', position: 'relative' }}>
+                        <span style={{ position: 'absolute', top: '-20px', left: '4px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600 }}>
                           День {i + 1}
                         </span>
                       </div>

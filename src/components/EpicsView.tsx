@@ -49,18 +49,18 @@ export const EpicsView: React.FC<EpicsViewProps> = ({ tasks, epicsList, onRefres
   };
 
   return (
-    <div style={{ padding: '32px', height: '100%', overflowY: 'auto', background: '#f8fafc' }}>
+    <div style={{ padding: '32px', height: '100%', overflowY: 'auto', background: 'var(--color-bg)' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-        <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+        <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
           <Target size={26} aria-hidden="true" /> Панель Эпиков
         </h2>
-        <p style={{ color: '#64748b', marginBottom: '32px' }}>Отслеживайте общий прогресс по ключевым инициативами проекта.</p>
-        
+        <p style={{ color: 'var(--color-text-secondary)', marginBottom: '32px' }}>Отслеживайте общий прогресс по ключевым инициативами проекта.</p>
+
         {epicsList.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
+          <div style={{ textAlign: 'center', padding: '60px', background: 'var(--color-surface)', borderRadius: '16px', border: '1px dashed var(--color-border)' }}>
             <Inbox size={42} style={{ color: 'var(--color-text-muted)', marginBottom: 16 }} aria-hidden="true" />
-            <h3 style={{ color: '#334155', marginBottom: '8px' }}>Пока нет эпиков</h3>
-            <p style={{ color: '#64748b' }}>Создайте свой первый эпик через кнопку «Эпик» на верхней панели.</p>
+            <h3 style={{ color: 'var(--color-text)', marginBottom: '8px' }}>Пока нет эпиков</h3>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Создайте свой первый эпик через кнопку «Эпик» на верхней панели.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
@@ -73,12 +73,12 @@ export const EpicsView: React.FC<EpicsViewProps> = ({ tasks, epicsList, onRefres
               const progress = epicTasks.length === 0 ? 0 : Math.round((doneTasks.length / epicTasks.length) * 100);
               
               return (
-                <div key={epic.id} style={{ 
-                  background: '#fff', 
-                  borderRadius: '20px', 
-                  padding: '24px', 
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.04)',
-                  border: '1px solid rgba(226, 232, 240, 0.8)',
+                <div key={epic.id} style={{
+                  background: 'var(--color-surface)',
+                  borderRadius: '20px',
+                  padding: '24px',
+                  boxShadow: 'var(--shadow-sm)',
+                  border: '1px solid var(--color-border)',
                   position: 'relative',
                   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                   cursor: 'default',
@@ -107,15 +107,15 @@ export const EpicsView: React.FC<EpicsViewProps> = ({ tasks, epicsList, onRefres
                           }}
                           onBlur={() => handleSaveEdit(epic.id)}
                           style={{
-                            flex: 1, padding: '4px 8px', fontSize: '20px', fontWeight: 800, color: '#0f172a',
-                            border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', background: '#fff',
+                            flex: 1, padding: '4px 8px', fontSize: '20px', fontWeight: 800, color: 'var(--color-text)',
+                            border: '1px solid var(--color-border)', borderRadius: '6px', outline: 'none', background: 'var(--color-surface)',
                             width: '100%', boxSizing: 'border-box'
                           }}
                         />
                       </div>
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingRight: '40px', flexWrap: 'wrap' }}>
-                        <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: 0, lineHeight: 1.2 }}>
+                        <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
                           {epic.title}
                         </h3>
                         <button 
@@ -164,32 +164,32 @@ export const EpicsView: React.FC<EpicsViewProps> = ({ tasks, epicsList, onRefres
                   
                   {/* Progress Bar */}
                   <div style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', fontWeight: 700, color: '#64748b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                       <span style={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '11px' }}>Прогресс</span>
                       <span style={{ color: progress === 100 ? '#10b981' : '#3b82f6' }}>{progress}%</span>
                     </div>
-                    <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ 
-                        height: '100%', 
-                        width: `${progress}%`, 
+                    <div style={{ height: '8px', background: 'var(--color-surface-alt)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${progress}%`,
                         background: progress === 100 ? '#10b981' : 'linear-gradient(90deg, #3b82f6, #6366f1)',
                         borderRadius: '4px',
                         transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
                       }} />
                     </div>
                   </div>
-                  
+
                   {/* Stats Cards */}
                   <div style={{ display: 'flex', gap: '8px', fontSize: '12px' }}>
-                    <div style={{ flex: 1, background: '#f8fafc', padding: '12px 8px', borderRadius: '12px', textAlign: 'center', border: '1px solid #f1f5f9' }}>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#64748b', marginBottom: '2px' }}>{backlogTasks.length}</div>
-                      <div style={{ color: '#94a3b8', fontWeight: 600, fontSize: '11px', textTransform: 'uppercase' }}>Бэклог</div>
+                    <div style={{ flex: 1, background: 'var(--color-surface-alt)', padding: '12px 8px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--color-border-light)' }}>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-secondary)', marginBottom: '2px' }}>{backlogTasks.length}</div>
+                      <div style={{ color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '11px', textTransform: 'uppercase' }}>Бэклог</div>
                     </div>
-                    <div style={{ flex: 1, background: '#eff6ff', padding: '12px 8px', borderRadius: '12px', textAlign: 'center', border: '1px solid #dbeafe' }}>
+                    <div style={{ flex: 1, background: 'rgba(59, 130, 246, 0.12)', padding: '12px 8px', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
                       <div style={{ fontSize: '18px', fontWeight: 800, color: '#3b82f6', marginBottom: '2px' }}>{inProgressTasks.length}</div>
                       <div style={{ color: '#60a5fa', fontWeight: 600, fontSize: '11px', textTransform: 'uppercase' }}>В работе</div>
                     </div>
-                    <div style={{ flex: 1, background: '#f0fdf4', padding: '12px 8px', borderRadius: '12px', textAlign: 'center', border: '1px solid #dcfce3' }}>
+                    <div style={{ flex: 1, background: 'rgba(16, 185, 129, 0.12)', padding: '12px 8px', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
                       <div style={{ fontSize: '18px', fontWeight: 800, color: '#10b981', marginBottom: '2px' }}>{doneTasks.length}</div>
                       <div style={{ color: '#34d399', fontWeight: 600, fontSize: '11px', textTransform: 'uppercase' }}>Готово</div>
                     </div>
