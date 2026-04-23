@@ -1,6 +1,7 @@
 // src/components/Header.tsx
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Brain,
   Search,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { Profile } from '../types';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
 
 interface HeaderProps {
   profile: Profile | undefined;
@@ -25,16 +27,17 @@ interface HeaderProps {
 }
 
 const NAV_ITEMS = [
-  { to: '/',           end: true,  label: 'Задачи', Icon: ListTodo },
-  { to: '/epics',      end: false, label: 'Эпики',  Icon: Target },
-  { to: '/gantt',      end: false, label: 'График', Icon: GanttChartSquare },
-  { to: '/whiteboard', end: false, label: 'Доска',  Icon: Palette },
-  { to: '/wiki',       end: false, label: 'Вики',   Icon: BookOpen },
+  { to: '/',           end: true,  i18nKey: 'nav.kanban',     Icon: ListTodo },
+  { to: '/epics',      end: false, i18nKey: 'nav.epics',      Icon: Target },
+  { to: '/gantt',      end: false, i18nKey: 'nav.gantt',      Icon: GanttChartSquare },
+  { to: '/whiteboard', end: false, i18nKey: 'nav.whiteboard', Icon: Palette },
+  { to: '/wiki',       end: false, i18nKey: 'nav.wiki',       Icon: BookOpen },
 ] as const;
 
 export const Header: React.FC<HeaderProps> = ({
   profile, userEmail, onSignOut, onSearchClick, onNotificationsClick, unreadCount,
 }) => {
+  const { t } = useTranslation();
   return (
     <header className="header">
       <div className="header__logo">
@@ -46,10 +49,10 @@ export const Header: React.FC<HeaderProps> = ({
         className="header__search-trigger"
         onClick={onSearchClick}
         type="button"
-        aria-label="Открыть поиск"
+        aria-label={t('common.search')}
       >
         <Search size={14} aria-hidden="true" />
-        <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Поиск…</span>
+        <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{t('common.search')}…</span>
         <kbd
           style={{
             marginLeft: 'auto',
@@ -66,24 +69,28 @@ export const Header: React.FC<HeaderProps> = ({
         </kbd>
       </button>
 
-      <nav className="header__nav" aria-label="Основная навигация">
-        {NAV_ITEMS.map(({ to, end, label, Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              `header__nav-btn ${isActive ? 'header__nav-btn--active' : ''}`
-            }
-            title={label}
-          >
-            <Icon size={14} aria-hidden="true" />
-            <span className="header__nav-label">{label}</span>
-          </NavLink>
-        ))}
+      <nav className="header__nav" aria-label={t('nav.kanban')}>
+        {NAV_ITEMS.map(({ to, end, i18nKey, Icon }) => {
+          const label = t(i18nKey);
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `header__nav-btn ${isActive ? 'header__nav-btn--active' : ''}`
+              }
+              title={label}
+            >
+              <Icon size={14} aria-hidden="true" />
+              <span className="header__nav-label">{label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
 
       <div className="header__user">
+        <LanguageToggle />
         <ThemeToggle />
         <button
           className="header__notification-btn"
@@ -96,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
         <Link
           to="/profile"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}
-          aria-label="Открыть профиль"
+          aria-label={t('nav.profile')}
         >
           <div className="header__avatar">
             {profile?.avatar_url ? (
@@ -111,8 +118,8 @@ export const Header: React.FC<HeaderProps> = ({
             {profile?.full_name || userEmail?.split('@')[0]}
           </span>
         </Link>
-        <button className="btn btn--ghost" onClick={onSignOut} aria-label="Выйти">
-          <LogOut size={14} /> Выйти
+        <button className="btn btn--ghost" onClick={onSignOut} aria-label={t('common.logout')}>
+          <LogOut size={14} /> {t('common.logout')}
         </button>
       </div>
     </header>
