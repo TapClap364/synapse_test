@@ -10,8 +10,8 @@
   --color-border: #e2e8f0;
   --color-border-light: #f1f5f9;
   --color-text: #0f172a;
-  --color-text-secondary: #64748b;
-  --color-text-muted: #94a3b8;
+  --color-text-secondary: #475569;  /* WCAG AA pass on f8fafc */
+  --color-text-muted: #64748b;      /* bumped from 94a3b8 (was failing AA) */
   --color-primary: #3b82f6;
   --color-primary-hover: #2563eb;
   --color-success: #10b981;

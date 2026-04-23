@@ -9,31 +9,33 @@ interface GanttBarProps {
 
 const PIXELS_PER_HOUR = 12;
 const ROW_HEIGHT = 56;
+const BAR_HEIGHT = 32;
 
 export const GanttBar: React.FC<GanttBarProps> = ({ task, index }) => {
   const duration = task.estimated_hours || 4;
   const es = task.es || 0;
   const width = Math.max(duration * PIXELS_PER_HOUR, 60);
   const left = es * PIXELS_PER_HOUR;
-  const top = index * ROW_HEIGHT;
+  // Vertically center the bar in its row.
+  const top = index * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2;
 
-  let bgColor = '#3b82f6';
-  if (task.status === 'done') bgColor = '#10b981';
+  let bgColor = 'var(--color-primary)';
+  if (task.status === 'done') bgColor = 'var(--color-success)';
 
   return (
-    <div style={{ position: 'absolute', left: `${left}px`, top: `${top}px`, height: '40px', zIndex: 10 }}>
+    <div style={{ position: 'absolute', left: `${left}px`, top: `${top}px`, height: BAR_HEIGHT, zIndex: 10 }}>
       <div
         className="gantt__bar"
-        title={`${task.title}\nДлительность: ${duration}ч`}
+        title={`${task.title}\nДлительность: ${duration}ч${task.status === 'done' ? ' • Готово' : ''}`}
         style={{
           width: `${width}px`,
           background: bgColor,
-          opacity: task.status === 'done' ? 0.85 : 1,
+          opacity: task.status === 'done' ? 0.9 : 1,
         }}
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {task.title}
-          {width >= 120 && <span style={{ marginLeft: '4px', opacity: 0.9 }}>({duration}ч)</span>}
+          {width >= 140 && <span style={{ marginLeft: 6, opacity: 0.85 }}>({duration}ч)</span>}
         </span>
       </div>
     </div>

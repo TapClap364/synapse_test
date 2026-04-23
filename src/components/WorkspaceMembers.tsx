@@ -147,38 +147,49 @@ export function WorkspaceMembers() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead>
             <tr style={{ background: 'var(--color-surface-alt)', textAlign: 'left' }}>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Имя</th>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Email</th>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Роль</th>
-              <th style={{ padding: '12px 16px', width: 60 }} aria-label="actions" />
+              <th style={{ padding: '14px 20px', fontWeight: 700, color: 'var(--color-text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Имя</th>
+              <th style={{ padding: '14px 20px', fontWeight: 700, color: 'var(--color-text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</th>
+              <th style={{ padding: '14px 20px', fontWeight: 700, color: 'var(--color-text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Роль</th>
+              <th style={{ padding: '14px 20px', width: 60 }} aria-label="actions" />
             </tr>
           </thead>
           <tbody>
             {members.map((m) => (
               <tr key={m.user_id} style={{ borderTop: '1px solid var(--color-border-light)' }}>
-                <td style={{ padding: '12px 16px', color: 'var(--color-text)' }}>{m.full_name ?? '—'}</td>
-                <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>{m.email ?? '—'}</td>
-                <td style={{ padding: '12px 16px' }}>
+                <td style={{ padding: '14px 20px', color: 'var(--color-text)', fontWeight: 500 }}>
+                  {m.full_name ?? <span style={{ color: 'var(--color-text-muted)' }}>Без имени</span>}
+                </td>
+                <td style={{ padding: '14px 20px', color: 'var(--color-text-secondary)' }}>
+                  {m.email
+                    ? <a href={`mailto:${m.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{m.email}</a>
+                    : <span style={{ color: 'var(--color-text-muted)' }}>Не указан</span>}
+                </td>
+                <td style={{ padding: '14px 20px' }}>
                   {canManage ? (
                     <select
                       value={m.role}
                       onChange={(e) => handleRoleChange(m.user_id, e.target.value as WorkspaceRole)}
                       aria-label={`Роль ${m.email ?? m.user_id}`}
                       style={{
-                        padding: '4px 8px',
+                        padding: '6px 10px',
                         fontSize: 13,
                         borderRadius: 6,
                         border: '1px solid var(--color-border)',
                         background: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        fontWeight: 500,
+                        cursor: 'pointer',
                       }}
                     >
                       {ROLES.map((r) => (
                         <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                       ))}
                     </select>
-                  ) : ROLE_LABELS[m.role]}
+                  ) : (
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>{ROLE_LABELS[m.role]}</span>
+                  )}
                 </td>
-                <td style={{ padding: '12px 16px' }}>
+                <td style={{ padding: '14px 20px' }}>
                   {canManage && (
                     <button
                       onClick={() => handleRemove(m.user_id)}
@@ -186,7 +197,7 @@ export function WorkspaceMembers() {
                       aria-label={`Удалить ${m.email ?? m.user_id}`}
                       style={{ padding: '6px 8px' }}
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={14} aria-hidden="true" />
                     </button>
                   )}
                 </td>

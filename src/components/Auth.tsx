@@ -3,32 +3,26 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Список стилей аватарок от DiceBear (бесплатно, не требует API ключа)
-const AVATAR_STYLES = ['avataaars', 'bottts', 'lorelei', 'notionists', 'open-peeps', 'pixel-art'];
+// Single deterministic DiceBear style for visual consistency across the app.
+const AVATAR_STYLE = 'notionists';
 
 export const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  
-  // Генерируем случайное "зерно" для аватара при загрузке компонента
   const [avatarSeed] = useState(() => Math.random().toString(36).substring(7));
-  const [selectedStyle, setSelectedStyle] = useState(AVATAR_STYLES[0]);
-
   const [isLogin, setIsLogin] = useState(true);
 
-  const inputStyle: React.CSSProperties = { 
-    padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', width: '100%', boxSizing: 'border-box' as const 
-  };
-  
-  const btnStyle: React.CSSProperties = { 
-    padding: '12px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: '#fff', fontWeight: 600, cursor: 'pointer', width: '100%' 
+  const inputStyle: React.CSSProperties = {
+    padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', outline: 'none', width: '100%', boxSizing: 'border-box',
   };
 
-  // Формируем URL выбранного аватара
-  const getAvatarUrl = (style: string) => 
-    `https://api.dicebear.com/7.x/${style}/svg?seed=${avatarSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
+  const btnStyle: React.CSSProperties = {
+    padding: '12px', borderRadius: '8px', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600, cursor: 'pointer', width: '100%',
+  };
+
+  const avatarUrl = `https://api.dicebear.com/7.x/${AVATAR_STYLE}/svg?seed=${avatarSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,22 +32,19 @@ export const Auth = () => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        const currentAvatarUrl = getAvatarUrl(selectedStyle);
-        
-        // ✅ Исправлено: правильная структура options.data
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               full_name: fullName.trim() || null,
-              avatar_url: currentAvatarUrl,
+              avatar_url: avatarUrl,
             },
           },
         });
-        
+
         if (error) throw error;
-        alert('✅ Регистрация успешна! Проверьте почту для подтверждения входа.');
+        alert('Регистрация успешна! Проверьте почту для подтверждения входа.');
       }
     } catch (error: any) {
       alert(error.message || 'Ошибка авторизации');
@@ -75,41 +66,23 @@ export const Auth = () => {
         
         {!isLogin && (
           <>
-            <input 
-              type="text" 
-              placeholder="Полное имя" 
-              value={fullName} 
-              onChange={(e) => setFullName(e.target.value)} 
-              style={{ ...inputStyle, background: '#f8fafc' }} 
+            <input
+              type="text"
+              placeholder="Полное имя"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              style={{ ...inputStyle, background: 'var(--color-surface-alt)' }}
             />
-            
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', marginBottom: '12px', display: 'block' }}>Ваш аватар:</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', marginBottom: '10px' }}>
-                {AVATAR_STYLES.map((style) => (
-                  <div 
-                    key={style}
-                    onClick={() => setSelectedStyle(style)}
-                    style={{
-                      cursor: 'pointer',
-                      border: selectedStyle === style ? '2px solid #3b82f6' : '2px solid transparent',
-                      borderRadius: '10px',
-                      padding: '2px',
-                      background: selectedStyle === style ? '#eff6ff' : '#f1f5f9',
-                      transition: 'all 0.2s',
-                      aspectRatio: '1/1',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <img 
-                      src={getAvatarUrl(style)} 
-                      alt={style} 
-                      style={{ width: '100%', height: '100%', borderRadius: '8px' }} 
-                    />
-                  </div>
-                ))}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img
+                src={avatarUrl}
+                alt="Ваш аватар"
+                style={{ width: 56, height: 56, borderRadius: '50%', border: '2px solid var(--color-primary)' }}
+              />
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                Аватар сгенерирован автоматически.<br />
+                Сменить можно потом в профиле.
               </div>
             </div>
           </>

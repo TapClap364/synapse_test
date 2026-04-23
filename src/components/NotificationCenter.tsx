@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, Info, type LucideIcon } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Info, Trash2, type LucideIcon } from 'lucide-react';
 
 const TYPE_META: Record<'info' | 'success' | 'warning', { Icon: LucideIcon; color: string }> = {
   success: { Icon: CheckCircle2,   color: 'var(--color-success)' },
@@ -83,12 +83,16 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifica
         )}
       </div>
 
-      <div style={{ padding: '12px', textAlign: 'center', background: '#f8fafc', borderTop: '1px solid var(--color-border)' }}>
-        <button 
+      <div style={{ padding: 12, textAlign: 'center', background: 'var(--color-surface-alt)', borderTop: '1px solid var(--color-border)' }}>
+        <button
           onClick={onClearAll}
-          style={{ border: 'none', background: 'transparent', color: 'var(--color-primary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+          style={{
+            border: 'none', background: 'transparent', color: 'var(--color-primary)',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 6,
+          }}
         >
-          Очистить всё
+          <Trash2 size={12} aria-hidden="true" /> Очистить всё
         </button>
       </div>
     </div>

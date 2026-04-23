@@ -207,18 +207,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
 
                       return (
                         <div key={idx} onClick={toggleTask} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', color: isDone ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
-                          <div style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            borderRadius: '4px', 
-                            border: '2px solid', 
-                            borderColor: isDone ? 'var(--color-primary)' : '#cbd5e1',
+                          <div style={{
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '4px',
+                            border: '2px solid',
+                            borderColor: isDone ? 'var(--color-primary)' : 'var(--color-border)',
                             background: isDone ? 'var(--color-primary)' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             color: '#fff',
-                            fontSize: '12px'
+                            fontSize: '12px',
+                            flexShrink: 0,
                           }}>
                             {isDone && '✓'}
                           </div>
@@ -227,8 +228,52 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
                       );
                     })}
                   </div>
+                  <button
+                    onClick={() => {
+                      const item = window.prompt('Текст подзадачи:');
+                      if (item && item.trim()) setDescription(prev => `${prev}\n- [ ] ${item.trim()}`);
+                    }}
+                    style={{
+                      marginTop: 12,
+                      background: 'transparent',
+                      border: '1px dashed var(--color-border)',
+                      borderRadius: 8,
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: 'var(--color-text-secondary)',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    + Добавить подзадачу
+                  </button>
                 </div>
-              ) : null}
+              ) : (
+                <button
+                  onClick={() => {
+                    const item = window.prompt('Текст подзадачи:');
+                    if (item && item.trim()) setDescription(prev => `${prev}${prev ? '\n\n' : ''}### Подзадачи:\n- [ ] ${item.trim()}`);
+                  }}
+                  style={{
+                    background: 'var(--color-surface-alt)',
+                    border: '1px dashed var(--color-border)',
+                    borderRadius: 12,
+                    padding: '12px',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: 'var(--color-text-secondary)',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <CheckSquare size={14} aria-hidden="true" /> + Добавить чек-лист подзадач
+                </button>
+              )}
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Эпик</label>
@@ -338,7 +383,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
                     </button>
                   ))}
                   {aiSuggestions.length === 0 && !isSuggesting && (
-                    <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>Нажмите «Сгенерировать» для получения идей</span>
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      padding: '6px 12px', background: 'var(--color-ai-bg)', border: '1px dashed var(--color-ai-border)',
+                      borderRadius: 8, fontSize: 12, color: 'var(--color-ai)',
+                    }}>
+                      <Sparkles size={12} aria-hidden="true" /> Нажмите «Сгенерировать» — ИИ предложит варианты ответа
+                    </div>
                   )}
                 </div>
               </div>

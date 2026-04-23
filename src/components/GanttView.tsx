@@ -59,11 +59,19 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
             );
 
             return (
-              <div key={epic.title} style={{ marginBottom: '32px', position: 'relative' }}>
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Folder size={16} aria-hidden="true" /> {epic.title}
-                  <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 400 }}>
-                    ({epic.tasks.length} задач, {epicMaxDuration}ч)
+              <div key={epic.title} style={{
+                marginBottom: 24,
+                position: 'relative',
+                padding: '16px 20px 20px',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: 12,
+              }}>
+                <h3 style={{ margin: '0 0 14px 0', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Folder size={14} aria-hidden="true" style={{ color: 'var(--color-text-secondary)' }} />
+                  {epic.title}
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>
+                    {epic.tasks.length} задач • {epicMaxDuration}ч
                   </span>
                 </h3>
 

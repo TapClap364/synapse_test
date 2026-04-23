@@ -93,12 +93,9 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
         <Link
           to="/profile"
-          style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}
-          aria-label="Профиль"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}
+          aria-label="Открыть профиль"
         >
-          <div className="header__user-info">
-            <div className="header__user-name">{profile?.full_name || userEmail?.split('@')[0]}</div>
-          </div>
           <div className="header__avatar">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="" />
@@ -108,6 +105,9 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
+          <span className="header__user-name">
+            {profile?.full_name || userEmail?.split('@')[0]}
+          </span>
         </Link>
         <button className="btn btn--ghost" onClick={onSignOut} aria-label="Выйти">
           <LogOut size={14} /> Выйти

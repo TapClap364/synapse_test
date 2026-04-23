@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload } from 'lucide-react';
+import { Upload, User, Loader2, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useWorkspace } from '../lib/workspace';
 import { apiPost } from '../lib/apiClient';
@@ -10,12 +10,14 @@ interface ProfilePageProps {
   onRefresh: () => void;
 }
 
+type MessageState = { kind: 'ok' | 'err' | 'loading'; text: string } | null;
+
 export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) => {
-  const { currentWorkspaceId } = useWorkspace();
+  const { currentWorkspaceId, workspaces, currentRole } = useWorkspace();
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [roleDescription, setRoleDescription] = useState(profile?.role_description || '');
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<MessageState>(null);
 
   useEffect(() => {
     if (profile) {
@@ -27,21 +29,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
   const handleSave = async () => {
     if (!profile) return;
     setIsSaving(true);
-    setMessage('');
+    setMessage(null);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({
-          full_name: fullName,
-          role_description: roleDescription,
-        })
+        .update({ full_name: fullName, role_description: roleDescription })
         .eq('id', profile.id);
 
       if (error) throw error;
-      setMessage('✅ Профиль успешно обновлен!');
+      setMessage({ kind: 'ok', text: 'Профиль обновлён' });
       onRefresh();
     } catch (e) {
-      setMessage('❌ Ошибка при сохранении.');
+      setMessage({ kind: 'err', text: 'Ошибка при сохранении' });
       console.error(e);
     } finally {
       setIsSaving(false);
@@ -53,16 +52,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
     if (!file) return;
 
     setIsSaving(true);
-    setMessage('⏳ Анализирую инструкцию...');
-    
+    setMessage({ kind: 'loading', text: 'Анализирую инструкцию…' });
+
     try {
-      // Читаем файл прямо в браузере
       const reader = new FileReader();
       reader.onload = async (event) => {
         const text = event.target?.result as string;
 
         if (!currentWorkspaceId) {
-          setMessage('❌ Нет активного workspace.');
+          setMessage({ kind: 'err', text: 'Нет активного workspace.' });
           setIsSaving(false);
           return;
         }
@@ -72,94 +70,172 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
             body: { text, action: 'parse_job_description' },
           });
           setRoleDescription(data.result);
-          setMessage('✅ Инструкция успешно проанализирована!');
+          setMessage({ kind: 'ok', text: 'Инструкция проанализирована' });
         } catch (err) {
-          setMessage(`❌ Ошибка ИИ-анализа: ${err instanceof Error ? err.message : 'unknown'}`);
+          setMessage({ kind: 'err', text: `Ошибка ИИ: ${err instanceof Error ? err.message : 'unknown'}` });
         } finally {
           setIsSaving(false);
         }
       };
-      
       reader.readAsText(file);
-    } catch (e) {
-      setMessage('❌ Не удалось прочитать файл.');
+    } catch {
+      setMessage({ kind: 'err', text: 'Не удалось прочитать файл.' });
       setIsSaving(false);
     }
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', height: 'calc(100vh - 80px)', overflowY: 'auto' }}>
-      <div style={{ background: 'var(--color-bg)', padding: '40px', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--color-border)', marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 800, marginBottom: '8px', color: 'var(--color-text)' }}>Личный кабинет</h1>
-        <p style={{ color: 'var(--color-text-secondary)', marginBottom: '40px' }}>Настройте свои данные и опишите роль для обучения AI-Оркестратора</p>
+    <div style={{ padding: '32px 24px', maxWidth: 960, margin: '0 auto', height: 'calc(100vh - 80px)', overflowY: 'auto' }}>
+      <header style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>Личный кабинет</h1>
+        <p style={{ color: 'var(--color-text-secondary)', margin: '6px 0 0 0', fontSize: 14 }}>
+          Профиль и компетенции для AI-Оркестратора
+        </p>
+      </header>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-          {/* Avatar Preview */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'var(--color-bg-secondary)', overflow: 'hidden', border: '4px solid var(--color-primary)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 24 }}>
+        {/* LEFT — main form card */}
+        <section style={{
+          background: 'var(--color-surface)',
+          padding: 28,
+          borderRadius: 'var(--radius-xl)',
+          border: '1px solid var(--color-border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28, paddingBottom: 20, borderBottom: '1px solid var(--color-border-light)' }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'var(--color-surface-alt)', overflow: 'hidden',
+              border: '2px solid var(--color-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>👤</div>
+                <User size={28} style={{ color: 'var(--color-text-muted)' }} />
               )}
             </div>
-            <div>
-              <h3 style={{ margin: 0 }}>{profile?.full_name || 'Пользователь'}</h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>Ваш уникальный идентификатор: {profile?.id.slice(0, 8)}...</p>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>
+                {profile?.full_name || 'Без имени'}
+              </h2>
+              <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'ui-monospace, monospace' }}>
+                ID: {profile?.id.slice(0, 8)}…
+              </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontWeight: 600, fontSize: '14px' }}>Полное имя</label>
-            <input 
-              type="text" 
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text)', outline: 'none' }}
-              placeholder="Как к вам обращаться?"
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontWeight: 600, fontSize: '14px' }}>Ваша роль и компетенции (для ИИ)</label>
-              <label style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: '13px',
-                color: 'var(--color-primary)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                padding: '6px 12px',
-                borderRadius: '8px',
-                background: 'rgba(59, 130, 246, 0.1)',
-              }}>
-                <Upload size={14} aria-hidden="true" /> Загрузить инструкцию
-                <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept=".txt,.pdf,.docx,.md" />
-              </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-secondary)' }}>Полное имя</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none', fontSize: 14 }}
+                placeholder="Как к вам обращаться?"
+              />
             </div>
-            <textarea 
-              value={roleDescription}
-              onChange={(e) => setRoleDescription(e.target.value)}
-              style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text)', outline: 'none', minHeight: '150px', resize: 'vertical', lineHeight: '1.6' }}
-              placeholder="Например: Я старший фронтенд-разработчик. Отвечаю за React архитектуру, оптимизацию производительности и дизайн-систему. Могу брать задачи по верстке и логике интерфейсов."
-            />
-            <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>Чем подробнее вы опишете свои функции, тем точнее AI-Оркестратор будет назначать вам задачи.</p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <label style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                  Роль и компетенции (для ИИ)
+                </label>
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontSize: 12, color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600,
+                  padding: '4px 10px', borderRadius: 6, background: 'var(--color-ai-bg)',
+                  border: '1px solid var(--color-ai-border)',
+                }}>
+                  <Upload size={12} aria-hidden="true" /> Загрузить инструкцию
+                  <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept=".txt,.pdf,.docx,.md" />
+                </label>
+              </div>
+              <textarea
+                value={roleDescription}
+                onChange={(e) => setRoleDescription(e.target.value)}
+                style={{ padding: 14, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none', minHeight: 140, resize: 'vertical', lineHeight: 1.6, fontSize: 14, fontFamily: 'inherit' }}
+                placeholder="Например: Я старший фронтенд-разработчик. Отвечаю за React архитектуру, оптимизацию производительности и дизайн-систему."
+              />
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
+                Чем подробнее опишете — тем точнее AI-Оркестратор подберёт задачи.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 4 }}>
+              <button onClick={handleSave} disabled={isSaving} className="btn btn--primary btn--lg">
+                {isSaving ? <><Loader2 size={14} className="animate-spin" /> Сохранение…</> : 'Сохранить изменения'}
+              </button>
+              {message && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600,
+                  color: message.kind === 'ok' ? 'var(--color-success)' : message.kind === 'err' ? 'var(--color-danger)' : 'var(--color-text-secondary)',
+                }}>
+                  {message.kind === 'ok' && <Check size={14} aria-hidden="true" />}
+                  {message.kind === 'err' && <AlertCircle size={14} aria-hidden="true" />}
+                  {message.kind === 'loading' && <Loader2 size={14} className="animate-spin" />}
+                  {message.text}
+                </span>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* RIGHT — sidebar */}
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{
+            background: 'var(--color-surface)', padding: 20, borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)',
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Текущая роль
+            </h3>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)', textTransform: 'capitalize' }}>
+              {currentRole ?? '—'}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button 
-              onClick={handleSave}
-              disabled={isSaving}
-              className="btn btn--primary"
-              style={{ padding: '14px 40px', fontSize: '16px' }}
-            >
-              {isSaving ? '⏳ Сохранение...' : 'Сохранить изменения'}
-            </button>
-            {message && <span style={{ color: message.includes('✅') ? '#10b981' : '#ef4444', fontWeight: 600 }}>{message}</span>}
+          <div style={{
+            background: 'var(--color-surface)', padding: 20, borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)',
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Ваши workspace ({workspaces.length})
+            </h3>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {workspaces.length === 0
+                ? <li style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Нет workspace</li>
+                : workspaces.map((m) => (
+                  <li key={m.workspace.id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+                    fontSize: 13, color: 'var(--color-text)',
+                    padding: '6px 8px', borderRadius: 6,
+                    background: m.workspace.id === currentWorkspaceId ? 'var(--color-surface-alt)' : 'transparent',
+                  }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.workspace.name}</span>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>
+                      {m.role}
+                    </span>
+                  </li>
+                ))
+              }
+            </ul>
           </div>
-        </div>
+
+          <div style={{
+            background: 'var(--color-ai-bg)', padding: 20, borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-ai-border)',
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: 13, fontWeight: 700, color: 'var(--color-ai)' }}>
+              💡 Подсказка
+            </h3>
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+              Загрузите вашу должностную инструкцию (TXT/MD/PDF) — ИИ сам составит описание роли для оркестратора.
+            </p>
+          </div>
+        </aside>
       </div>
     </div>
   );
