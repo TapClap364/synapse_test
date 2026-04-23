@@ -72,27 +72,18 @@ export function WorkspaceProvider({ userId, children }: { userId: string | null;
 
   const createWorkspace = async (name: string): Promise<WorkspaceMembership> => {
     if (!userId) throw new Error('Not authenticated')
-    // Force a fresh JWT before INSERT — RLS uses auth.uid(), and a stale/expired
-    // session silently downgrades the request to anon, which fails ws_insert.
-    const { data: sessionData } = await supabase.auth.getSession()
-    if (!sessionData.session) {
-      const refreshed = await supabase.auth.refreshSession()
-      if (refreshed.error || !refreshed.data.session) {
-        throw new Error('Сессия истекла, войдите заново')
-      }
-    }
-    const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).slice(2, 8)}`
-    // The owner membership row is created by trg_handle_workspace_created (migration 009).
-    const { data: ws, error: wsErr } = await supabase
-      .from('workspaces')
-      .insert({ name, slug, created_by: userId })
-      .select()
-      .single()
-    if (wsErr || !ws) throw wsErr ?? new Error('Failed to create workspace')
+    // Use the create-workspace Edge Function (service-role insert) — direct PostgREST
+    // INSERT was hitting wm_* policy recursion + occasional auth.uid()=null edge cases.
+    const { data, error } = await supabase.functions.invoke<{
+      workspace: Tables<'workspaces'>
+      role: WorkspaceRole
+    }>('create-workspace', { body: { name } })
+    if (error) throw error
+    if (!data?.workspace) throw new Error('Edge function returned no workspace')
 
     await refresh()
-    setCurrentWorkspaceId(ws.id)
-    return { workspace: ws, role: 'owner' }
+    setCurrentWorkspaceId(data.workspace.id)
+    return { workspace: data.workspace, role: data.role }
   }
 
   const currentRole = useMemo<WorkspaceRole | null>(() => {
