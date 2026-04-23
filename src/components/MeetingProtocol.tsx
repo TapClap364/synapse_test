@@ -1,7 +1,8 @@
 // src/components/MeetingProtocol.tsx
 import React from 'react';
-import { Calendar, FileText } from 'lucide-react';
+import { Calendar, FileText, Network } from 'lucide-react';
 import type { Meeting } from '../types';
+import { MindMapViewer } from './MindMapViewer';
 
 interface MeetingProtocolProps {
   meeting: Meeting;
@@ -76,6 +77,17 @@ export const MeetingProtocol: React.FC<MeetingProtocolProps> = ({ meeting }) => 
           </h2>
           <div className="protocol__summary" style={{ whiteSpace: 'pre-wrap' }}>
             {summary || 'Резюме отсутствует.'}
+          </div>
+        </div>
+      )}
+
+      {meeting.mind_map_data && (
+        <div className="protocol__section">
+          <h2 className="protocol__section-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Network size={18} aria-hidden="true" /> Mind Map
+          </h2>
+          <div className="protocol__mindmap-container">
+            <MindMapViewer node={meeting.mind_map_data} />
           </div>
         </div>
       )}

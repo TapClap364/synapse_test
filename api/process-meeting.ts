@@ -9,11 +9,19 @@ const InputSchema = z.object({
   title: z.string().max(200).optional(),
 });
 
+const MindMapNode: z.ZodType<{ label: string; children?: unknown[] }> = z.lazy(() =>
+  z.object({
+    label: z.string(),
+    children: z.array(MindMapNode).optional(),
+  })
+);
+
 const AiResultSchema = z.object({
   goal: z.string().max(500).optional().default(''),
   decisions: z.array(z.string().max(500)).max(20).optional().default([]),
   action_items: z.array(z.string().max(500)).max(30).optional().default([]),
   participants: z.array(z.string().max(120)).max(30).optional().default([]),
+  mind_map: MindMapNode.optional(),
   tasks: z
     .array(
       z.object({
@@ -69,6 +77,7 @@ export default createHandler(
   "decisions": ["Принятое решение 1", "Решение 2"],
   "action_items": ["Что-то сделать к дате — ответственный (если упомянут)"],
   "participants": ["Имя 1", "Имя 2"],
+  "mind_map": { "label": "Главная тема встречи", "children": [{ "label": "Ветка 1", "children": [{ "label": "Деталь" }] }] },
   "tasks": [
     {
       "title": "Задача",
@@ -79,7 +88,7 @@ export default createHandler(
     }
   ]
 }
-Если какой-то секции нет в тексте — верни пустой массив/строку. Не выдумывай.`,
+Если какой-то секции нет в тексте — верни пустой массив/строку. Не выдумывай. mind_map должен наглядно отражать структуру обсуждения.`,
         },
         { role: 'user', content: body.text },
       ],
@@ -101,7 +110,7 @@ export default createHandler(
       .insert({
         title: body.title ?? `Meeting ${new Date().toLocaleString('ru-RU')}`,
         summary: summaryMarkdown,
-        mind_map_data: null,
+        mind_map_data: aiResult.mind_map ?? null,
         workspace_id: auth.workspaceId,
       })
       .select()
