@@ -73,17 +73,13 @@ export function WorkspaceProvider({ userId, children }: { userId: string | null;
   const createWorkspace = async (name: string): Promise<WorkspaceMembership> => {
     if (!userId) throw new Error('Not authenticated')
     const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).slice(2, 8)}`
+    // The membership row is created by the AFTER INSERT trigger handle_workspace_created (migration 009).
     const { data: ws, error: wsErr } = await supabase
       .from('workspaces')
       .insert({ name, slug, created_by: userId })
       .select()
       .single()
     if (wsErr || !ws) throw wsErr ?? new Error('Failed to create workspace')
-
-    const { error: memErr } = await supabase
-      .from('workspace_members')
-      .insert({ workspace_id: ws.id, user_id: userId, role: 'owner' })
-    if (memErr) throw memErr
 
     await refresh()
     setCurrentWorkspaceId(ws.id)

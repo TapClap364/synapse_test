@@ -67,21 +67,18 @@ export function WorkspaceMembers() {
     if (!currentWorkspaceId || !inviteEmail.trim()) return
     setInviteBusy(true)
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', inviteEmail.trim())
-        .maybeSingle()
-      if (!profile) {
-        alert('Пользователь с таким email не найден. Полноценный invite-by-email требует Edge Function — см. README.')
-        return
-      }
-      const { error } = await supabase
-        .from('workspace_members')
-        .insert({ workspace_id: currentWorkspaceId, user_id: profile.id, role: inviteRole })
+      const { data, error } = await supabase.functions.invoke<{
+        status: 'added' | 'invited'
+        email?: string
+      }>('invite-member', {
+        body: { workspaceId: currentWorkspaceId, email: inviteEmail.trim(), role: inviteRole },
+      })
       if (error) throw error
       setInviteEmail('')
       await loadMembers()
+      if (data?.status === 'invited') {
+        alert(`Приглашение отправлено на ${data.email}. Пользователь будет добавлен в workspace после регистрации.`)
+      }
     } catch (err) {
       alert(`Ошибка приглашения: ${err instanceof Error ? err.message : 'unknown'}`)
     } finally {
