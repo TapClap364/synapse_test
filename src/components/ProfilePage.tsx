@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useWorkspace } from '../lib/workspace';
+import { apiPost } from '../lib/apiClient';
 import { Profile } from '../types';
 
 interface ProfilePageProps {
@@ -8,6 +10,7 @@ interface ProfilePageProps {
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) => {
+  const { currentWorkspaceId } = useWorkspace();
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [roleDescription, setRoleDescription] = useState(profile?.role_description || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -56,21 +59,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
       const reader = new FileReader();
       reader.onload = async (event) => {
         const text = event.target?.result as string;
-        
-        try {
-          const res = await fetch('/api/parse-job-description', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
-          });
 
-          if (!res.ok) throw new Error('Ошибка при разборе');
-          
-          const data = await res.json();
-          setRoleDescription(data.extracted_role);
+        if (!currentWorkspaceId) {
+          setMessage('❌ Нет активного workspace.');
+          setIsSaving(false);
+          return;
+        }
+        try {
+          const data = await apiPost<{ result: string }>('/api/wiki-ai-action', {
+            workspaceId: currentWorkspaceId,
+            body: { text, action: 'parse_job_description' },
+          });
+          setRoleDescription(data.result);
           setMessage('✅ Инструкция успешно проанализирована!');
         } catch (err) {
-          setMessage('❌ Ошибка ИИ-анализа.');
+          setMessage(`❌ Ошибка ИИ-анализа: ${err instanceof Error ? err.message : 'unknown'}`);
         } finally {
           setIsSaving(false);
         }
