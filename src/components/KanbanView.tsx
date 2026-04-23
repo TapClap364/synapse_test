@@ -1,6 +1,6 @@
 // src/components/KanbanView.tsx
 import React from 'react';
-import { Inbox, Loader, CheckCircle2, Link as LinkIcon, type LucideIcon } from 'lucide-react';
+import { Inbox, Loader, CheckCircle2, Link as LinkIcon, Clock, type LucideIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Task, Profile } from '../types';
 import { formatTaskId, getInitials } from '../types';
@@ -87,7 +87,19 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                           )}
                         </div>
                         <div className="kanban__card-title">{t.title}</div>
-                        <div className="kanban__card-epic">{epics[t.epic_id || 0] || 'Без эпика'}</div>
+                        <div className="kanban__card-epic" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {epics[t.epic_id || 0] || 'Без эпика'}
+                          </span>
+                          {typeof t.estimated_hours === 'number' && t.estimated_hours > 0 && (
+                            <span
+                              title="Оценка трудозатрат"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--color-text-muted)', flexShrink: 0 }}
+                            >
+                              <Clock size={11} aria-hidden="true" />{t.estimated_hours}ч
+                            </span>
+                          )}
+                        </div>
 
                         {t.assigned_to && (
                           <div className="kanban__card-assignee">
