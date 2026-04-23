@@ -38,7 +38,7 @@ export interface Profile {
 export interface Document {
   id: string;
   title: string;
-  content: any; // jsonb
+  content: unknown; // jsonb (string | { html: string } | object)
   parent_id: string | null;
   created_at: string;
   updated_at: string;
@@ -66,7 +66,7 @@ export interface EpicGroup {
 
 export interface MeetingResult {
   summary: string;
-  mindMap: any | null;
+  mindMap: MindMapNodeData | null;
   tasksCreated: number;
 }
 

@@ -16,6 +16,8 @@ import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import { supabase } from '../lib/supabase';
+import { useWorkspace } from '../lib/workspace';
+import { apiPost } from '../lib/apiClient';
 
 const ToolBtn = ({ children, onClick, active, title }: any) => (
   <button 
@@ -41,11 +43,12 @@ const ToolBtn = ({ children, onClick, active, title }: any) => (
 
 interface DocumentEditorProps {
   documentId: string | null;
-  onSave: () => void;
+  onSave?: () => void;
   onRefresh: () => void;
 }
 
-export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSave, onRefresh }) => {
+export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onRefresh }) => {
+  const { currentWorkspaceId } = useWorkspace();
   const [title, setTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -82,15 +85,22 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       const { data } = await supabase.from('documents').select('*').eq('id', documentId).single();
       if (data) {
         setTitle(data.title);
-        // Обработка разных форматов контента (строка или JSON с полем html)
-        const content = typeof data.content === 'object' && data.content !== null && 'html' in data.content 
-          ? data.content.html 
-          : data.content;
-        if (content) editor.commands.setContent(content);
+        // Content can be string OR { html: string } OR null. Coerce to string.
+        const raw = data.content;
+        let html = '';
+        if (typeof raw === 'string') {
+          html = raw;
+        } else if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'html' in raw) {
+          const maybeHtml = (raw as { html: unknown }).html;
+          if (typeof maybeHtml === 'string') html = maybeHtml;
+        }
+        if (html) editor.commands.setContent(html);
       }
     };
     fetchDoc();
     fetchAttachments();
+    // fetchAttachments captures documentId via closure
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, editor]);
 
   const fetchAttachments = async () => {
@@ -101,7 +111,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !documentId) return;
+    if (!file || !documentId || !currentWorkspaceId) return;
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${documentId}/${Date.now()}.${fileExt}`;
@@ -110,8 +120,12 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
       const urlResponse = supabase.storage.from('document-attachments').getPublicUrl(fileName);
       const publicUrl = urlResponse.data.publicUrl;
       const insertResponse = await supabase.from('attachments').insert({
-        document_id: documentId, file_name: file.name, file_type: file.type,
-        file_size: file.size, file_url: publicUrl
+        document_id: documentId,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+        file_url: publicUrl,
+        workspace_id: currentWorkspaceId,
       }).select().single();
       if (insertResponse.error) throw insertResponse.error;
       const attachmentData = insertResponse.data;
@@ -122,40 +136,40 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
     } catch (error: any) { alert(`Ошибка: ${error.message}`); }
   };
 
-  const handleAiOcr = async (fileUrl: string, action: 'text' | 'table', fileType: string) => {
+  const handleAiOcr = async (fileUrl: string, action: 'text' | 'table') => {
+    if (!currentWorkspaceId) return;
     setIsAiLoading(true);
     try {
-      const res = await fetch('/api/ai-ocr', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileUrl, action, fileType }),
+      const apiAction = action === 'table' ? 'table' : 'extract';
+      const data = await apiPost<{ result: string }>('/api/ai-ocr', {
+        workspaceId: currentWorkspaceId,
+        body: { fileUrl, action: apiAction },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'OCR Error');
       if (data.result) {
         if (action === 'table') editor?.chain().focus().insertContent(data.result).run();
         else editor?.chain().focus().insertContent(`<div style="white-space: pre-wrap;">${data.result}</div>`).run();
       }
-    } catch (e: any) { alert(`Ошибка AI: ${e.message}`); } 
+    } catch (e: any) { alert(`Ошибка AI: ${e.message}`); }
     finally { setIsAiLoading(false); }
   };
 
   const handleAiAction = async (action: string) => {
-    if (!editor) return;
-    const selectedText = editor.state.selection.empty ? editor.getText() : editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ');
-    if (!selectedText.trim()) { alert("Выделите текст!"); return; }
+    if (!editor || !currentWorkspaceId) return;
+    const selectedText = editor.state.selection.empty
+      ? editor.getText()
+      : editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ');
+    if (!selectedText.trim()) { alert('Выделите текст!'); return; }
     setIsAiLoading(true);
     try {
-      const res = await fetch('/api/wiki-ai-action', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: selectedText, action }),
+      const data = await apiPost<{ result: string }>('/api/wiki-ai-action', {
+        workspaceId: currentWorkspaceId,
+        body: { text: selectedText, action },
       });
-      if (!res.ok) throw new Error('AI Error');
-      const data = await res.json();
       if (data.result) {
         if (editor.state.selection.empty) editor.chain().focus().insertContent(data.result).run();
         else editor.chain().focus().deleteSelection().insertContent(data.result).run();
       }
-    } catch (e: any) { alert(`Ошибка AI: ${e.message}`); } 
+    } catch (e: any) { alert(`Ошибка AI: ${e.message}`); }
     finally { setIsAiLoading(false); }
   };
 
@@ -310,14 +324,14 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onSa
             <span style={{ fontWeight: 500, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {isPdf ? '📄' : '🖼️'} {att.file_name}
             </span>
-            <button onClick={() => handleAiOcr(att.file_url, 'text', att.file_type)} 
+            <button onClick={() => handleAiOcr(att.file_url, 'text')}
               disabled={isAiLoading} style={{
                 padding: '3px 8px', borderRadius: '4px', border: '1px solid #bae6fd',
                 background: '#eff6ff', color: '#0284c7', cursor: 'pointer', fontSize: '11px', fontWeight: 500
               }}>
               {isPdf ? '📝 Распознать' : '📝 Текст'}
             </button>
-            <button onClick={() => handleAiOcr(att.file_url, 'table', att.file_type)} 
+            <button onClick={() => handleAiOcr(att.file_url, 'table')} 
               disabled={isAiLoading} style={{
                 padding: '3px 8px', borderRadius: '4px', border: '1px solid #bbf7d0',
                 background: '#f0fdf4', color: '#16a34a', cursor: 'pointer', fontSize: '11px', fontWeight: 500

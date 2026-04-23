@@ -1,52 +1,50 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import { createHandler } from './_lib/handler';
+import { getServiceSupabase } from './_lib/supabase';
+import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai';
+import { HttpError } from './_lib/errors';
 
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY || '',
-  defaultHeaders: {
-    "HTTP-Referer": "https://synapse-app.vercel.app",
-    "X-Title": "Synapse AI Calendar Agent",
-  },
+const InputSchema = z.object({
+  epic_id: z.number().int().positive().optional(),
+  task_titles: z.array(z.string().max(200)).max(50).optional(),
+  prompt: z.string().max(2_000).optional(),
 });
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const ResultSchema = z.object({
+  title: z.string().min(1).max(200),
+  agenda: z.array(z.string().max(300)).max(20),
+  duration_minutes: z.number().int().min(5).max(480).optional().default(45),
+  justification: z.string().max(1_000).optional().default(''),
+});
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+export default createHandler(
+  { method: 'POST', schema: InputSchema, rateLimit: 'ai', requireWrite: true },
+  async ({ auth, body, res }) => {
+    const supabase = getServiceSupabase();
 
-  const { epic_id, task_titles, prompt } = req.body;
-
-  try {
     let epicTitle = 'Синхронизация по проекту';
     let epicDescription = '';
     let tasksStr = '';
 
-    if (epic_id) {
-      const { data: epic, error: epicError } = await supabase
+    if (body.epic_id) {
+      const { data: epic } = await supabase
         .from('epics')
-        .select('*')
-        .eq('id', epic_id)
-        .single();
-      if (!epicError && epic) {
+        .select('id, title, description')
+        .eq('id', body.epic_id)
+        .eq('workspace_id', auth.workspaceId)
+        .maybeSingle();
+      if (epic) {
         epicTitle = epic.title;
-        epicDescription = epic.description || '';
+        epicDescription = epic.description ?? '';
       }
-
-      const { data: tasks, error: tasksError } = await supabase
+      const { data: tasks } = await supabase
         .from('tasks')
-        .select('*')
-        .eq('epic_id', epic_id);
-      if (!tasksError && tasks) {
-        tasksStr = tasks.map((t: any) => `- [${t.status}] ${t.title}`).join('\n');
-      }
-    } else if (task_titles && Array.isArray(task_titles)) {
-      tasksStr = task_titles.map((t: string) => `- ${t}`).join('\n');
+        .select('title, status')
+        .eq('epic_id', body.epic_id)
+        .eq('workspace_id', auth.workspaceId);
+      tasksStr = (tasks ?? []).map((t) => `- [${t.status}] ${t.title}`).join('\n');
+    } else if (body.task_titles && body.task_titles.length > 0) {
+      tasksStr = body.task_titles.map((t) => `- ${t}`).join('\n');
     }
 
     const systemPrompt = `You are an AI Calendar Scheduling Agent for a project management tool called Synapse AI.
@@ -60,51 +58,47 @@ Description: ${epicDescription}
 Tasks to discuss:
 ${tasksStr || 'Общий статус проекта'}
 
-Based on this context, propose a meeting title, agenda (bullet points), duration in minutes, and a justification.
 Output must be pure JSON:
 {
   "title": "Заголовок встречи на русском",
   "agenda": ["Пункт 1", "Пункт 2"],
   "duration_minutes": 45,
   "justification": "Обоснование на русском"
-}
-`;
+}`;
 
-    const response = await openai.chat.completions.create({
-      model: 'meta-llama/llama-3.3-70b-instruct',
+    const response = await getOpenAI().chat.completions.create({
+      model: AI_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt || 'Analyze tasks and schedule a sync.' }
+        { role: 'user', content: body.prompt ?? 'Analyze tasks and schedule a sync.' },
       ],
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
     });
 
-    const aiResult = response.choices[0].message.content;
-    if (!aiResult) throw new Error('No AI response');
+    const raw = safeParseAiJson(response.choices[0]?.message?.content);
+    if (!raw) throw new HttpError(502, 'AI returned invalid JSON');
+    const parsed = ResultSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new HttpError(502, 'AI response did not match expected schema', parsed.error.flatten());
+    }
 
-    const parsedData = JSON.parse(aiResult);
-
-    const { data: meeting, error: meetingError } = await supabase
+    const { data: meeting, error: meetingErr } = await supabase
       .from('meetings')
       .insert({
-        title: parsedData.title,
-        summary: `Justification: ${parsedData.justification}\n\nAgenda:\n${parsedData.agenda.map((a: string) => '- ' + a).join('\n')}`,
-        created_at: new Date().toISOString()
+        title: parsed.data.title,
+        summary: `Justification: ${parsed.data.justification}\n\nAgenda:\n${parsed.data.agenda
+          .map((a) => '- ' + a)
+          .join('\n')}`,
+        workspace_id: auth.workspaceId,
       })
       .select()
       .single();
+    if (meetingErr) throw meetingErr;
 
-    if (meetingError) throw meetingError;
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      meeting: parsedData,
-      meeting_id: meeting.id
+      meeting: parsed.data,
+      meeting_id: meeting.id,
     });
-
-  } catch (error: unknown) {
-    console.error('Schedule Agent error:', error);
-    const errMessage = error instanceof Error ? error.message : 'Unknown error';
-    return res.status(500).json({ error: errMessage });
   }
-}
+);

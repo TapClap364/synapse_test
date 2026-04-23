@@ -1,30 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import OpenAI from 'openai';
+import { z } from 'zod';
+import { createHandler } from './_lib/handler';
+import { getOpenAI, AI_MODEL } from './_lib/openai';
 
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY || '',
-  defaultHeaders: {
-    "HTTP-Referer": "https://synapse-app.vercel.app",
-    "X-Title": "Synapse AI Document Parser",
-  },
+const InputSchema = z.object({
+  text: z.string().min(20).max(20_000),
 });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  try {
-    const { text } = req.body;
-    
-    if (!text) {
-      return res.status(400).json({ error: 'No text provided' });
-    }
-
-    // Отправляем ИИ для извлечения сути
-    const systemPrompt = `You are an HR Specialist and AI Analyst. 
+export default createHandler(
+  { method: 'POST', schema: InputSchema, rateLimit: 'ai' },
+  async ({ body, res }) => {
+    const systemPrompt = `You are an HR Specialist and AI Analyst.
 Analyze the provided Job Description (JD) and extract the core responsibilities, skills, and functions of this employee.
 Format the output as a concise 1-paragraph summary (in RUSSIAN) that Synapse AI can use to assign tasks.
 
@@ -34,24 +19,17 @@ Focus on:
 - What their primary responsibilities are.
 
 JD Content:
-${text.slice(0, 5000)}
-`;
+${body.text.slice(0, 5000)}`;
 
-    const response = await openai.chat.completions.create({
-      model: 'meta-llama/llama-3.3-70b-instruct',
+    const response = await getOpenAI().chat.completions.create({
+      model: AI_MODEL,
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.3,
     });
 
-    const extractedRole = response.choices[0].message.content;
-
-    return res.status(200).json({ 
-      success: true, 
-      extracted_role: extractedRole 
+    res.status(200).json({
+      success: true,
+      extracted_role: response.choices[0]?.message?.content ?? '',
     });
-
-  } catch (error: any) {
-    console.error('Parser Error:', error);
-    return res.status(500).json({ error: 'Failed to analyze text content' });
   }
-}
+);

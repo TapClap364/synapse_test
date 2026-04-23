@@ -1,0 +1,78 @@
+{
+  "common": {
+    "loading": "Загрузка…",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "create": "Создать",
+    "edit": "Редактировать",
+    "search": "Поиск",
+    "settings": "Настройки",
+    "logout": "Выйти",
+    "yes": "Да",
+    "no": "Нет",
+    "error": "Ошибка"
+  },
+  "nav": {
+    "kanban": "Доска",
+    "gantt": "Гант",
+    "epics": "Эпики",
+    "wiki": "Wiki",
+    "meetings": "Встречи",
+    "whiteboard": "Whiteboard",
+    "members": "Участники",
+    "billing": "Биллинг"
+  },
+  "auth": {
+    "signIn": "Войти",
+    "signUp": "Регистрация",
+    "email": "Email",
+    "password": "Пароль",
+    "fullName": "Имя"
+  },
+  "workspace": {
+    "title": "Workspace",
+    "create": "Создать workspace",
+    "switcher": "Переключить workspace",
+    "members": "Участники",
+    "inviteEmail": "Email приглашаемого",
+    "role": "Роль",
+    "invite": "Пригласить",
+    "remove": "Удалить участника",
+    "noMembers": "Нет участников",
+    "roles": {
+      "owner": "Владелец",
+      "admin": "Администратор",
+      "member": "Участник",
+      "viewer": "Наблюдатель"
+    }
+  },
+  "task": {
+    "title": "Заголовок",
+    "description": "Описание",
+    "priority": "Приоритет",
+    "status": "Статус",
+    "assignee": "Исполнитель",
+    "estimate": "Оценка (часы)",
+    "createNew": "Создать задачу",
+    "statuses": {
+      "draft": "Черновик",
+      "backlog": "Бэклог",
+      "in_progress": "В работе",
+      "done": "Готово"
+    },
+    "priorities": {
+      "low": "Низкий",
+      "medium": "Средний",
+      "high": "Высокий",
+      "critical": "Критический"
+    }
+  },
+  "billing": {
+    "title": "Подписка",
+    "plan": "Тариф",
+    "status": "Статус",
+    "manage": "Управлять подпиской",
+    "upgrade": "Перейти на Pro"
+  }
+}

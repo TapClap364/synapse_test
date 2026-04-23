@@ -2,6 +2,8 @@
 // src/components/TaskModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useWorkspace } from '../lib/workspace';
+import { apiPost } from '../lib/apiClient';
 import type { Task, Profile, Comment } from '../types';
 import { getInitials, formatTaskId } from '../types';
 
@@ -15,6 +17,7 @@ interface TaskModalProps {
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, currentUser, onClose, onUpdate }) => {
+  const { currentWorkspaceId } = useWorkspace();
   const [title, setTitle] = useState(task.title || '');
   const [description, setDescription] = useState(task.description || '');
   const [epicId, setEpicId] = useState(task.epic_id);
@@ -35,7 +38,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
         .select('*, profiles(full_name, avatar_url)')
         .eq('task_id', task.id)
         .order('created_at', { ascending: true });
-      if (data) setComments(data.map(c => ({ ...c, profile: c.profiles as Profile })));
+      if (data) setComments(data.map(c => ({
+        id: c.id,
+        task_id: c.task_id ?? task.id,
+        user_id: c.user_id ?? '',
+        content: c.content,
+        created_at: c.created_at ?? new Date().toISOString(),
+        profile: c.profiles as Profile,
+      })));
     };
     fetchComments();
 
@@ -80,40 +90,47 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim() || !currentUser) return;
+    if (!newComment.trim() || !currentUser || !currentWorkspaceId) return;
     const contentToSave = newComment.trim();
     setNewComment('');
-    
+
     const { data, error } = await supabase
       .from('comments')
-      .insert({ task_id: task.id, user_id: currentUser.id, content: contentToSave })
+      .insert({
+        task_id: task.id,
+        user_id: currentUser.id,
+        content: contentToSave,
+        workspace_id: currentWorkspaceId,
+      })
       .select('*, profiles(full_name, avatar_url)')
       .single();
-      
+
     if (!error && data) {
       setComments(prev => {
         if (prev.some(c => c.id === data.id)) return prev;
-        return [...prev, { ...data, profile: data.profiles as Profile }];
+        return [...prev, {
+          id: data.id,
+          task_id: data.task_id ?? task.id,
+          user_id: data.user_id ?? currentUser.id,
+          content: data.content,
+          created_at: data.created_at ?? new Date().toISOString(),
+          profile: data.profiles as Profile,
+        }];
       });
     } else if (error) {
       console.error(error);
-      setNewComment(contentToSave); // Restore on error
+      setNewComment(contentToSave);
     }
   };
 
   const handleGetAiSuggestions = async () => {
+    if (!currentWorkspaceId) return;
     setIsSuggesting(true);
     try {
-      const res = await fetch('/api/ai-comment-helper', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          task_title: title,
-          task_description: description,
-          comments: comments.slice(-5)
-        })
+      const data = await apiPost<{ suggestions: string[] }>('/api/ai-comment-helper', {
+        workspaceId: currentWorkspaceId,
+        body: { task_id: task.id },
       });
-      const data = await res.json();
       setAiSuggestions(data.suggestions || []);
     } catch (e) {
       console.error(e);

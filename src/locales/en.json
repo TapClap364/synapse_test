@@ -1,0 +1,78 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "create": "Create",
+    "edit": "Edit",
+    "search": "Search",
+    "settings": "Settings",
+    "logout": "Sign out",
+    "yes": "Yes",
+    "no": "No",
+    "error": "Error"
+  },
+  "nav": {
+    "kanban": "Board",
+    "gantt": "Gantt",
+    "epics": "Epics",
+    "wiki": "Wiki",
+    "meetings": "Meetings",
+    "whiteboard": "Whiteboard",
+    "members": "Members",
+    "billing": "Billing"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full name"
+  },
+  "workspace": {
+    "title": "Workspace",
+    "create": "Create workspace",
+    "switcher": "Switch workspace",
+    "members": "Members",
+    "inviteEmail": "Invitee email",
+    "role": "Role",
+    "invite": "Invite",
+    "remove": "Remove member",
+    "noMembers": "No members",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member",
+      "viewer": "Viewer"
+    }
+  },
+  "task": {
+    "title": "Title",
+    "description": "Description",
+    "priority": "Priority",
+    "status": "Status",
+    "assignee": "Assignee",
+    "estimate": "Estimate (hours)",
+    "createNew": "Create task",
+    "statuses": {
+      "draft": "Draft",
+      "backlog": "Backlog",
+      "in_progress": "In progress",
+      "done": "Done"
+    },
+    "priorities": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    }
+  },
+  "billing": {
+    "title": "Subscription",
+    "plan": "Plan",
+    "status": "Status",
+    "manage": "Manage subscription",
+    "upgrade": "Upgrade to Pro"
+  }
+}

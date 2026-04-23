@@ -1,60 +1,54 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import { createHandler } from './_lib/handler';
+import { getServiceSupabase } from './_lib/supabase';
+import { getOpenAI, AI_MODEL } from './_lib/openai';
 
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": "https://synapse-app.vercel.app",
-    "X-Title": "Synapse AI Assistant",
-  },
+const HistoryMessage = z.object({
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.string().max(8_000),
 });
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const InputSchema = z.object({
+  message: z.string().min(1).max(4_000),
+  history: z.array(HistoryMessage).max(20).optional().default([]),
+});
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+export default createHandler(
+  { method: 'POST', schema: InputSchema, rateLimit: 'ai' },
+  async ({ auth, body, res }) => {
+    const supabase = getServiceSupabase();
 
-  const { message, history = [] } = req.body;
-
-  try {
-    // 1. Собираем контекст проекта
-    const { data: tasks } = await supabase.from('tasks').select('title, status, priority').limit(50);
-    const { data: docs } = await supabase.from('documents').select('title, content').limit(10);
-    const { data: meetings } = await supabase.from('meetings').select('title, summary').limit(5);
+    const [tasks, docs, meetings] = await Promise.all([
+      supabase.from('tasks').select('title, status, priority').eq('workspace_id', auth.workspaceId).limit(50),
+      supabase.from('documents').select('title').eq('workspace_id', auth.workspaceId).limit(10),
+      supabase.from('meetings').select('title, summary').eq('workspace_id', auth.workspaceId).limit(5),
+    ]);
 
     const context = `
-Задачи: ${tasks?.map(t => `[${t.status}] ${t.title}`).join(', ') || 'Нет'}
-Документация: ${docs?.map(d => d.title).join(', ') || 'Нет'}
-Последние встречи: ${meetings?.map(m => m.title).join(', ') || 'Нет'}
-    `;
+Задачи: ${tasks.data?.map((t) => `[${t.status}] ${t.title}`).join(', ') || 'Нет'}
+Документация: ${docs.data?.map((d) => d.title).join(', ') || 'Нет'}
+Последние встречи: ${meetings.data?.map((m) => m.title).join(', ') || 'Нет'}
+    `.trim();
 
-    // 2. Запрос к ИИ
-    const completion = await openai.chat.completions.create({
-      model: "meta-llama/llama-3.3-70b-instruct",
+    const completion = await getOpenAI().chat.completions.create({
+      model: AI_MODEL,
       messages: [
         {
-          role: "system",
-          content: `Ты Synapse AI Assistant — умный помощник по управлению проектами. 
-          Твоя цель: помогать пользователю ориентироваться в его задачах и документах.
-          
-          Контекст текущего проекта:
-          ${context}
-          
-          Будь кратким, профессиональным и полезным. Если пользователь спрашивает о конкретных задачах, используй контекст выше.`
+          role: 'system',
+          content: `Ты Synapse AI Assistant — умный помощник по управлению проектами.
+Твоя цель: помогать пользователю ориентироваться в его задачах и документах.
+
+Контекст текущего workspace:
+${context}
+
+Будь кратким, профессиональным и полезным. Если пользователь спрашивает о конкретных задачах, используй контекст выше.`,
         },
-        ...history,
-        { role: "user", content: message }
+        ...body.history,
+        { role: 'user', content: body.message },
       ],
     });
 
-    const reply = completion.choices[0].message.content;
-    return res.status(200).json({ reply });
-
-  } catch (error: any) {
-    console.error("AI Assistant Error:", error);
-    return res.status(500).json({ error: error.message });
+    const reply = completion.choices[0]?.message?.content ?? '';
+    res.status(200).json({ reply });
   }
-}
+);
