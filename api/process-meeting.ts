@@ -9,16 +9,11 @@ const InputSchema = z.object({
   title: z.string().max(200).optional(),
 });
 
-const MindMapNode: z.ZodType<{ label: string; children?: unknown[] }> = z.lazy(() =>
-  z.object({
-    label: z.string(),
-    children: z.array(MindMapNode).optional(),
-  })
-);
-
 const AiResultSchema = z.object({
-  summary: z.string().max(2_000).optional().default(''),
-  mind_map: MindMapNode.optional(),
+  goal: z.string().max(500).optional().default(''),
+  decisions: z.array(z.string().max(500)).max(20).optional().default([]),
+  action_items: z.array(z.string().max(500)).max(30).optional().default([]),
+  participants: z.array(z.string().max(120)).max(30).optional().default([]),
   tasks: z
     .array(
       z.object({
@@ -33,6 +28,20 @@ const AiResultSchema = z.object({
     .optional()
     .default([]),
 });
+
+function renderProtocolMarkdown(p: {
+  goal: string;
+  decisions: string[];
+  action_items: string[];
+  participants: string[];
+}): string {
+  const sections: string[] = [];
+  if (p.goal.trim()) sections.push(`## Цель\n${p.goal.trim()}`);
+  if (p.decisions.length) sections.push(`## Ключевые решения\n${p.decisions.map((d) => `- ${d}`).join('\n')}`);
+  if (p.action_items.length) sections.push(`## Action Items\n${p.action_items.map((a) => `- ${a}`).join('\n')}`);
+  if (p.participants.length) sections.push(`## Участники\n${p.participants.map((u) => `- ${u}`).join('\n')}`);
+  return sections.join('\n\n');
+}
 
 export default createHandler(
   { method: 'POST', schema: InputSchema, rateLimit: 'ai', requireWrite: true },
@@ -52,22 +61,25 @@ export default createHandler(
       messages: [
         {
           role: 'system',
-          content: `Ты AI Secretary & Project Manager. Проанализируй текст встречи.
+          content: `Ты AI Secretary & Project Manager. Проанализируй текст встречи и извлеки структурированный протокол.
 Доступные эпики: [${epicList}]
 Верни СТРОГО JSON:
 {
-  "summary": "Краткое резюме (3-5 предложений)",
-  "mind_map": { "label": "Главная тема", "children": [{ "label": "Ветка 1", "children": [] }] },
+  "goal": "Одна-две фразы — зачем встретились",
+  "decisions": ["Принятое решение 1", "Решение 2"],
+  "action_items": ["Что-то сделать к дате — ответственный (если упомянут)"],
+  "participants": ["Имя 1", "Имя 2"],
   "tasks": [
     {
       "title": "Задача",
       "description": "Описание",
-      "priority": "low"|"medium"|"high",
+      "priority": "low"|"medium"|"high"|"critical",
       "estimated_hours": number,
-      "epic_title": "Название подходящего эпика из списка или создай новый"
+      "epic_title": "Название эпика из списка или новый"
     }
   ]
-}`,
+}
+Если какой-то секции нет в тексте — верни пустой массив/строку. Не выдумывай.`,
         },
         { role: 'user', content: body.text },
       ],
@@ -82,14 +94,14 @@ export default createHandler(
       throw new HttpError(502, 'AI response did not match expected schema', parsed.error.flatten());
     }
     const aiResult = parsed.data;
+    const summaryMarkdown = renderProtocolMarkdown(aiResult);
 
     const { data: meeting, error: meetErr } = await supabase
       .from('meetings')
       .insert({
         title: body.title ?? `Meeting ${new Date().toLocaleString('ru-RU')}`,
-        summary: aiResult.summary,
-        // mind_map_data is jsonb — Zod has validated structure
-        mind_map_data: aiResult.mind_map ?? null,
+        summary: summaryMarkdown,
+        mind_map_data: null,
         workspace_id: auth.workspaceId,
       })
       .select()
@@ -132,8 +144,7 @@ export default createHandler(
     res.status(200).json({
       message: 'Meeting processed',
       meeting_id: meeting.id,
-      summary: aiResult.summary,
-      mindMap: aiResult.mind_map ?? null,
+      summary: summaryMarkdown,
       tasksCreated: tasksCreatedCount,
     });
   }
