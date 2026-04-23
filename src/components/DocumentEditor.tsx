@@ -49,7 +49,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onRe
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: t('wiki.centerDescription') }),
+      Placeholder.configure({ placeholder: t('documentEditor.contentPlaceholder') }),
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
       Link.configure({ openOnClick: false }),
@@ -236,7 +236,21 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({ documentId, onRe
 
       {/* Editor Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 40, background: 'var(--color-bg)' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div
+          className="doc-paper"
+          onClick={() => editor?.chain().focus().run()}
+          style={{
+            maxWidth: 800,
+            margin: '0 auto',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 12,
+            boxShadow: 'var(--shadow-sm)',
+            padding: '40px 48px',
+            minHeight: 420,
+            cursor: 'text',
+          }}
+        >
           <EditorContent editor={editor} />
         </div>
       </div>

@@ -178,6 +178,7 @@
   "documentEditor": {
     "selectDocument": "Select a document",
     "titlePlaceholder": "Document title",
+    "contentPlaceholder": "Start typing here… Select text to trigger AI actions.",
     "saved": "Saved",
     "attach": "Attach",
     "delete": "Delete",

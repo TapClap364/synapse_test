@@ -12,7 +12,6 @@ import {
   GanttChartSquare,
   Palette,
   BookOpen,
-  Users,
 } from 'lucide-react';
 import type { Profile } from '../types';
 import { ThemeToggle } from './ThemeToggle';
@@ -33,7 +32,6 @@ const NAV_ITEMS = [
   { to: '/gantt',      end: false, i18nKey: 'nav.gantt',      Icon: GanttChartSquare },
   { to: '/whiteboard', end: false, i18nKey: 'nav.whiteboard', Icon: Palette },
   { to: '/wiki',       end: false, i18nKey: 'nav.wiki',       Icon: BookOpen },
-  { to: '/members',    end: false, i18nKey: 'nav.members',    Icon: Users },
 ] as const;
 
 export const Header: React.FC<HeaderProps> = ({

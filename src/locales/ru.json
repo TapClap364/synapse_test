@@ -178,6 +178,7 @@
   "documentEditor": {
     "selectDocument": "Выберите документ",
     "titlePlaceholder": "Название документа",
+    "contentPlaceholder": "Начните писать здесь… Выделите текст, чтобы вызвать AI-действия.",
     "saved": "Сохранено",
     "attach": "Прикрепить",
     "delete": "Удалить",

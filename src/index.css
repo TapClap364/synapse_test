@@ -1159,3 +1159,28 @@ body {
   .hero-mock__board { grid-template-columns: 1fr; gap: 8px; padding: 12px; }
   .hero-mock__col { min-height: 0; }
 }
+
+/* Tiptap document editor */
+.doc-paper .ProseMirror {
+  outline: none;
+  min-height: 360px;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+.doc-paper .ProseMirror p { margin: 0 0 12px; }
+.doc-paper .ProseMirror h1 { font-size: 28px; font-weight: 700; margin: 24px 0 12px; }
+.doc-paper .ProseMirror h2 { font-size: 22px; font-weight: 700; margin: 20px 0 10px; }
+.doc-paper .ProseMirror h3 { font-size: 18px; font-weight: 700; margin: 16px 0 8px; }
+.doc-paper .ProseMirror ul,
+.doc-paper .ProseMirror ol { margin: 0 0 12px; padding-left: 24px; }
+.doc-paper .ProseMirror table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+.doc-paper .ProseMirror th,
+.doc-paper .ProseMirror td { border: 1px solid var(--color-border); padding: 6px 10px; }
+.doc-paper .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  height: 0;
+}
