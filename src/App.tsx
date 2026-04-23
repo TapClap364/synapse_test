@@ -39,8 +39,9 @@ const OnboardingTour = lazy(() => import('./components/OnboardingTour').then((m)
 const WorkspaceMembers = lazy(() => import('./components/WorkspaceMembers').then((m) => ({ default: m.WorkspaceMembers })));
 const AuthGate = lazy(() => import('./components/AuthGate').then((m) => ({ default: m.AuthGate })));
 const ResetPasswordPage = lazy(() => import('./components/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
+const AdminPage = lazy(() => import('./components/AdminPage').then((m) => ({ default: m.AdminPage })));
 
-const HIDE_CONTROL_BAR = ['/whiteboard', '/wiki', '/profile', '/members', '/billing'];
+const HIDE_CONTROL_BAR = ['/whiteboard', '/wiki', '/profile', '/members', '/billing', '/admin'];
 
 const Loader = ({ label = 'Загрузка…' }: { label?: string }) => (
   <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -261,6 +262,7 @@ function AppContent({ auth }: { auth: AuthBag }) {
               } />
               <Route path="/profile" element={<ProfilePage profile={currentProfile} onRefresh={fetchData} />} />
               <Route path="/members" element={<WorkspaceMembers />} />
+              <Route path="/admin" element={<AdminPage />} />
               <Route path="/presentation" element={<PresentationPage />} />
               <Route path="/legal/:type" element={<LegalPage />} />
             </Routes>

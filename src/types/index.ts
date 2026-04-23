@@ -33,6 +33,7 @@ export interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   role_description?: string | null;
+  is_super_admin?: boolean;
 }
 
 export interface Document {

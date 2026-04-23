@@ -12,6 +12,7 @@ import {
   GanttChartSquare,
   Palette,
   BookOpen,
+  ShieldCheck,
 } from 'lucide-react';
 import type { Profile } from '../types';
 import { ThemeToggle } from './ThemeToggle';
@@ -92,6 +93,21 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="header__user">
         <LanguageToggle />
         <ThemeToggle />
+        {profile?.is_super_admin && (
+          <Link
+            to="/admin"
+            title="Панель администратора"
+            aria-label="Admin"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '6px 10px', borderRadius: 8,
+              border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+              color: 'var(--color-success)', textDecoration: 'none', fontSize: 12, fontWeight: 700,
+            }}
+          >
+            <ShieldCheck size={14} aria-hidden="true" /> Admin
+          </Link>
+        )}
         <button
           className="header__notification-btn"
           onClick={onNotificationsClick}
