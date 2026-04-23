@@ -786,6 +786,7 @@ body {
   .modal-overlay { padding: 0; }
 
   /* Profile two-column collapses to single column */
+  .profile-grid { grid-template-columns: 1fr !important; }
   .protocol { padding: 16px; }
 }
 

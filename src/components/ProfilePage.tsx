@@ -93,7 +93,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
         </p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 24 }}>
+      <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 24 }}>
         {/* LEFT — main form card */}
         <section style={{
           background: 'var(--color-surface)',
