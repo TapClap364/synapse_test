@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useWorkspace } from '../lib/workspace';
+import { apiPost } from '../lib/apiClient';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -6,6 +8,7 @@ interface Message {
 }
 
 export const AIAssistant: React.FC = () => {
+  const { currentWorkspaceId } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Привет! Я твой ИИ-ассистент Synapse. Могу помочь с задачами, анализом вики или отчетами. О чем хочешь поговорить?' }
@@ -22,6 +25,10 @@ export const AIAssistant: React.FC = () => {
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
+    if (!currentWorkspaceId) {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Нет активного workspace. Выбери его в шапке.' }]);
+      return;
+    }
 
     const userMsg = input.trim();
     setInput('');
@@ -29,15 +36,14 @@ export const AIAssistant: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/ai-assistant-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg, history: messages }),
+      const data = await apiPost<{ reply: string }>('/api/ai-assistant-chat', {
+        workspaceId: currentWorkspaceId,
+        body: { message: userMsg, history: messages },
       });
-      const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Извини, произошла ошибка при связи с мозгом...' }]);
+      const msg = e instanceof Error ? e.message : 'unknown';
+      setMessages(prev => [...prev, { role: 'assistant', content: `Ошибка: ${msg}` }]);
     } finally {
       setIsLoading(false);
     }

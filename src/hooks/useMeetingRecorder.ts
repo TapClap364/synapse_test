@@ -1,6 +1,8 @@
 // src/hooks/useMeetingRecorder.ts
 import { useState, useRef, useCallback } from 'react';
 import type { MeetingResult } from '../types';
+import { apiPost } from '../lib/apiClient';
+import { useWorkspace } from '../lib/workspace';
 
 // Web Speech API types (для поддержки без webkit-префиксов)
 interface SpeechWindow extends Window {
@@ -12,6 +14,7 @@ export function useMeetingRecorder(
   onResult: (result: MeetingResult) => void,
   onDataRefresh: () => Promise<void>,
 ) {
+  const { currentWorkspaceId } = useWorkspace();
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -19,15 +22,16 @@ export function useMeetingRecorder(
   const recognitionRef = useRef<any>(null);
 
   const processMeetingText = useCallback(async (text: string) => {
+    if (!currentWorkspaceId) {
+      alert('Нет активного workspace.');
+      return;
+    }
     setIsProcessing(true);
     try {
-      const res = await fetch('/api/process-meeting', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, title: `Meeting ${new Date().toLocaleTimeString()}` }),
+      const data = await apiPost<MeetingResult>('/api/process-meeting', {
+        workspaceId: currentWorkspaceId,
+        body: { text, title: `Meeting ${new Date().toLocaleTimeString()}` },
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
-      const data = await res.json();
       onResult(data);
       await onDataRefresh();
     } catch (e: unknown) {
@@ -36,7 +40,7 @@ export function useMeetingRecorder(
     } finally {
       setIsProcessing(false);
     }
-  }, [onResult, onDataRefresh]);
+  }, [currentWorkspaceId, onResult, onDataRefresh]);
 
   const startRecording = useCallback(() => {
     const win = window as SpeechWindow;
