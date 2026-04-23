@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, User, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Upload, User, Loader2, Check, AlertCircle, Lightbulb } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useWorkspace } from '../lib/workspace';
 import { apiPost } from '../lib/apiClient';
@@ -228,8 +228,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
             background: 'var(--color-ai-bg)', padding: 20, borderRadius: 'var(--radius-lg)',
             border: '1px solid var(--color-ai-border)',
           }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: 13, fontWeight: 700, color: 'var(--color-ai)' }}>
-              💡 Подсказка
+            <h3 style={{ margin: '0 0 8px 0', fontSize: 13, fontWeight: 700, color: 'var(--color-ai)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Lightbulb size={14} aria-hidden="true" /> Подсказка
             </h3>
             <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
               Загрузите вашу должностную инструкцию (TXT/MD/PDF) — ИИ сам составит описание роли для оркестратора.

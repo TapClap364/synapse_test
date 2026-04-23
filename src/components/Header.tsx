@@ -75,8 +75,10 @@ export const Header: React.FC<HeaderProps> = ({
             className={({ isActive }) =>
               `header__nav-btn ${isActive ? 'header__nav-btn--active' : ''}`
             }
+            title={label}
           >
-            <Icon size={14} aria-hidden="true" /> {label}
+            <Icon size={14} aria-hidden="true" />
+            <span className="header__nav-label">{label}</span>
           </NavLink>
         ))}
       </nav>
