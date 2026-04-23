@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Whiteboard.tsx
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Mic, Square, Sparkles } from 'lucide-react';
-import { Tldraw, useEditor } from 'tldraw';
+import { Tldraw, useEditor, type Editor } from 'tldraw';
 import 'tldraw/tldraw.css';
+
+function readAppTheme(): 'light' | 'dark' {
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
 
 interface WhiteboardProps {
   onExtractTasks: (notes: string[]) => void;
@@ -148,9 +152,32 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onExtractTasks }) => {
     }
   };
 
+  const editorRef = useRef<Editor | null>(null);
+  const [appTheme, setAppTheme] = useState<'light' | 'dark'>(readAppTheme);
+
+  // Watch app's data-theme attribute and propagate to tldraw's user prefs
+  useEffect(() => {
+    const observer = new MutationObserver(() => setAppTheme(readAppTheme()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.user.updateUserPreferences({ colorScheme: appTheme });
+    }
+  }, [appTheme]);
+
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-      <Tldraw persistenceKey="synapse-whiteboard" autoFocus>
+      <Tldraw
+        persistenceKey="synapse-whiteboard"
+        autoFocus
+        onMount={(editor) => {
+          editorRef.current = editor;
+          editor.user.updateUserPreferences({ colorScheme: appTheme });
+        }}
+      >
         <ExtractButtonInner onExtract={handleExtract} />
       </Tldraw>
     </div>
