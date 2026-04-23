@@ -310,7 +310,9 @@ END:VCALENDAR`;
   }
 
   const currentProfile = session && profiles.length > 0 ? profiles.find(p => p.id === session.user.id) : undefined;
-  const isWhiteboardOrWiki = location.pathname === '/whiteboard' || location.pathname === '/wiki';
+  // Pages where the task-creation ControlBar makes no sense.
+  const HIDE_CONTROL_BAR = ['/whiteboard', '/wiki', '/profile', '/members', '/billing'];
+  const isWhiteboardOrWiki = HIDE_CONTROL_BAR.some((p) => location.pathname.startsWith(p));
 
   return (
     <div className="app-layout">
