@@ -1,5 +1,6 @@
 // src/components/KanbanView.tsx
 import React from 'react';
+import { Inbox, Loader, CheckCircle2, Link as LinkIcon, type LucideIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Task, Profile } from '../types';
 import { formatTaskId, getInitials } from '../types';
@@ -14,11 +15,11 @@ interface KanbanViewProps {
   isLoading?: boolean;
 }
 
-const COLUMNS = [
-  { key: 'backlog', label: '📥 Бэклог' },
-  { key: 'in_progress', label: '🔄 В работе' },
-  { key: 'done', label: '✅ Готово' },
-] as const;
+const COLUMNS: { key: Task['status']; label: string; Icon: LucideIcon; color: string }[] = [
+  { key: 'backlog',     label: 'Бэклог',   Icon: Inbox,        color: 'var(--color-text-secondary)' },
+  { key: 'in_progress', label: 'В работе', Icon: Loader,       color: 'var(--color-primary)' },
+  { key: 'done',        label: 'Готово',   Icon: CheckCircle2, color: 'var(--color-success)' },
+];
 
 export const KanbanView: React.FC<KanbanViewProps> = ({
   tasks, epics, profiles, onTaskClick, onTasksChange, isLoading
@@ -47,7 +48,10 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
           onDragOver={onDragOver}
           onDrop={e => onDrop(e, col.key)}
         >
-          <h3 className="kanban__column-title">{col.label}</h3>
+          <h3 className="kanban__column-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <col.Icon size={16} style={{ color: col.color }} aria-hidden="true" />
+            {col.label}
+          </h3>
           <div className="kanban__cards">
             {isLoading ? (
               <>
@@ -77,8 +81,8 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                         <div className="kanban__card-header">
                           <span className="kanban__card-id">{formatTaskId(t.id)}</span>
                           {t.blocked_by && t.blocked_by.length > 0 && (
-                            <span className="kanban__card-dep" title={`Зависит от: ${t.blocked_by.map(id => formatTaskId(id)).join(', ')}`}>
-                              🔗 Зависит: {t.blocked_by.map(id => formatTaskId(id)).join(', ')}
+                            <span className="kanban__card-dep" title={`Зависит от: ${t.blocked_by.map(id => formatTaskId(id)).join(', ')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <LinkIcon size={11} aria-hidden="true" /> Зависит: {t.blocked_by.map(id => formatTaskId(id)).join(', ')}
                             </span>
                           )}
                         </div>
@@ -104,8 +108,8 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                   })}
                 {tasks.filter(t => t.status === col.key).length === 0 && (
                   <div className="kanban__empty">
-                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>✨</div>
-                    Пусто
+                    <col.Icon size={20} style={{ opacity: 0.4, marginBottom: 8, color: col.color }} aria-hidden="true" />
+                    <div>Пусто</div>
                   </div>
                 )}
               </>

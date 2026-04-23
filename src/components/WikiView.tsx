@@ -1,5 +1,6 @@
 // src/components/WikiView.tsx
 import React, { useState } from 'react';
+import { FileText, BarChart3, Calendar, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useWorkspace } from '../lib/workspace';
 import type { Document, Meeting } from '../types';
@@ -46,7 +47,9 @@ export const WikiView: React.FC<WikiViewProps> = ({
       {/* Sidebar */}
       <div className="wiki__sidebar">
         <div className="wiki__section">
-          <h3 className="wiki__section-title">📄 База знаний</h3>
+          <h3 className="wiki__section-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <FileText size={14} aria-hidden="true" /> База знаний
+          </h3>
           <ul className="wiki__list">
             {regularDocs.map(doc => (
               <li
@@ -65,7 +68,9 @@ export const WikiView: React.FC<WikiViewProps> = ({
 
         {aiReports.length > 0 && (
           <div className="wiki__section">
-            <h3 className="wiki__section-title">📊 Отчеты ИИ</h3>
+            <h3 className="wiki__section-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <BarChart3 size={14} aria-hidden="true" /> Отчёты ИИ
+            </h3>
             <ul className="wiki__list">
               {aiReports.map(doc => (
                 <li
@@ -85,7 +90,9 @@ export const WikiView: React.FC<WikiViewProps> = ({
         )}
 
         <div className="wiki__section">
-          <h3 className="wiki__section-title">📅 Протоколы встреч</h3>
+          <h3 className="wiki__section-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Calendar size={14} aria-hidden="true" /> Протоколы встреч
+          </h3>
           <ul className="wiki__list">
             {meetings.map(meeting => (
               <li
@@ -130,7 +137,7 @@ export const WikiView: React.FC<WikiViewProps> = ({
             color: 'var(--color-text-secondary)',
             animation: 'fadeIn 0.5s ease-out'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '24px', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.1))' }}>📚</div>
+            <BookOpen size={56} style={{ color: 'var(--color-primary)', marginBottom: 24, opacity: 0.6 }} aria-hidden="true" />
             <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', marginBottom: '12px' }}>Центр знаний проекта</h2>
             <p style={{ maxWidth: '400px', lineHeight: '1.6', marginBottom: '32px' }}>
               Здесь хранятся все важные документы, идеи и протоколы ваших встреч. 

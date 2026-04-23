@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Brain, X } from 'lucide-react';
 import { useWorkspace } from '../lib/workspace';
 import { apiPost } from '../lib/apiClient';
 
@@ -52,31 +53,31 @@ export const AIAssistant: React.FC = () => {
   return (
     <>
       {/* Кнопка вызова */}
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? 'Закрыть AI-ассистента' : 'Открыть AI-ассистента'}
         style={{
           position: 'fixed',
-          bottom: '30px',
-          right: '30px',
-          width: '60px',
-          height: '60px',
-          borderRadius: '30px',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+          bottom: '24px',
+          right: '24px',
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-purple) 100%)',
           color: 'white',
           border: 'none',
-          boxShadow: '0 10px 25px rgba(59, 130, 246, 0.4)',
+          boxShadow: '0 10px 25px rgba(59, 130, 246, 0.35)',
           cursor: 'pointer',
           zIndex: 9999,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '24px',
           transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
         }}
-        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)'}
-        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) rotate(0deg)'}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
       >
-        {isOpen ? '✕' : '🧠'}
+        {isOpen ? <X size={22} /> : <Brain size={22} />}
       </button>
 
       {/* Окно чата */}

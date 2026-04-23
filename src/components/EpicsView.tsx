@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Target, Pencil, Trash2, Loader2, Inbox } from 'lucide-react';
 import type { Task, Epic } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -50,14 +51,16 @@ export const EpicsView: React.FC<EpicsViewProps> = ({ tasks, epicsList, onRefres
   return (
     <div style={{ padding: '32px', height: '100%', overflowY: 'auto', background: '#f8fafc' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-        <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', color: '#0f172a' }}>🎯 Панель Эпиков</h2>
+        <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <Target size={26} aria-hidden="true" /> Панель Эпиков
+        </h2>
         <p style={{ color: '#64748b', marginBottom: '32px' }}>Отслеживайте общий прогресс по ключевым инициативами проекта.</p>
         
         {epicsList.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📭</div>
+            <Inbox size={42} style={{ color: 'var(--color-text-muted)', marginBottom: 16 }} aria-hidden="true" />
             <h3 style={{ color: '#334155', marginBottom: '8px' }}>Пока нет эпиков</h3>
-            <p style={{ color: '#64748b' }}>Создайте свой первый эпик через кнопку "➕ Эпик" на верхней панели.</p>
+            <p style={{ color: '#64748b' }}>Создайте свой первый эпик через кнопку «Эпик» на верхней панели.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
@@ -126,8 +129,9 @@ export const EpicsView: React.FC<EpicsViewProps> = ({ tasks, epicsList, onRefres
                           onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
                           onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
                           title="Редактировать название"
+                          aria-label="Редактировать название"
                         >
-                          ✏️
+                          <Pencil size={14} aria-hidden="true" />
                         </button>
                       </div>
                     )}
@@ -150,8 +154,11 @@ export const EpicsView: React.FC<EpicsViewProps> = ({ tasks, epicsList, onRefres
                         e.currentTarget.style.color = '#94a3b8';
                       }}
                       title="Удалить Эпик"
+                      aria-label="Удалить Эпик"
                     >
-                      {isDeleting === epic.id ? '⏳' : '🗑'}
+                      {isDeleting === epic.id
+                        ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                        : <Trash2 size={14} aria-hidden="true" />}
                     </button>
                   </div>
                   

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Moon, Sun } from 'lucide-react';
 
 export const ThemeToggle: React.FC = () => {
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem('theme') || 'light';
-    } catch (e) {
+    } catch {
       return 'light';
     }
   });
@@ -13,8 +14,8 @@ export const ThemeToggle: React.FC = () => {
     document.documentElement.setAttribute('data-theme', theme);
     try {
       localStorage.setItem('theme', theme);
-    } catch (e) {
-      // Ignore
+    } catch {
+      // ignore (private mode etc.)
     }
   }, [theme]);
 
@@ -23,24 +24,25 @@ export const ThemeToggle: React.FC = () => {
   };
 
   return (
-    <button 
+    <button
       onClick={toggleTheme}
+      aria-label={theme === 'light' ? 'Включить тёмную тему' : 'Включить светлую тему'}
+      title="Переключить тему"
       style={{
         background: 'var(--color-surface-alt)',
         border: '1px solid var(--color-border)',
         borderRadius: '8px',
         width: '36px',
         height: '36px',
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        fontSize: '18px',
-        transition: 'var(--transition)'
+        color: 'var(--color-text-secondary)',
+        transition: 'var(--transition)',
       }}
-      title="Переключить тему"
     >
-      {theme === 'light' ? '🌙' : '☀️'}
+      {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
     </button>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useWorkspace } from '../lib/workspace';
 import { apiPost } from '../lib/apiClient';
@@ -122,16 +123,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ profile, onRefresh }) 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label style={{ fontWeight: 600, fontSize: '14px' }}>Ваша роль и компетенции (для ИИ)</label>
-              <label style={{ 
-                fontSize: '13px', 
-                color: 'var(--color-primary)', 
-                cursor: 'pointer', 
+              <label style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: '13px',
+                color: 'var(--color-primary)',
+                cursor: 'pointer',
                 fontWeight: 600,
                 padding: '6px 12px',
                 borderRadius: '8px',
-                background: 'rgba(59, 130, 246, 0.1)'
+                background: 'rgba(59, 130, 246, 0.1)',
               }}>
-                📄 Загрузить инструкцию
+                <Upload size={14} aria-hidden="true" /> Загрузить инструкцию
                 <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept=".txt,.pdf,.docx,.md" />
               </label>
             </div>

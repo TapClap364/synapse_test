@@ -1,5 +1,6 @@
 // src/components/GanttView.tsx
 import React from 'react';
+import { GanttChartSquare } from 'lucide-react';
 import type { Task, CpmData } from '../types';
 import { formatTaskId } from '../types';
 import { GanttBar } from './GanttBar';
@@ -24,7 +25,9 @@ export const GanttView: React.FC<GanttViewProps> = ({ cpmData, onTaskClick }) =>
   return (
     <div className="gantt">
       <div className="gantt__header">
-        <h2 className="gantt__title">📅 Диаграмма Ганта</h2>
+        <h2 className="gantt__title" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <GanttChartSquare size={20} aria-hidden="true" /> Диаграмма Ганта
+        </h2>
         <div className="gantt__stats">
           Длительность проекта: <strong>{cpmData.projectDuration}ч</strong>
         </div>

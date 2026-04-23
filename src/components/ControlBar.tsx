@@ -1,5 +1,15 @@
 // src/components/ControlBar.tsx
 import React, { useState } from 'react';
+import {
+  Plus,
+  Loader2,
+  Mic,
+  Square,
+  CalendarPlus,
+  FileText,
+  Zap,
+  Target,
+} from 'lucide-react';
 
 interface ControlBarProps {
   isListening: boolean;
@@ -52,7 +62,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         className="control-bar__input"
         value={inputText}
         onChange={e => setInputText(e.target.value)}
-        placeholder="Введи задачу или скажи голосом..."
+        placeholder="Введи задачу или скажи голосом…"
         onKeyDown={e => e.key === 'Enter' && handleCreate()}
       />
       <button
@@ -60,12 +70,13 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         onClick={handleCreate}
         disabled={isCreating}
       >
-        {isCreating ? '⏳ Создание...' : '➕ Создать'}
+        {isCreating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+        {isCreating ? 'Создание…' : 'Создать'}
       </button>
 
       {onCreateEpic && (
         <button className="btn btn--outline btn--lg" onClick={handleCreateEpicClick}>
-          ➕ Эпик
+          <Target size={14} /> Эпик
         </button>
       )}
 
@@ -77,24 +88,32 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         disabled={isProcessing}
         style={{ cursor: isProcessing ? 'wait' : 'pointer' }}
       >
-        {isProcessing ? '⏳ Анализ...' : isListening ? '⏹ Остановить' : '🎙 Запись встречи'}
+        {isProcessing
+          ? (<><Loader2 size={14} className="animate-spin" /> Анализ…</>)
+          : isListening
+            ? (<><Square size={14} /> Остановить</>)
+            : (<><Mic size={14} /> Запись встречи</>)}
       </button>
 
       {onScheduleMeeting && (
         <button className="btn btn--outline" onClick={onScheduleMeeting}>
-          📅 Спланировать синк
+          <CalendarPlus size={14} /> Спланировать синк
         </button>
       )}
 
       {onGenerateReport && (
         <button className="btn btn--outline" onClick={onGenerateReport}>
-          📝 Отчет в Вики
+          <FileText size={14} /> Отчёт в Вики
         </button>
       )}
 
       {onOrchestrateTasks && (
-        <button className="btn btn--primary" style={{ background: '#8b5cf6' }} onClick={onOrchestrateTasks}>
-          ⚡️ AI-Оркестратор
+        <button
+          className="btn btn--primary"
+          style={{ background: 'var(--color-purple)' }}
+          onClick={onOrchestrateTasks}
+        >
+          <Zap size={14} /> AI-Оркестратор
         </button>
       )}
     </div>

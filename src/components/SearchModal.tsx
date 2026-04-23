@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search, ListTodo, BookOpen } from 'lucide-react';
 import type { Task, Document } from '../types';
 import { formatTaskId } from '../types';
 
@@ -91,7 +92,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ tasks, documents, onCl
         }}
       >
         <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '20px' }}>🔍</span>
+          <Search size={18} aria-hidden="true" style={{ color: 'var(--color-text-muted)' }} />
           <input
             ref={inputRef}
             type="text"
@@ -112,12 +113,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({ tasks, documents, onCl
         <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '12px' }}>
           {results.length === 0 && query && (
             <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
-              Ничего не найдено 😕
+              Ничего не найдено
             </div>
           )}
           {results.length === 0 && !query && (
             <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
-              Начните печатать для поиска...
+              Начните печатать для поиска…
             </div>
           )}
           {results.map((res, idx) => (
@@ -135,7 +136,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({ tasks, documents, onCl
                 transition: 'background 0.2s'
               }}
             >
-              <span style={{ fontSize: '18px' }}>{res.type === 'task' ? '📋' : '📚'}</span>
+              {res.type === 'task'
+                ? <ListTodo size={16} aria-hidden="true" style={{ color: 'var(--color-text-secondary)' }} />
+                : <BookOpen size={16} aria-hidden="true" style={{ color: 'var(--color-text-secondary)' }} />}
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text)' }}>
                   {res.item.title}
@@ -152,7 +155,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ tasks, documents, onCl
         </div>
         
         <div style={{ padding: '12px 20px', background: '#f8fafc', borderTop: '1px solid var(--color-border)', fontSize: '12px', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-          <span>⌨️ Используйте стрелки для навигации</span>
+          <span>↑/↓ для навигации, Enter для выбора</span>
           <span>Esc для закрытия</span>
         </div>
       </div>

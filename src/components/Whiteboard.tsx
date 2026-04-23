@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Whiteboard.tsx
 import React from 'react';
+import { Mic, Square, Sparkles } from 'lucide-react';
 import { Tldraw, useEditor } from 'tldraw';
 import 'tldraw/tldraw.css';
 
@@ -78,8 +79,8 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
           transition: 'all 0.2s ease',
         }}
       >
-        <span style={{ fontSize: '16px' }}>{isListening ? '🛑' : '🎙️'}</span>
-        {isListening ? 'Слушаю...' : 'Голос'}
+        {isListening ? <Square size={14} aria-hidden="true" /> : <Mic size={14} aria-hidden="true" />}
+        {isListening ? 'Слушаю…' : 'Голос'}
       </button>
 
       <div style={{ width: '1px', height: '20px', background: '#e2e8f0' }} />
@@ -102,7 +103,7 @@ const ExtractButtonInner = ({ onExtract }: { onExtract: (editor: any) => void })
           boxShadow: '0 4px 12px rgba(59,130,246,0.2)',
         }}
       >
-        <span>✈️</span>
+        <Sparkles size={14} aria-hidden="true" />
         В задачи
       </button>
 

@@ -1,7 +1,7 @@
 // src/App.tsx — модульная архитектура с React Router + workspace context + lazy routes
 import React, { useState, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
-import { Brain as BrainIcon } from 'lucide-react';
+import { Brain as BrainIcon, Loader2, CalendarPlus, FileText, Zap } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useData } from './hooks/useData';
 import { useCpm } from './hooks/useCpm';
@@ -416,9 +416,27 @@ END:VCALENDAR`;
         </Suspense>
       )}
 
-      {isScheduling && <div className="modal-overlay" style={{ zIndex: 10000 }}><div className="modal">📅 ИИ планирует встречу…</div></div>}
-      {isGeneratingReport && <div className="modal-overlay" style={{ zIndex: 10000 }}><div className="modal">📊 ИИ генерирует отчёт…</div></div>}
-      {isOrchestrating && <div className="modal-overlay" style={{ zIndex: 10000 }}><div className="modal">🧠 ИИ распределяет задачи…</div></div>}
+      {isScheduling && (
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
+          <div className="modal" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '20px 28px' }}>
+            <CalendarPlus size={20} /> <Loader2 size={16} className="animate-spin" /> ИИ планирует встречу…
+          </div>
+        </div>
+      )}
+      {isGeneratingReport && (
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
+          <div className="modal" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '20px 28px' }}>
+            <FileText size={20} /> <Loader2 size={16} className="animate-spin" /> ИИ генерирует отчёт…
+          </div>
+        </div>
+      )}
+      {isOrchestrating && (
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
+          <div className="modal" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '20px 28px' }}>
+            <Zap size={20} /> <Loader2 size={16} className="animate-spin" /> ИИ распределяет задачи…
+          </div>
+        </div>
+      )}
 
       {showOnboarding && session && (
         <Suspense fallback={null}>

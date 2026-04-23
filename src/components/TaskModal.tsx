@@ -1,6 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/TaskModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  FileText,
+  CheckSquare,
+  Link as LinkIcon,
+  MessageSquare,
+  Sparkles,
+  Trash2,
+  Save,
+  Loader2,
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useWorkspace } from '../lib/workspace';
 import { apiPost } from '../lib/apiClient';
@@ -146,11 +156,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
         
         {/* Header */}
         <div className="modal__header">
-          <h2 style={{ margin: 0, fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '24px' }}>📝</span>
+          <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={18} aria-hidden="true" />
             Задача #{task.id}
           </h2>
-          <button className="modal__close" onClick={onClose}>✕</button>
+          <button className="modal__close" onClick={onClose} aria-label="Закрыть">✕</button>
         </div>
 
         {/* Body */}
@@ -179,8 +189,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
               {/* Interactive Subtasks */}
               {description.includes('- [ ]') || description.includes('- [x]') ? (
                 <div style={{ background: 'var(--color-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '12px' }}>
-                    ✅ Чек-лист подзадач
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: '12px' }}>
+                    <CheckSquare size={12} aria-hidden="true" /> Чек-лист подзадач
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {description.split('\n').map((line, idx) => {
@@ -251,7 +261,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
                   <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {task.blocked_by.map(id => (
                       <span key={id} style={{ background: 'var(--color-surface-alt)', color: 'var(--color-text)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500 }}>
-                        <span style={{ color: 'var(--color-danger)' }}>🔗</span> {formatTaskId(id)}
+                        <LinkIcon size={12} style={{ color: 'var(--color-danger)' }} aria-hidden="true" /> {formatTaskId(id)}
                       </span>
                     ))}
                   </div>
@@ -261,14 +271,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
 
             {/* Comments Section */}
             <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--color-border)' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                💬 Обсуждение <span style={{ background: 'var(--color-surface-alt)', padding: '2px 8px', borderRadius: '10px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>{comments.length}</span>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MessageSquare size={16} aria-hidden="true" /> Обсуждение
+                <span style={{ background: 'var(--color-surface-alt)', padding: '2px 8px', borderRadius: '10px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>{comments.length}</span>
               </h3>
               
               <div style={{ maxHeight: '240px', overflowY: 'auto', marginBottom: '16px', paddingRight: '8px' }}>
                 {comments.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>💭</div>
+                    <MessageSquare size={28} style={{ marginBottom: 8, opacity: 0.4 }} aria-hidden="true" />
                     <p style={{ fontSize: '13px' }}>Здесь пока нет комментариев.<br/>Напишите первый!</p>
                   </div>
                 ) : (
@@ -295,7 +306,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
               {/* AI Suggestions */}
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>✨ ИИ-подсказки</label>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Sparkles size={12} aria-hidden="true" /> ИИ-подсказки
+                  </label>
                   <button 
                     onClick={handleGetAiSuggestions} 
                     disabled={isSuggesting}
@@ -349,11 +362,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, epics, profiles, cur
         {/* Footer */}
         <div className="modal__footer">
           <button onClick={handleDelete} className="btn btn--danger-soft">
-            <span style={{ marginRight: '4px' }}>🗑️</span> Удалить
+            <Trash2 size={14} aria-hidden="true" /> Удалить
           </button>
           <button onClick={handleSave} disabled={loading} className="btn btn--primary">
-            <span style={{ marginRight: '6px' }}>{loading ? '⏳' : '💾'}</span> 
-            {loading ? 'Сохранение...' : 'Сохранить изменения'}
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} aria-hidden="true" />}
+            {loading ? 'Сохранение…' : 'Сохранить изменения'}
           </button>
         </div>
       </div>
