@@ -1,10 +1,12 @@
 import React from 'react';
+import { Download } from 'lucide-react';
 
+// Pitch-deck slides. To add slide images, drop PNGs into /public/presentation/
+// and reference them as `/presentation/<filename>.png`.
 const SLIDES = [
   {
     title: "Synapse AI: От идей к задачам",
     subtitle: "Будущее управления проектами в эпоху ИИ",
-    image: "/Users/sergeiakimov/.gemini/antigravity/brain/722bb688-8ba9-464d-9efa-cd56006a1504/synapse_ai_hero_1776591063308.png",
     points: ["AI-Native Workspace", "Автоматизация рутины", "Единая экосистема"]
   },
   {
@@ -20,7 +22,6 @@ const SLIDES = [
   {
     title: "Решение: Synapse AI",
     subtitle: "Интеллектуальный слой вашего бизнеса",
-    image: "/Users/sergeiakimov/.gemini/antigravity/brain/722bb688-8ba9-464d-9efa-cd56006a1504/synapse_ai_whiteboard_1776591140286.png",
     points: [
       "Голосовой ввод с ИИ-декомпозицией",
       "Интерактивная доска с синхронизацией",
@@ -30,7 +31,6 @@ const SLIDES = [
   {
     title: "Умный Гантт и Аналитика",
     subtitle: "Видеть будущее проекта",
-    image: "/Users/sergeiakimov/.gemini/antigravity/brain/722bb688-8ba9-464d-9efa-cd56006a1504/synapse_ai_gantt_1776591172127.png",
     points: [
       "Динамический расчет критического пути",
       "Визуализация рисков в реальном времени",
@@ -58,7 +58,7 @@ export const PresentationPage: React.FC = () => {
     <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '40px 0' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }} className="no-print">
         <button className="btn btn--primary" onClick={handlePrint} style={{ padding: '12px 24px' }}>
-          💾 Скачать как PDF
+          <Download size={16} /> Скачать как PDF
         </button>
       </div>
 
@@ -91,12 +91,6 @@ export const PresentationPage: React.FC = () => {
                 ))}
               </ul>
             </div>
-            {slide.image && (
-              <div style={{ flex: 1, position: 'relative', background: '#000' }}>
-                <img src={slide.image} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} alt="" />
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, #fff 0%, transparent 100%)' }} />
-              </div>
-            )}
             <div style={{ position: 'absolute', bottom: '40px', left: '60px', fontSize: '12px', color: '#94a3b8' }}>
               Slide {i + 1} / {SLIDES.length}
             </div>

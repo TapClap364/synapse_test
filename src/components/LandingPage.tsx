@@ -1,5 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Brain,
+  Sparkles,
+  Mic,
+  Palette,
+  GanttChartSquare,
+  BookOpen,
+  Bot,
+  ShieldCheck,
+  type LucideIcon,
+} from 'lucide-react';
 
 interface LandingPageProps {
   onSignIn: () => void;
@@ -7,125 +18,116 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
   return (
-    <div style={{ background: 'var(--color-bg)', color: 'var(--color-text)', minHeight: '100vh', overflowX: 'hidden' }}>
+    <div className="landing">
       {/* Header */}
-      <header style={{ padding: '24px 80px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'fixed', width: '100%', top: 0, zIndex: 100, backdropFilter: 'blur(10px)', background: 'rgba(255,255,255,0.7)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '24px', fontWeight: 800, color: 'var(--color-primary)' }}>
-          🧠 Synapse AI
+      <header className="landing__header">
+        <div className="landing__logo">
+          <span className="landing__logo-icon"><Brain size={20} /></span>
+          <span>Synapse AI</span>
         </div>
         <button className="btn btn--primary" onClick={onSignIn}>Начать работу</button>
       </header>
 
-      {/* Hero Section */}
-      <section style={{ padding: '160px 80px 100px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ 
-          background: 'var(--color-primary-soft)', 
-          color: 'var(--color-primary)', 
-          padding: '8px 16px', 
-          borderRadius: '20px', 
-          fontSize: '14px', 
-          fontWeight: 600, 
-          marginBottom: '24px',
-          animation: 'fadeIn 0.5s ease-out'
-        }}>
-          🚀 Революция в управлении проектами
+      {/* Hero */}
+      <section className="landing__hero">
+        <div className="landing__pill">
+          <Sparkles size={14} aria-hidden="true" />
+          <span>AI-native управление проектами</span>
         </div>
-        <h1 style={{ fontSize: '72px', fontWeight: 900, maxWidth: '900px', lineHeight: '1.1', marginBottom: '32px', letterSpacing: '-2px' }}>
-          Превращайте идеи в задачи с помощью <span style={{ color: 'var(--color-primary)', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Искусственного Интеллекта</span>
+        <h1 className="landing__hero-title">
+          От голоса до плана проекта <br />
+          <span className="landing__hero-gradient">за&nbsp;30&nbsp;секунд</span>
         </h1>
-        <p style={{ fontSize: '20px', color: 'var(--color-text-secondary)', maxWidth: '600px', marginBottom: '48px', lineHeight: '1.6' }}>
-          Synapse AI объединяет брейншторминг, документацию и управление задачами в единую экосистему, усиленную ИИ.
+        <p className="landing__hero-sub">
+          Synapse объединяет брейншторм, Kanban, Gantt и&nbsp;документы в&nbsp;одно рабочее
+          пространство. ИИ декомпозирует задачи, выстраивает зависимости и&nbsp;ведёт встречи —
+          вы&nbsp;просто говорите, что хотите сделать.
         </p>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <button className="btn btn--primary" style={{ padding: '16px 40px', fontSize: '18px' }} onClick={onSignIn}>
-            Попробовать бесплатно
-          </button>
-          <button className="btn btn--outline" style={{ padding: '16px 40px', fontSize: '18px' }}>
-            Смотреть демо
-          </button>
+        <div className="landing__cta">
+          <button className="btn btn--primary btn--lg" onClick={onSignIn}>Попробовать бесплатно</button>
+          <Link to="/presentation" className="btn btn--outline btn--lg">Смотреть pitch&nbsp;deck</Link>
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section style={{ padding: '100px 80px', background: '#fff' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: '40px', fontWeight: 800, marginBottom: '64px' }}>Всё, что нужно для роста вашей команды</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '40px' }}>
-            <FeatureCard 
-              icon="🎙️" 
-              title="Голос в Задачи" 
-              desc="Просто продиктуйте идею, и наш ИИ создаст структурированную задачу с описанием и подзадачами." 
+      {/* Features */}
+      <section className="landing__features-section">
+        <div className="landing__features-inner">
+          <h2 className="landing__features-title">Всё, что нужно для роста команды</h2>
+          <div className="landing__features-grid">
+            <FeatureCard
+              Icon={Mic}
+              title="Голос → задачи"
+              desc="Продиктуйте идею — ИИ создаст структурированную задачу с описанием, оценкой и подзадачами."
             />
-            <FeatureCard 
-              icon="🎨" 
-              title="Умная Доска" 
-              desc="Рисуйте и пишите на бесконечной доске. Одним кликом превращайте стикеры в тикеты на Канбан-доске." 
+            <FeatureCard
+              Icon={Palette}
+              title="Умная доска"
+              desc="Бесконечная whiteboard со стикерами. Один клик — и стикеры превращаются в тикеты Kanban'а."
             />
-            <FeatureCard 
-              icon="📊" 
-              title="Авто-Гантт" 
-              desc="График Ганта строится автоматически на основе зависимостей, которые ИИ определяет сам." 
+            <FeatureCard
+              Icon={GanttChartSquare}
+              title="Авто-Гантт"
+              desc="График строится автоматически на основе зависимостей, которые ИИ распознаёт сам."
             />
-            <FeatureCard 
-              icon="📚" 
-              title="ИИ-Вики" 
-              desc="Документация, которая пишет себя сама. ИИ помогает структурировать знания и отвечать на вопросы." 
+            <FeatureCard
+              Icon={BookOpen}
+              title="ИИ-Wiki"
+              desc="Документация, которая структурирует себя. Помощник отвечает на вопросы по контексту проекта."
             />
-            <FeatureCard 
-              icon="🤖" 
-              title="AI Ассистент" 
-              desc="Персональный помощник, который знает всё о вашем проекте и помогает принимать решения." 
+            <FeatureCard
+              Icon={Bot}
+              title="AI-ассистент"
+              desc="Персональный copilot, знающий все ваши задачи, документы и встречи. Помогает принимать решения."
             />
-            <FeatureCard 
-              icon="🔐" 
-              title="SaaS Безопасность" 
-              desc="Разделение данных, роли пользователей и защита уровня Enterprise для вашего бизнеса." 
+            <FeatureCard
+              Icon={ShieldCheck}
+              title="Workspace-изоляция"
+              desc="Multi-tenancy на уровне БД (Postgres RLS), роли owner/admin/member/viewer, аудит-логи."
             />
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer style={{ padding: '80px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '40px' }}>
+      <footer className="landing__footer">
+        <div className="landing__footer-inner">
           <div>
-            <div style={{ marginBottom: '24px', fontSize: '20px', fontWeight: 800, color: 'var(--color-text)' }}>
-              🧠 Synapse AI
+            <div className="landing__logo" style={{ marginBottom: 16 }}>
+              <span className="landing__logo-icon"><Brain size={18} /></span>
+              <span>Synapse AI</span>
             </div>
-            <p style={{ color: 'var(--color-text-secondary)', maxWidth: '300px', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--color-text-secondary)', maxWidth: 320, lineHeight: 1.6, fontSize: 14 }}>
               Интеллектуальная система управления проектами для команд будущего.
             </p>
           </div>
           <div>
-            <h4 style={{ marginBottom: '20px', fontWeight: 700 }}>Юридическая информация</h4>
-            <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <li><Link to="/legal/privacy" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>Политика конфиденциальности</Link></li>
-              <li><Link to="/legal/terms" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>Пользовательское соглашение</Link></li>
-              <li><Link to="/legal/privacy" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>Обработка персональных данных</Link></li>
+            <h4 className="landing__footer-h">Юридическое</h4>
+            <ul className="landing__footer-list">
+              <li><Link to="/legal/terms">Пользовательское соглашение</Link></li>
+              <li><Link to="/legal/privacy">Политика конфиденциальности</Link></li>
+              <li><Link to="/legal/cookies">Cookies</Link></li>
             </ul>
           </div>
           <div>
-            <h4 style={{ marginBottom: '20px', fontWeight: 700 }}>Контакты</h4>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.8' }}>
-              Email: support@synapse-ai.ru<br/>
-              ИНН: 7700000000<br/>
-              ОГРН: 1027700000000<br/>
-              ООО «Синапс Технологии»
+            <h4 className="landing__footer-h">Контакты</h4>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, lineHeight: 1.8 }}>
+              По вопросам сотрудничества: <br />
+              <a href="mailto:hello@synapse.app" style={{ color: 'var(--color-primary)' }}>hello@synapse.app</a>
             </p>
           </div>
         </div>
-        <div style={{ marginTop: '60px', textAlign: 'center', paddingTop: '40px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontSize: '13px' }}>
-          © 2026 Synapse AI Project Management. Все права защищены.
+        <div className="landing__footer-copy">
+          © {new Date().getFullYear()} Synapse AI. Все права защищены.
         </div>
       </footer>
     </div>
   );
 };
 
-const FeatureCard: React.FC<{ icon: string, title: string, desc: string }> = ({ icon, title, desc }) => (
-  <div style={{ padding: '40px', borderRadius: '24px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', transition: 'var(--transition)' }}>
-    <div style={{ fontSize: '40px', marginBottom: '20px' }}>{icon}</div>
-    <h3 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '16px' }}>{title}</h3>
-    <p style={{ color: 'var(--color-text-secondary)', lineHeight: '1.6', fontSize: '15px' }}>{desc}</p>
+const FeatureCard: React.FC<{ Icon: LucideIcon; title: string; desc: string }> = ({ Icon, title, desc }) => (
+  <div className="feature-card">
+    <div className="feature-card__icon"><Icon size={24} /></div>
+    <h3 className="feature-card__title">{title}</h3>
+    <p className="feature-card__desc">{desc}</p>
   </div>
 );

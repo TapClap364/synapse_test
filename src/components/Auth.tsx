@@ -64,8 +64,8 @@ export const Auth = () => {
 
   return (
     <div style={{ width: '100%' }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '28px', fontWeight: 800, color: '#1e293b' }}>
-        {isLogin ? '👋 С возвращением' : '🚀 Создать аккаунт'}
+      <h2 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '24px', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.5px' }}>
+        {isLogin ? 'С возвращением' : 'Создать аккаунт'}
       </h2>
       <p style={{ textAlign: 'center', color: '#64748b', marginBottom: '32px', fontSize: '14px' }}>
         {isLogin ? 'Войдите в свою учетную запись Synapse AI' : 'Присоединяйтесь к будущему управления проектами'}
@@ -141,17 +141,16 @@ export const Auth = () => {
           </div>
         )}
 
-        <button 
-          type="submit" 
-          disabled={loading} 
-          style={{ 
-            ...btnStyle, 
-            background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
-            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-            marginTop: '10px'
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            ...btnStyle,
+            marginTop: '10px',
+            opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? '⏳ Загрузка...' : (isLogin ? 'Войти в Synapse' : 'Начать работу')}
+          {loading ? 'Загрузка…' : (isLogin ? 'Войти в Synapse' : 'Начать работу')}
         </button>
       </form>
 

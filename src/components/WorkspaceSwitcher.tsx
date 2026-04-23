@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Plus, X } from 'lucide-react'
 import { useWorkspace } from '../lib/workspace'
 
 export function WorkspaceSwitcher() {
@@ -8,7 +9,11 @@ export function WorkspaceSwitcher() {
   const [busy, setBusy] = useState(false)
 
   if (loading) {
-    return <span aria-busy="true" className="text-sm opacity-60">Загрузка…</span>
+    return (
+      <span aria-busy="true" style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+        Загрузка…
+      </span>
+    )
   }
 
   const handleCreate = async (): Promise<void> => {
@@ -26,13 +31,22 @@ export function WorkspaceSwitcher() {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <label htmlFor="workspace-select" className="sr-only">Workspace</label>
       <select
         id="workspace-select"
         value={currentWorkspaceId ?? ''}
         onChange={(e) => setCurrentWorkspaceId(e.target.value)}
-        className="px-2 py-1 text-sm rounded border bg-background"
+        style={{
+          padding: '6px 10px',
+          fontSize: 13,
+          borderRadius: 8,
+          border: '1px solid var(--color-border)',
+          background: 'var(--color-surface)',
+          color: 'var(--color-text)',
+          cursor: 'pointer',
+          fontWeight: 500,
+        }}
       >
         {workspaces.map((m) => (
           <option key={m.workspace.id} value={m.workspace.id}>
@@ -41,31 +55,47 @@ export function WorkspaceSwitcher() {
         ))}
       </select>
       {creating ? (
-        <span className="flex items-center gap-1">
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Workspace name"
+            placeholder="Название workspace"
             aria-label="New workspace name"
-            className="px-2 py-1 text-sm rounded border"
             disabled={busy}
             autoFocus
+            style={{
+              padding: '6px 10px',
+              fontSize: 13,
+              borderRadius: 8,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              outline: 'none',
+              minWidth: 180,
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setCreating(false); }}
           />
-          <button onClick={handleCreate} disabled={busy} className="text-sm px-2 py-1 rounded bg-primary text-white">
-            {busy ? '…' : 'Create'}
+          <button onClick={handleCreate} disabled={busy} className="btn btn--primary">
+            {busy ? '…' : 'Создать'}
           </button>
-          <button onClick={() => setCreating(false)} disabled={busy} className="text-sm px-2 py-1">
-            ✕
+          <button
+            onClick={() => setCreating(false)}
+            disabled={busy}
+            className="btn btn--ghost"
+            aria-label="Отмена"
+            style={{ padding: '6px 8px' }}
+          >
+            <X size={14} />
           </button>
         </span>
       ) : (
         <button
           onClick={() => setCreating(true)}
-          className="text-sm px-2 py-1 rounded border"
-          aria-label="Create new workspace"
+          className="btn btn--ghost"
+          aria-label="Создать новый workspace"
+          style={{ padding: '6px 10px', fontSize: 13 }}
         >
-          + New
+          <Plus size={14} /> Новый
         </button>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Trash2, UserPlus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useWorkspace } from '../lib/workspace'
 import type { WorkspaceRole } from '../types/database'
@@ -11,6 +12,12 @@ interface MemberRow {
 }
 
 const ROLES: WorkspaceRole[] = ['owner', 'admin', 'member', 'viewer']
+const ROLE_LABELS: Record<WorkspaceRole, string> = {
+  owner: 'Владелец',
+  admin: 'Администратор',
+  member: 'Участник',
+  viewer: 'Наблюдатель',
+}
 
 export function WorkspaceMembers() {
   const { currentWorkspaceId, currentRole } = useWorkspace()
@@ -60,9 +67,6 @@ export function WorkspaceMembers() {
     if (!currentWorkspaceId || !inviteEmail.trim()) return
     setInviteBusy(true)
     try {
-      // Look up the existing user by email via profiles (RLS lets us see only co-workspace profiles,
-      // so this only finds users we already share a workspace with — for full invite-by-email
-      // you need an Edge Function with admin auth; documented in README).
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
@@ -114,74 +118,133 @@ export function WorkspaceMembers() {
     await loadMembers()
   }
 
-  if (loading) return <div role="status">Загрузка участников…</div>
+  if (loading) {
+    return <div role="status" style={{ padding: 32, color: 'var(--color-text-secondary)' }}>Загрузка участников…</div>
+  }
 
   return (
-    <section aria-labelledby="members-heading" className="space-y-4">
-      <h2 id="members-heading" className="text-xl font-semibold">Участники workspace</h2>
+    <section
+      aria-labelledby="members-heading"
+      style={{ maxWidth: 880, margin: '32px auto', padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 24 }}
+    >
+      <header>
+        <h2 id="members-heading" style={{ fontSize: 24, fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+          Участники workspace
+        </h2>
+        <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+          Управляйте составом и ролями вашей команды.
+        </p>
+      </header>
 
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="text-left">
-            <th className="py-2">Имя</th>
-            <th>Email</th>
-            <th>Роль</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((m) => (
-            <tr key={m.user_id} className="border-t">
-              <td className="py-2">{m.full_name ?? '—'}</td>
-              <td>{m.email ?? '—'}</td>
-              <td>
-                {canManage ? (
-                  <select
-                    value={m.role}
-                    onChange={(e) => handleRoleChange(m.user_id, e.target.value as WorkspaceRole)}
-                    aria-label={`Роль ${m.email ?? m.user_id}`}
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                ) : m.role}
-              </td>
-              <td>
-                {canManage && (
-                  <button onClick={() => handleRemove(m.user_id)} className="text-red-600 text-sm" aria-label={`Удалить ${m.email ?? m.user_id}`}>
-                    Удалить
-                  </button>
-                )}
-              </td>
+      <div
+        style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          overflow: 'hidden',
+        }}
+      >
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <thead>
+            <tr style={{ background: 'var(--color-surface-alt)', textAlign: 'left' }}>
+              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Имя</th>
+              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Email</th>
+              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Роль</th>
+              <th style={{ padding: '12px 16px', width: 60 }} aria-label="actions" />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {members.map((m) => (
+              <tr key={m.user_id} style={{ borderTop: '1px solid var(--color-border-light)' }}>
+                <td style={{ padding: '12px 16px', color: 'var(--color-text)' }}>{m.full_name ?? '—'}</td>
+                <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>{m.email ?? '—'}</td>
+                <td style={{ padding: '12px 16px' }}>
+                  {canManage ? (
+                    <select
+                      value={m.role}
+                      onChange={(e) => handleRoleChange(m.user_id, e.target.value as WorkspaceRole)}
+                      aria-label={`Роль ${m.email ?? m.user_id}`}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: 13,
+                        borderRadius: 6,
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                      }}
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                      ))}
+                    </select>
+                  ) : ROLE_LABELS[m.role]}
+                </td>
+                <td style={{ padding: '12px 16px' }}>
+                  {canManage && (
+                    <button
+                      onClick={() => handleRemove(m.user_id)}
+                      className="btn btn--danger-soft"
+                      aria-label={`Удалить ${m.email ?? m.user_id}`}
+                      style={{ padding: '6px 8px' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {canManage && (
         <form
           onSubmit={(e) => { e.preventDefault(); handleInvite() }}
-          className="flex gap-2 items-end"
+          style={{
+            display: 'flex',
+            gap: 12,
+            alignItems: 'flex-end',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 20,
+          }}
         >
-          <label className="flex-1">
-            <span className="block text-sm">Email участника</span>
+          <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Email участника</span>
             <input
               type="email"
               required
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              className="w-full px-2 py-1 border rounded"
+              placeholder="user@example.com"
+              style={{
+                padding: '8px 12px',
+                fontSize: 14,
+                borderRadius: 8,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                outline: 'none',
+              }}
             />
           </label>
-          <label>
-            <span className="block text-sm">Роль</span>
-            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as WorkspaceRole)}>
-              {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Роль</span>
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as WorkspaceRole)}
+              style={{
+                padding: '8px 12px',
+                fontSize: 14,
+                borderRadius: 8,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+              }}
+            >
+              {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </select>
           </label>
-          <button type="submit" disabled={inviteBusy} className="px-3 py-1 rounded bg-primary text-white">
-            {inviteBusy ? '…' : 'Пригласить'}
+          <button type="submit" disabled={inviteBusy} className="btn btn--primary btn--lg">
+            <UserPlus size={16} /> {inviteBusy ? '…' : 'Пригласить'}
           </button>
         </form>
       )}

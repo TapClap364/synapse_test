@@ -1,6 +1,7 @@
 // src/App.tsx — модульная архитектура с React Router + workspace context + lazy routes
 import React, { useState, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { Brain as BrainIcon } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useData } from './hooks/useData';
 import { useCpm } from './hooks/useCpm';
@@ -262,13 +263,23 @@ END:VCALENDAR`;
     if (showAuthForm) {
       return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at top right, #eef2ff 0%, #f8fafc 50%, #f1f5f9 100%)', padding: '20px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(20px)', padding: '50px', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.08)', width: '100%', maxWidth: '480px', border: '1px solid rgba(255,255,255,0.5)' }}>
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧠</div>
-              <h1 style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '-0.5px', color: '#0f172a' }}>Synapse AI</h1>
+          <div style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(20px)', padding: '40px', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.08)', width: '100%', maxWidth: '440px', border: '1px solid rgba(255,255,255,0.6)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 12, background: 'var(--color-primary)',
+                color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 12,
+              }}>
+                <BrainIcon />
+              </div>
+              <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px', color: '#0f172a', margin: 0 }}>Synapse AI</h1>
             </div>
             <Auth />
-            <button className="btn btn--text" style={{ marginTop: '24px', width: '100%', color: '#94a3b8', fontSize: '13px', fontWeight: 500 }} onClick={() => setShowAuthForm(false)}>
+            <button
+              className="btn btn--ghost"
+              style={{ marginTop: 20, width: '100%', justifyContent: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}
+              onClick={() => setShowAuthForm(false)}
+            >
               ← Вернуться к описанию продукта
             </button>
           </div>
@@ -331,7 +342,9 @@ END:VCALENDAR`;
         </Suspense>
       )}
 
-      <Suspense fallback={null}><AIAssistant /></Suspense>
+      {session && !isPresentation && !isLegal && (
+        <Suspense fallback={null}><AIAssistant /></Suspense>
+      )}
 
       {!isWhiteboardOrWiki && !isPresentation && !isLegal && (
         <ControlBar
