@@ -3,6 +3,7 @@ import { createHandler } from './_lib/handler.js';
 import { getServiceSupabase } from './_lib/supabase.js';
 import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai.js';
 import { HttpError } from './_lib/errors.js';
+import { buildEpicContext, resolveOrCreateEpic } from './_lib/epicResolver.js';
 
 const InputSchema = z.object({
   notes: z.array(z.string().min(1).max(2_000)).min(1).max(100),
@@ -12,7 +13,7 @@ const TaskSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2_000).optional().default(''),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
-  epic_title: z.string().max(120).optional().default('General'),
+  epic_title: z.string().min(1).max(120),
   estimated_hours: z.number().min(0).max(1000).optional().default(4),
   blocked_by: z.array(z.number().int().positive()).optional().default([]),
   subtasks: z.array(z.string().max(300)).optional().default([]),
@@ -59,11 +60,7 @@ export default createHandler(
       .order('created_at', { ascending: false })
       .limit(100);
 
-    const { data: epics } = await supabase
-      .from('epics')
-      .select('id, title')
-      .eq('workspace_id', auth.workspaceId);
-    const epicList = epics?.map((e) => e.title).join(', ') || 'General, Backend, Frontend, Design';
+    const { epics, promptText: epicContext } = await buildEpicContext(supabase, auth.workspaceId);
 
     const completion = await getOpenAI().chat.completions.create({
       model: AI_MODEL,
@@ -72,12 +69,21 @@ export default createHandler(
           role: 'system',
           content: `Ты AI Project Manager. Проанализируй стикеры с брейншторма и создай структурированные задачи.
 
-Доступные эпики: [${epicList}]
+ПРАВИЛА выбора эпика для каждой задачи (epic_title) — КРИТИЧНО:
+1. Если задача тематически РОВНО подходит к одному из существующих эпиков ниже — верни ТОЧНО его название (символ-в-символ).
+2. Если ни один не подходит — придумай НОВОЕ короткое осмысленное название эпика на русском (≤ 3 слова).
+3. ЗАПРЕЩЕНО возвращать "General"/"Other"/"Misc"/"Прочее"/"Разное"/"Общее".
+
+Существующие эпики проекта:
+${epicContext}
+
+Группируй стикеры по смыслу. Если несколько стикеров об одной теме — объединяй их в одну задачу с подзадачами (subtasks).
 
 Верни СТРОГО JSON объект с ключом "tasks":
 { "tasks": [
     { "title": "...", "description": "...", "priority": "low|medium|high|critical",
-      "epic_title": "...", "estimated_hours": number, "blocked_by": number[], "subtasks": string[] }
+      "epic_title": "точное название существующего ИЛИ новое короткое осмысленное",
+      "estimated_hours": number, "blocked_by": number[], "subtasks": string[] }
 ] }`,
         },
         { role: 'user', content: `Стикеры с доски:\n${body.notes.join('\n')}` },
@@ -109,22 +115,7 @@ export default createHandler(
         continue;
       }
 
-      let epicId: number | null = null;
-      const want = task.epic_title.toLowerCase();
-      const foundEpic = epics?.find((e) => {
-        const t = e.title.toLowerCase();
-        return t.includes(want) || want.includes(t);
-      });
-      if (foundEpic) {
-        epicId = foundEpic.id;
-      } else if (task.epic_title) {
-        const { data: newEpic } = await supabase
-          .from('epics')
-          .insert({ title: task.epic_title, workspace_id: auth.workspaceId })
-          .select()
-          .single();
-        epicId = newEpic?.id ?? null;
-      }
+      const epicId = await resolveOrCreateEpic(supabase, auth.workspaceId, epics, task.epic_title);
 
       const subtasksMd =
         task.subtasks.length > 0

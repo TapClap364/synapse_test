@@ -51,12 +51,27 @@ export default createHandler(
     const validUserIds = new Set(profiles.map((p) => p.id));
     const validTaskIds = new Set(tasks.map((t) => t.id));
 
-    const tasksJson = JSON.stringify(tasks.map((t) => ({ id: t.id, title: t.title, description: t.description })));
+    // Show current assignment counts so the AI doesn't pile new work onto an already-loaded person.
+    const currentLoad = new Map<string, number>();
+    for (const t of tasks) {
+      if (t.assigned_to) currentLoad.set(t.assigned_to, (currentLoad.get(t.assigned_to) ?? 0) + 1);
+    }
+
+    const tasksJson = JSON.stringify(
+      tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        already_assigned_to: t.assigned_to ?? null,
+        existing_blocked_by: t.blocked_by ?? [],
+      })),
+    );
     const profilesJson = JSON.stringify(
       profiles.map((p) => ({
         id: p.id,
         name: p.full_name ?? 'Unknown User',
         skills_and_role: p.role_description ?? 'No description provided',
+        current_task_count: currentLoad.get(p.id) ?? 0,
       }))
     );
 
@@ -65,21 +80,22 @@ export default createHandler(
       messages: [
         {
           role: 'system',
-          content: `You are the Synapse AI Task Orchestrator.
-Your goal is to organize a project backlog by assigning tasks to the most suitable team members and determining dependencies.
+          content: `Ты Synapse AI Task Orchestrator. Твоя задача — оптимизировать project backlog: назначить задачи подходящим людям и определить зависимости между задачами.
 
-CRITICAL: Analyze the 'skills_and_role' of each profile. Assign tasks based on expertise.
+ПРАВИЛА:
+1. Анализируй "skills_and_role" каждого профиля — назначай задачу тому, чьи навыки лучше совпадают с темой.
+2. **Балансируй нагрузку.** Учитывай "current_task_count" — если у одного человека уже 5 задач, а у другого 1, новые задачи (где навыки сопоставимы) отдавай менее загруженному.
+3. Если у задачи уже есть "already_assigned_to" — НЕ меняй назначение, кроме случая когда оно явно неверное (другой человек подходит на порядок лучше по навыкам). Дублируй то же значение если оставляешь как есть.
+4. "blocked_by": если задача логически НЕ может начаться без завершения другой — добавь её id. Сохраняй "existing_blocked_by" если они актуальны, не удаляй без причины.
+5. Не выдумывай user_id и task_id, которых нет в списках.
 
-Available Profiles:
+Профили команды:
 ${profilesJson}
 
-Available Tasks:
+Задачи проекта:
 ${tasksJson}
 
-Rules:
-1. Assign a 'profile_id' to each task based on logical distribution.
-2. Determine dependencies ('blocked_by').
-3. Return a pure JSON object: { "updates": [{"task_id": 123, "assigned_to": "uuid", "blocked_by": [1,2]}] }`,
+Верни СТРОГО JSON: { "updates": [{ "task_id": 123, "assigned_to": "uuid", "blocked_by": [1,2] }] }`,
         },
       ],
       response_format: { type: 'json_object' },

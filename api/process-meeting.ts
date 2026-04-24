@@ -3,6 +3,7 @@ import { createHandler } from './_lib/handler.js';
 import { getServiceSupabase } from './_lib/supabase.js';
 import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai.js';
 import { HttpError } from './_lib/errors.js';
+import { buildEpicContext, resolveOrCreateEpic } from './_lib/epicResolver.js';
 
 const InputSchema = z.object({
   text: z.string().min(10).max(50_000),
@@ -29,7 +30,7 @@ const AiResultSchema = z.object({
         description: z.string().max(2_000).optional().default(''),
         priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
         estimated_hours: z.number().min(0).max(1000).optional().default(2),
-        epic_title: z.string().max(120).optional().default('General'),
+        epic_title: z.string().min(1).max(120),
       })
     )
     .max(50)
@@ -56,13 +57,7 @@ export default createHandler(
   async ({ auth, body, res }) => {
     const supabase = getServiceSupabase();
 
-    const { data: existingEpics } = await supabase
-      .from('epics')
-      .select('id, title')
-      .eq('workspace_id', auth.workspaceId);
-    const epicList =
-      existingEpics?.map((e) => e.title).join(', ') ||
-      'General, Backend, Frontend, Design, Marketing';
+    const { epics: existingEpics, promptText: epicContext } = await buildEpicContext(supabase, auth.workspaceId);
 
     const completion = await getOpenAI().chat.completions.create({
       model: AI_MODEL,
@@ -70,7 +65,15 @@ export default createHandler(
         {
           role: 'system',
           content: `Ты AI Secretary & Project Manager. Проанализируй текст встречи и извлеки структурированный протокол.
-Доступные эпики: [${epicList}]
+
+ПРАВИЛА выбора эпика для каждой задачи (epic_title) — КРИТИЧНО:
+1. Если задача тематически РОВНО подходит к одному из существующих эпиков ниже — верни ТОЧНО его название (символ-в-символ).
+2. Если ни один не подходит — придумай НОВОЕ короткое осмысленное название эпика на русском (≤ 3 слова).
+3. ЗАПРЕЩЕНО возвращать "General"/"Other"/"Misc"/"Прочее"/"Разное"/"Общее".
+
+Существующие эпики проекта:
+${epicContext}
+
 Верни СТРОГО JSON:
 {
   "goal": "Одна-две фразы — зачем встретились",
@@ -84,7 +87,7 @@ export default createHandler(
       "description": "Описание",
       "priority": "low"|"medium"|"high"|"critical",
       "estimated_hours": number,
-      "epic_title": "Название эпика из списка или новый"
+      "epic_title": "точное название существующего ИЛИ новое короткое осмысленное"
     }
   ]
 }
@@ -119,23 +122,7 @@ export default createHandler(
 
     let tasksCreatedCount = 0;
     for (const task of aiResult.tasks) {
-      let epicId: number | null = null;
-      const wantTitle = task.epic_title.toLowerCase();
-      const found = existingEpics?.find((e) => {
-        const t = e.title.toLowerCase();
-        return t.includes(wantTitle) || wantTitle.includes(t);
-      });
-
-      if (found) {
-        epicId = found.id;
-      } else if (task.epic_title) {
-        const { data: newEpic } = await supabase
-          .from('epics')
-          .insert({ title: task.epic_title, workspace_id: auth.workspaceId })
-          .select()
-          .single();
-        epicId = newEpic?.id ?? null;
-      }
+      const epicId = await resolveOrCreateEpic(supabase, auth.workspaceId, existingEpics, task.epic_title);
 
       const { error: insErr } = await supabase.from('tasks').insert({
         title: task.title,

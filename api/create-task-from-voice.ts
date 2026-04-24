@@ -3,6 +3,7 @@ import { createHandler } from './_lib/handler.js';
 import { getServiceSupabase } from './_lib/supabase.js';
 import { getOpenAI, AI_MODEL, safeParseAiJson } from './_lib/openai.js';
 import { HttpError } from './_lib/errors.js';
+import { buildEpicContext, resolveOrCreateEpic } from './_lib/epicResolver.js';
 
 const InputSchema = z.object({
   voice_text: z.string().min(3).max(8_000),
@@ -12,7 +13,8 @@ const AiResultSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(4_000).optional().default(''),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
-  epic_title: z.string().min(1).max(120).optional().default('General'),
+  // No default — AI MUST return either an exact existing title or a meaningful new one
+  epic_title: z.string().min(1).max(120),
   estimated_hours: z.number().min(0).max(1000).optional().default(2),
   blocked_by: z.array(z.number().int().positive()).optional().default([]),
   subtasks: z.array(z.string().max(300)).optional().default([]),
@@ -23,14 +25,7 @@ export default createHandler(
   async ({ auth, body, res }) => {
     const supabase = getServiceSupabase();
 
-    const { data: epics } = await supabase
-      .from('epics')
-      .select('id, title')
-      .eq('workspace_id', auth.workspaceId);
-
-    const epicList =
-      epics?.map((e) => e.title).join(', ') ||
-      'General, Backend, Frontend, Design, Marketing';
+    const { epics, promptText: epicContext } = await buildEpicContext(supabase, auth.workspaceId);
 
     const { data: recentTasks } = await supabase
       .from('tasks')
@@ -48,23 +43,26 @@ export default createHandler(
       messages: [
         {
           role: 'system',
-          content: `Ты Lead Project Manager.
-Твоя задача: проанализировать голосовое сообщение и создать задачу.
+          content: `Ты Lead Project Manager. Проанализируй голосовое сообщение и создай задачу.
 
-ВАЖНО:
-1. Определи зависимости (blocked_by). Если новая задача логически не может начаться БЕЗ завершения одной из существующих задач, укажи её ID в массиве blocked_by.
-2. Выбери подходящий эпик из списка или предложи новый.
+ПРАВИЛА выбора эпика (epic_title) — КРИТИЧНО:
+1. Если задача тематически РОВНО подходит к одному из существующих эпиков ниже — верни ТОЧНО его название (символ-в-символ).
+2. Если ни один существующий не подходит — придумай НОВОЕ короткое осмысленное название эпика на русском (≤ 3 слова), отражающее тему.
+3. ЗАПРЕЩЕНО возвращать "General", "Other", "Misc", "Прочее", "Разное", "Общее" — это не эпики.
 
-Доступные Эпики: [${epicList}]
-Существующие задачи (контекст):
+Существующие эпики проекта:
+${epicContext}
+
+Зависимости (blocked_by): если задача логически НЕ может начаться без завершения одной из существующих задач — укажи её ID.
+Существующие задачи (последние 5):
 ${taskContext}
 
 Верни СТРОГО JSON объект:
 {
-  "title": "Короткий заголовок",
+  "title": "Короткий заголовок задачи",
   "description": "Подробное описание",
   "priority": "low" | "medium" | "high" | "critical",
-  "epic_title": "Название эпика (выбери из списка или создай новый)",
+  "epic_title": "точное название существующего ИЛИ новое короткое осмысленное",
   "estimated_hours": number,
   "blocked_by": number[],
   "subtasks": string[]
@@ -85,26 +83,7 @@ ${taskContext}
     }
     const aiData = parsed.data;
 
-    let epicId: number | null = null;
-    const wantTitle = aiData.epic_title.toLowerCase().trim();
-    const existingEpic = epics?.find((e) => {
-      const t = e.title.toLowerCase().trim();
-      return t.includes(wantTitle) || wantTitle.includes(t);
-    });
-
-    if (existingEpic) {
-      epicId = existingEpic.id;
-    } else {
-      const { data: newEpic, error: epicErr } = await supabase
-        .from('epics')
-        .insert({ title: aiData.epic_title, workspace_id: auth.workspaceId })
-        .select()
-        .single();
-      if (epicErr || !newEpic) {
-        throw new HttpError(500, `Failed to create epic: ${epicErr?.message ?? 'unknown'}`);
-      }
-      epicId = newEpic.id;
-    }
+    const epicId = await resolveOrCreateEpic(supabase, auth.workspaceId, epics, aiData.epic_title);
 
     const subtasksMd =
       aiData.subtasks.length > 0
