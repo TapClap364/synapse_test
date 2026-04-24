@@ -1,10 +1,13 @@
 // src/components/KanbanView.tsx
-import React from 'react';
-import { Inbox, Loader, CheckCircle2, Link as LinkIcon, Clock, type LucideIcon } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Inbox, Loader, CheckCircle2, Link as LinkIcon, Clock, X, type LucideIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Task, Profile } from '../types';
 import { formatTaskId, getInitials } from '../types';
 import { TaskSkeleton } from './Skeleton';
+
+const NO_EPIC = '__no_epic__';
+const UNASSIGNED = '__unassigned__';
 
 interface KanbanViewProps {
   tasks: Task[];
@@ -24,6 +27,9 @@ const COLUMNS: { key: Task['status']; label: string; Icon: LucideIcon; color: st
 export const KanbanView: React.FC<KanbanViewProps> = ({
   tasks, epics, profiles, onTaskClick, onTasksChange, isLoading
 }) => {
+  const [epicFilter, setEpicFilter] = useState<string>('all');
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+
   const onDragStart = (e: React.DragEvent, id: number) => {
     e.dataTransfer.setData('id', id.toString());
   };
@@ -39,8 +45,82 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
     await supabase.from('tasks').update({ status: typedStatus as 'draft' | 'backlog' | 'in_progress' | 'done' }).eq('id', id);
   };
 
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(t => {
+      if (epicFilter !== 'all') {
+        if (epicFilter === NO_EPIC) {
+          if (t.epic_id != null) return false;
+        } else {
+          if (String(t.epic_id) !== epicFilter) return false;
+        }
+      }
+      if (assigneeFilter !== 'all') {
+        if (assigneeFilter === UNASSIGNED) {
+          if (t.assigned_to) return false;
+        } else {
+          if (t.assigned_to !== assigneeFilter) return false;
+        }
+      }
+      return true;
+    });
+  }, [tasks, epicFilter, assigneeFilter]);
+
+  const hasActiveFilter = epicFilter !== 'all' || assigneeFilter !== 'all';
+  const epicOptions = Object.entries(epics).sort((a, b) => a[1].localeCompare(b[1], 'ru'));
+
+  const selectStyle: React.CSSProperties = {
+    padding: '6px 10px',
+    fontSize: 13,
+    borderRadius: 8,
+    border: '1px solid var(--color-border)',
+    background: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontWeight: 500,
+    cursor: 'pointer',
+  };
+
   return (
-    <div className="kanban">
+    <>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        padding: '10px 24px 0', fontSize: 13, color: 'var(--color-text-secondary)',
+      }}>
+        <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: 11 }}>Фильтры</span>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          Эпик:
+          <select value={epicFilter} onChange={(e) => setEpicFilter(e.target.value)} style={selectStyle} aria-label="Фильтр по эпику">
+            <option value="all">Все</option>
+            {epicOptions.map(([id, title]) => (
+              <option key={id} value={id}>{title}</option>
+            ))}
+            <option value={NO_EPIC}>Без эпика</option>
+          </select>
+        </label>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          Ответственный:
+          <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} style={selectStyle} aria-label="Фильтр по ответственному">
+            <option value="all">Все</option>
+            {profiles.map(p => (
+              <option key={p.id} value={p.id}>{p.full_name || p.email || p.id.slice(0, 8)}</option>
+            ))}
+            <option value={UNASSIGNED}>Не назначен</option>
+          </select>
+        </label>
+        {hasActiveFilter && (
+          <button
+            type="button"
+            onClick={() => { setEpicFilter('all'); setAssigneeFilter('all'); }}
+            className="btn btn--ghost"
+            style={{ padding: '4px 10px', fontSize: 12 }}
+          >
+            <X size={12} aria-hidden="true" /> Сбросить
+          </button>
+        )}
+        <span style={{ marginLeft: 'auto', color: 'var(--color-text-muted)', fontSize: 12 }}>
+          {filteredTasks.length} из {tasks.length}
+        </span>
+      </div>
+      <div className="kanban">
       {COLUMNS.map(col => (
         <div
           key={col.key}
@@ -61,7 +141,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
               </>
             ) : (
               <>
-                {tasks
+                {filteredTasks
                   .filter(t => t.status === col.key)
                   .map(t => {
                     const assignee = profiles.find(p => p.id === t.assigned_to);
@@ -110,7 +190,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                                 getInitials(assignee?.full_name)
                               )}
                             </div>
-                            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
                               {assignee?.full_name || 'Пользователь'}
                             </span>
                           </div>
@@ -118,10 +198,10 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                       </div>
                     );
                   })}
-                {tasks.filter(t => t.status === col.key).length === 0 && (
+                {filteredTasks.filter(t => t.status === col.key).length === 0 && (
                   <div className="kanban__empty">
                     <col.Icon size={20} style={{ opacity: 0.4, marginBottom: 8, color: col.color }} aria-hidden="true" />
-                    <div>Пусто</div>
+                    <div>{hasActiveFilter ? 'Нет совпадений' : 'Пусто'}</div>
                   </div>
                 )}
               </>
@@ -129,6 +209,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
           </div>
         </div>
       ))}
-    </div>
+      </div>
+    </>
   );
 };
