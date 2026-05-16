@@ -112,15 +112,16 @@ body {
 
 /* --- Header --- */
 .header {
-  padding: 16px 32px;
+  padding: 16px 24px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;        /* prevent neighbouring sections from touching when content is wide */
-  flex-wrap: wrap;  /* graceful overflow instead of items crashing into each other */
+  gap: 16px;        /* minimum breathing room between sections so they never touch */
   z-index: 50;
+  /* No flex-wrap on purpose — at narrow widths the .header__nav-label hide kicks in
+     at 1024px (see Responsive section below) so everything stays on one row. */
 }
 
 .header__logo {
@@ -800,11 +801,21 @@ body {
   .header__nav-btn { padding: 6px 4px; }
 }
 
-/* Tablet / small laptop: nav labels crowd out the user area between 768–1024px */
+/* Mid-size laptops (~1280–1400px): user cluster has 6 controls with full labels —
+   hide the verbose "Sergei" + "Выйти" + "Admin" labels so the right cluster
+   fits next to the nav without forcing a wrap. */
+@media (max-width: 1400px) and (min-width: 1025px) {
+  .header__user-name { display: none; }                /* avatar circle remains */
+  .header { gap: 12px; padding: 16px 20px; }
+}
+
+/* Small laptops & tablets: hide nav labels too. */
 @media (max-width: 1024px) and (min-width: 769px) {
-  .header__nav-label { display: none; } /* icons only, full label re-appears at ≥1024 */
+  .header__nav-label { display: none; } /* icons only, full label re-appears at ≥1025 */
   .header__nav-btn { padding: 8px 10px; }
-  .header__search-trigger { max-width: 180px; }
+  .header__search-trigger { max-width: 160px; }
+  .header__user-name { display: none; }
+  .header { gap: 10px; padding: 14px 16px; }
 }
 
 /* Defensive cross-browser hardening — prevents page-level horizontal scroll
