@@ -118,6 +118,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 20px;        /* prevent neighbouring sections from touching when content is wide */
+  flex-wrap: wrap;  /* graceful overflow instead of items crashing into each other */
   z-index: 50;
 }
 
@@ -125,6 +127,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .header__logo-icon {
@@ -154,12 +157,13 @@ body {
   border: 1px solid var(--color-border);
   cursor: pointer;
   width: 200px;
+  flex-shrink: 0;
   transition: var(--transition);
 }
 
 .header__search-trigger:hover {
   border-color: var(--color-primary);
-  background: #fff;
+  background: var(--color-surface);
   box-shadow: var(--shadow-sm);
 }
 
@@ -175,11 +179,11 @@ body {
   padding: 8px;
   border-radius: 50%;
   transition: var(--transition);
-  color: #64748b;
+  color: var(--color-text-secondary);
 }
 
 .header__notification-btn:hover {
-  background: var(--color-bg);
+  background: var(--color-surface-alt);
   color: var(--color-primary);
 }
 
@@ -191,7 +195,7 @@ body {
   height: 8px;
   background: #ef4444;
   border-radius: 50%;
-  border: 2px solid #fff;
+  border: 2px solid var(--color-surface);
 }
 
 .header__nav {
@@ -217,7 +221,7 @@ body {
   gap: 4px;
 }
 
-.header__nav-btn:hover { background: rgba(255,255,255,0.6); }
+.header__nav-btn:hover { background: var(--color-surface); }
 
 .header__nav-btn--active {
   background: var(--color-surface);
