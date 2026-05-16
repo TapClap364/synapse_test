@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Synapse AI — Code Audit Report</title><style>
+@page {
+  size: A4;
+  margin: 22mm 18mm 22mm 18mm;
+  @bottom-right { content: counter(page); font-family: 'Inter', system-ui, sans-serif; font-size: 9pt; color: #94a3b8; }
+  @bottom-left { content: 'Synapse AI — Code Audit'; font-family: 'Inter', system-ui, sans-serif; font-size: 9pt; color: #94a3b8; }
+}
+@page :first { margin: 0; @bottom-right { content: ''; } @bottom-left { content: ''; } }
+
+html, body { font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif; font-size: 10.5pt; line-height: 1.55; color: #0f172a; margin: 0; -webkit-font-smoothing: antialiased; }
+
+.cover { page-break-after: always; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3b82f6 100%); color: #fff; height: 297mm; width: 210mm; padding: 50mm 30mm; display: flex; flex-direction: column; justify-content: space-between; }
+.cover__logo { display: inline-flex; align-items: center; gap: 14px; font-size: 18pt; font-weight: 700; }
+.cover__logo-mark { width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18); display: inline-flex; align-items: center; justify-content: center; font-size: 22pt; font-weight: 800; }
+.cover__title { font-size: 40pt; font-weight: 800; line-height: 1.05; letter-spacing: -1px; margin: 0; }
+.cover__subtitle { font-size: 14pt; font-weight: 500; opacity: 0.85; margin: 12px 0 0 0; max-width: 130mm; line-height: 1.4; }
+.cover__meta { font-size: 11pt; opacity: 0.85; display: flex; gap: 32px; border-top: 1px solid rgba(255,255,255,0.25); padding-top: 20px; }
+.cover__meta-row { display: flex; flex-direction: column; gap: 4px; }
+.cover__meta-label { font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; }
+.cover__meta-value { font-size: 12pt; font-weight: 600; }
+.cover__legend { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+.cover__legend .sev { font-size: 10pt; padding: 4px 10px; border-radius: 6px; font-weight: 700; color: #fff; }
+
+.toc { page-break-after: always; padding-top: 12mm; }
+.toc h2 { font-size: 24pt; font-weight: 800; color: #0f172a; margin: 0 0 24px 0; letter-spacing: -0.5px; }
+.toc ul { list-style: none; padding: 0; margin: 0; }
+.toc ul ul { padding-left: 18px; margin-top: 4px; margin-bottom: 8px; }
+.toc li { padding: 6px 0; border-bottom: 1px dotted #cbd5e1; font-size: 11pt; }
+.toc li:last-child { border-bottom: none; }
+.toc a { color: #0f172a; text-decoration: none; }
+.toc ul ul li { border-bottom: none; padding: 3px 0; font-size: 10pt; color: #475569; }
+
+.content { padding-top: 4mm; }
+.content h1 { font-size: 22pt; font-weight: 800; color: #0f172a; border-bottom: 3px solid #3b82f6; padding-bottom: 8px; margin: 28px 0 16px; page-break-after: avoid; }
+.content h2 { font-size: 17pt; font-weight: 700; color: #1e3a8a; margin: 28px 0 12px; page-break-after: avoid; }
+.content h3 { font-size: 13pt; font-weight: 700; color: #3b82f6; margin: 22px 0 8px; page-break-after: avoid; }
+.content h4 { font-size: 11.5pt; font-weight: 700; color: #1e3a8a; margin: 16px 0 6px; }
+.content p { margin: 0 0 10px; }
+.content ul, .content ol { margin: 0 0 14px; padding-left: 22px; }
+.content li { margin-bottom: 4px; }
+.content strong { color: #0f172a; font-weight: 700; }
+.content code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace; font-size: 9pt; color: #be185d; }
+.content hr { border: none; border-top: 1px solid #e2e8f0; margin: 32px 0; }
+.content table { border-collapse: collapse; width: 100%; margin: 14px 0 18px; font-size: 10pt; page-break-inside: avoid; }
+.content thead th { background: #3b82f6; color: #fff; text-align: left; padding: 10px 12px; font-weight: 700; font-size: 10pt; border: 1px solid #2563eb; }
+.content tbody td { padding: 9px 12px; border: 1px solid #e2e8f0; vertical-align: top; }
+.content tbody tr:nth-child(even) td { background: #f8fafc; }
+
+.sev { display: inline-block; padding: 1px 8px; border-radius: 4px; color: #fff !important; font-weight: 700; font-size: 9.5pt; letter-spacing: 0.5px; margin-right: 2px; }
+</style></head>
+<body>
+<div class="cover">
+  <div class="cover__logo"><div class="cover__logo-mark">S</div>Synapse AI</div>
+  <div>
+    <h1 class="cover__title">Code Audit<br/>Report</h1>
+    <p class="cover__subtitle">Полный аудит безопасности, перформанса, надёжности и качества кода. Top-10 приоритетов + детальные находки по 9 категориям.</p>
+    <div class="cover__legend">
+      <span class="sev" style="background:#dc2626">P0 Critical</span>
+      <span class="sev" style="background:#ea580c">P1 High</span>
+      <span class="sev" style="background:#d97706">P2 Medium</span>
+      <span class="sev" style="background:#0891b2">P3 Low</span>
+    </div>
+  </div>
+  <div class="cover__meta">
+    <div class="cover__meta-row"><span class="cover__meta-label">Версия</span><span class="cover__meta-value">1.0</span></div>
+    <div class="cover__meta-row"><span class="cover__meta-label">Дата</span><span class="cover__meta-value">Май 2026</span></div>
+    <div class="cover__meta-row"><span class="cover__meta-label">Категории</span><span class="cover__meta-value">9</span></div>
+  </div>
+</div>
+<div class="toc"><h2>Содержание</h2><div class="toc"><span class="toctitle">Содержание</span><ul>
+<li><a href="#1-security">1. Security</a></li>
+<li><a href="#2-performance">2. Performance</a></li>
+<li><a href="#3-code-quality-dx">3. Code quality / DX</a></li>
+<li><a href="#4-ux-accessibility">4. UX / Accessibility</a></li>
+<li><a href="#5-reliability">5. Reliability</a></li>
+<li><a href="#6-database">6. Database</a></li>
+<li><a href="#7-monetization-stripe">7. Monetization / Stripe</a></li>
+<li><a href="#8-observability">8. Observability</a></li>
+<li><a href="#9-deployment-ci">9. Deployment / CI</a></li>
+<li><a href="#top-10-priorities">Top 10 priorities</a></li>
+<li><a href="#top-10">Прочие важные находки (не вошли в Top-10, но скоро надо)</a></li>
+</ul>
+</div>
+</div><div class="content">
+<p><strong>Дата:</strong> май 2026
+<strong>Версия:</strong> 1.0
+<strong>Стек:</strong> React + TypeScript + Vite, Supabase (Postgres + Auth + Storage + Edge Functions), Vercel Serverless, OpenAI/OpenRouter, Stripe, PostHog, Sentry</p>
+<hr />
+<h2 id="1-security">1. Security</h2>
+<ul>
+<li><span class="sev sev--p0" style="background:#dc2626">P0</span> <code>useTaskComments.ts:33-58</code> — Realtime INSERT handler сломан: первый <code>setComments</code> всегда возвращает <code>prev</code> без изменений (<code>if (prev.some(...)) return prev</code> без add-path), новые комментарии добавляются только через вторичный chained query. Плюс нет <code>eq('workspace_id', ...)</code> фильтра — полагается только на RLS.</li>
+<li>
+<p>Fix: переписать handler, добавить <code>workspace_id=eq.${currentWorkspaceId}</code> в realtime filter.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>api/ai-ocr.ts:7-43</code> — <code>fileUrl</code> принимает любой HTTPS URL (<code>z.string().url()</code>). SSRF/abuse vector через провайдера модели.</p>
+</li>
+<li>
+<p>Fix: валидировать что host совпадает с Supabase storage и path начинается с <code>/storage/v1/object/public/document-attachments/</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>api/ai-assistant-chat.ts</code> — нет требования <code>requireWrite</code> (нормально для чата), но контекст из БД (titles задач/документов) попадает в system prompt без escape — prompt injection через ввод пользователя.</p>
+</li>
+<li>
+<p>Fix: жёсткое усечение полей, escape, ограничить доступ к чату до <code>member+</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>api/stripe-webhook.ts:53-110</code> — нет идемпотентности. Stripe ретраит тот же <code>event.id</code>, обработчик повторно делает UPDATE.</p>
+</li>
+<li>
+<p>Fix: таблица <code>stripe_webhook_events(event_id PK)</code>, INSERT с <code>ON CONFLICT DO NOTHING</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>api/stripe-webhook.ts:75 vs :65</code> — в <code>checkout.session.completed</code> plan жёстко <code>'pro'</code>, а в <code>customer.subscription.updated</code> — <code>price.id</code> (типа <code>price_xxxxx</code>). БД флипает между человекочитаемым и Stripe-ID.</p>
+</li>
+<li>
+<p>Fix: единый mapping <code>price.id → 'pro'|'team'|...</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>api/_lib/cors.ts:3-8</code> — fallback-список содержит превью-домен <code>synapseproject-tapclap364s-projects.vercel.app</code>. Если <code>ALLOWED_ORIGINS</code> забыли в проде, атакующий мог бы поднять превью на этом субдомене.</p>
+</li>
+<li>
+<p>Fix: в production отказывать стартовать без <code>ALLOWED_ORIGINS</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>src/types/index.ts:36</code> объявляет <code>is_super_admin?: boolean</code> на <code>Profile</code>, но в <code>database.ts:228-249</code> нет этой колонки. <code>profile?.is_super_admin</code> всегда <code>undefined</code>, Admin-ссылка в Header <strong>dead code</strong>.</p>
+</li>
+<li>
+<p>Fix: добавить колонку миграцией ИЛИ загрузить через отдельный запрос.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>src/components/WorkspaceMembers.tsx:91-100</code> — смена роли клиентом напрямую через RLS. Нет guard против снятия <strong>последнего owner</strong>.</p>
+</li>
+<li>
+<p>Fix: перенести в Edge Function или Postgres trigger.</p>
+</li>
+<li>
+<p><span class="sev sev--p3" style="background:#0891b2">P3</span> <code>vercel.json:12</code> — добавить <code>accelerometer=()</code> и <code>payment=()</code> в <code>Permissions-Policy</code>.</p>
+</li>
+</ul>
+<h2 id="2-performance">2. Performance</h2>
+<ul>
+<li><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>src/App.tsx:243-244, 254-256, 276</code> — <code>Object.entries(epics).map(...)</code> пересчитывается на каждом рендере, передаётся в <code>KanbanView</code>, <code>EpicsView</code>, <code>TaskModal</code>. Каждый child перерендерится зря.</li>
+<li>
+<p>Fix: <code>useMemo</code> в App.tsx.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>src/components/GanttView.tsx:17-22, 56-59, 91, 107-133</code> — Вся CPM-геометрия и SVG paths пересчитываются на каждом рендере.</p>
+</li>
+<li>
+<p>Fix: <code>useMemo([cpmData])</code>, <code>React.memo(GanttBar)</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>src/hooks/useData.ts:90-107</code> — Realtime подписка на <code>tasks</code> триггерит <strong>полный re-fetch</strong> на каждое изменение.</p>
+</li>
+<li>
+<p>Fix: использовать <code>payload.new/old</code> для локальной мутации, полный fetch только при reconnect.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>api/process-whiteboard-notes.ts:104-141</code>, <code>process-meeting.ts:124-138</code>, <code>create-task-from-voice.ts:86</code> — sequential <code>for ... await insert(...)</code>. N round trips.</p>
+</li>
+<li>
+<p>Fix: batch <code>.insert(arrayOfRows)</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>api/ai-assistant-chat.ts:20-25</code> — контекст из БД без truncation, легко вылетает за пределы context window.</p>
+</li>
+<li>
+<p>Fix: cap полей до 200 chars каждого.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>vite.config.ts</code> — <code>lucide-react</code> (~1MB иконок) не выделен в отдельный chunk.</p>
+</li>
+<li>
+<p>Fix: добавить <code>lucide: ['lucide-react']</code> в <code>manualChunks</code> или per-icon imports.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> Аватары через DiceBear без <code>loading="lazy"</code> / <code>decoding="async"</code>.</p>
+</li>
+</ul>
+<h2 id="3-code-quality-dx">3. Code quality / DX</h2>
+<ul>
+<li><span class="sev sev--p1" style="background:#ea580c">P1</span> <strong>Тесты: 2 файла на весь проект.</strong> Нет тестов на <code>epicResolver.ts</code>, <code>auth.ts</code>, <code>useData</code>, <code>useTaskComments</code>, <code>KanbanView</code>, любые компоненты.</li>
+<li>
+<p>Fix: минимум <code>epicResolver.test.ts</code> + <code>auth.test.ts</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>any</code> в 14+ местах. Худшие: <code>Whiteboard.tsx:16,21,36,119,124</code> (tldraw полностью untyped), <code>DocumentEditor.tsx:129,147,173</code> (<code>catch error: any</code>), <code>SearchModal.tsx:17,69</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> Inline-style sprawl — 5 худших файлов:
+  1. <code>EpicsView.tsx</code> — hover handlers переписывают <code>currentTarget.style.*</code> вместо CSS <code>:hover</code>.
+  2. <code>AdminPage.tsx</code> — inline-style на каждой ячейке таблицы.
+  3. <code>WorkspaceMembers.tsx:144-205</code> — вся таблица inline.
+  4. <code>AIAssistant.tsx:53-167</code> — hardcoded <code>#fff</code>/<code>#3b82f6</code> ломают тёмную тему.
+  5. <code>MeetingModal.tsx:22-41</code> — hardcoded <code>#f0fdf4</code>/<code>#475569</code> ломают тёмную тему.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> Hardcoded русские строки несмотря на i18n: <code>AIAssistant.tsx:14-16</code>, <code>Auth.tsx:48,79</code>, <code>EpicsView</code>, <code>OnboardingTour</code>, <code>LandingPage</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>SentryErrorBoundary</code> экспортируется в <code>src/lib/sentry.ts:16</code> но <strong>никогда не импортируется</strong>. Sentry не видит React errors.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>src/types/index.ts:6</code> — <code>Task.status</code> union содержит <code>'todo'</code>, но в DB enum только <code>'draft'|'backlog'|'in_progress'|'done'</code>. Schema drift.</p>
+</li>
+</ul>
+<h2 id="4-ux-accessibility">4. UX / Accessibility</h2>
+<ul>
+<li><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>TaskModal</code>, <code>MeetingModal</code> — <strong>нет focus trap, нет Escape-to-close, нет return-focus</strong>. Только <code>SearchModal</code> обрабатывает Escape.</li>
+<li>
+<p>Fix: <code>useModal()</code> хук или <code>@radix-ui/react-dialog</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> Color contrast — <code>var(--color-text-muted)</code> на <code>var(--color-surface-alt)</code> (placeholder тексты в Kanban, Wiki, Admin) рискует не пройти WCAG AA в обеих темах.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> AI loading states — <code>AIAssistant.tsx:127</code> показывает «ИИ думает...» без <code>aria-live="polite"</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>Auth.tsx:185</code> — <code>&lt;p onClick&gt;</code> для переключения login/register, должен быть <code>&lt;button&gt;</code>.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> Form errors через <code>alert()</code> (Auth, WorkspaceMembers, TaskModal) — не styling, не announceable, блокирует UI.</p>
+</li>
+</ul>
+<h2 id="5-reliability">5. Reliability</h2>
+<ul>
+<li><span class="sev sev--p0" style="background:#dc2626">P0</span> <code>api/process-meeting.ts:111-138</code> — Meeting вставляется, потом tasks в цикле. Если task #3 падает — meeting и 2 задачи остаются. Нет транзакции.</li>
+<li>
+<p>Fix: RPC <code>create_meeting_with_tasks(payload jsonb)</code> в одной транзакции.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>api/orchestrate-tasks.ts:108-128</code> — то же самое: per-task update, silent error count.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> Все AI endpoints — single call без retry на 5xx/429 (<code>openai.ts:22</code> <code>maxRetries: 1</code>).</p>
+</li>
+<li>
+<p>Fix: <code>maxRetries: 3</code> с backoff.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>api/_lib/sentry.ts:33-35</code> — <code>initSentry()</code> fire-and-forget. Первый запрос после cold-start может завершиться раньше чем Sentry загрузится → 500-ки не отправляются.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>vercel.json</code> — <code>api/ai-assistant-chat.ts</code> НЕ имеет <code>maxDuration</code>, default 10s Hobby. Длинные ответы режутся.</p>
+</li>
+</ul>
+<h2 id="6-database">6. Database</h2>
+<ul>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>comments.user_id</code> — nullable. Возможны комментарии без авторов.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> Вероятно отсутствующие индексы (нужно подтвердить через <code>get_advisors</code>):</p>
+</li>
+<li><code>comments(task_id, created_at)</code></li>
+<li><code>tasks(workspace_id, status)</code></li>
+<li><code>tasks(workspace_id, epic_id)</code></li>
+<li><code>attachments(document_id)</code></li>
+<li>
+<p><code>workspace_members(user_id)</code></p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> <code>documents.content</code> — inconsistent shape: <code>DocumentEditor</code> сохраняет строку, <code>generate-project-report</code> сохраняет <code>{html}</code>. Standardize на один формат + миграция.</p>
+</li>
+</ul>
+<h2 id="7-monetization-stripe">7. Monetization / Stripe</h2>
+<ul>
+<li><span class="sev sev--p0" style="background:#dc2626">P0</span> <strong>Нет ни одного feature gating по plan нигде в приложении.</strong> Search <code>w.plan</code> находит только display в <code>AdminPage.tsx:275</code>. Клиенты платят за <code>pro</code> — не получают ничего.</li>
+<li>
+<p>Fix: добавить <code>useWorkspace().plan</code>, gate AI endpoints + UI с upgrade CTA.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>stripe-webhook.ts:53</code> — нет <code>customer.subscription.trial_will_end</code> или <code>invoice.payment_failed</code>. Провалившиеся платежи не даунгрейдят план.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> Нет Billing Portal endpoint. Owners не могут самостоятельно сменить карту/отменить.</p>
+</li>
+</ul>
+<h2 id="8-observability">8. Observability</h2>
+<ul>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> Sentry frontend — <code>initSentry()</code> есть, но <strong>нет SentryErrorBoundary в дереве</strong>. React errors не идут в Sentry.</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> PostHog — критические gaps в воронке:</p>
+</li>
+<li>Нет <code>user_signed_up</code></li>
+<li>Нет <code>workspace_created</code></li>
+<li>Нет <code>member_invited</code></li>
+<li>Нет <code>first_task_created</code></li>
+<li>
+<p>Нет <code>plan_upgraded</code></p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> Логирование на сервере — голый <code>console.error('[api-error]', err)</code> без request ID или workspace ID correlation.</p>
+</li>
+</ul>
+<h2 id="9-deployment-ci">9. Deployment / CI</h2>
+<ul>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> <code>.github/workflows/ci.yml</code> — нет deploy preview или e2e тестов. Только typecheck + lint + unit (которых ~0).</p>
+</li>
+<li>
+<p><span class="sev sev--p1" style="background:#ea580c">P1</span> Vercel env vars — упомянуть в README/runbook что нужны: <code>SUPABASE_URL</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>OPENROUTER_API_KEY</code>, <code>ALLOWED_ORIGINS</code>, <code>STRIPE_SECRET_KEY</code>, <code>STRIPE_WEBHOOK_SECRET</code>, <code>UPSTASH_REDIS_REST_*</code>, <code>SENTRY_DSN</code>, плюс frontend <code>VITE_*</code>.</p>
+</li>
+<li>
+<p><strong>Critical:</strong> <code>ratelimit.ts:50-56</code> silently no-ops если Upstash не настроен — в проде нужна fail-fast проверка.</p>
+</li>
+<li>
+<p><span class="sev sev--p2" style="background:#d97706">P2</span> Tldraw 2.4.6, Tiptap 2.2.4, Supabase 2.39.0 — отстают на 6-12 месяцев. Security advisories вероятны. Подключить Dependabot/Renovate.</p>
+</li>
+</ul>
+<hr />
+<h2 id="top-10-priorities">Top 10 priorities</h2>
+<ol>
+<li><strong>[P0] Нет plan-gating</strong> при работающем Stripe. Owners платят за Pro — ничего не меняется.</li>
+<li><strong>[P0] <code>useTaskComments.ts:33-58</code></strong> — broken realtime INSERT handler.</li>
+<li><strong>[P0] <code>process-meeting.ts</code></strong> — partial-failure без транзакции.</li>
+<li><strong>[P1] Stripe webhook</strong> — отсутствует идемпотентность + plan-id inconsistency.</li>
+<li><strong>[P1] <code>api/ai-ocr.ts</code></strong> — принимает любой HTTPS URL (SSRF).</li>
+<li><strong>[P1] Modal a11y</strong> — TaskModal/MeetingModal без focus trap, Escape, return focus.</li>
+<li><strong>[P1] SentryErrorBoundary</strong> не используется — React errors не идут в Sentry.</li>
+<li><strong>[P1] Bulk-insert AI endpoints</strong> — заменить per-row loops на batched insert.</li>
+<li><strong>[P1] Test coverage ≈ 0</strong> — добавить тесты на <code>epicResolver</code>, <code>auth</code>, <code>useTaskComments</code>.</li>
+<li><strong>[P1] PostHog funnel gaps</strong> — без <code>signed_up</code>/<code>workspace_created</code>/<code>member_invited</code>/<code>first_task_created</code>/<code>plan_upgraded</code> нет данных о конверсии.</li>
+</ol>
+<hr />
+<h2 id="top-10">Прочие важные находки (не вошли в Top-10, но скоро надо)</h2>
+<ul>
+<li><code>src/types/index.ts:36</code> <code>is_super_admin</code> нет в DB schema → Admin-ссылка в Header — dead code.</li>
+<li><code>AIAssistant.tsx:91,118,131</code> hardcoded <code>#fff</code>/<code>#f8fafc</code> — ломают тёмную тему.</li>
+<li><code>tasks.status</code> TS-type имеет <code>'todo'</code>, в DB enum нет — schema drift.</li>
+<li><code>documents.content</code> shape inconsistent (string vs <code>{html}</code>) у разных writers.</li>
+<li>CORS <code>DEFAULT_ORIGINS</code> silently fallback — в проде нужна fail-fast.</li>
+<li>Upstash ratelimit silently no-ops если не настроен — то же самое.</li>
+<li><code>useData.ts:90-107</code> full-refetch на каждый realtime change — O(N) per write.</li>
+<li><code>lucide-react</code> не chunked — main bundle bloat.</li>
+</ul></div></body></html>

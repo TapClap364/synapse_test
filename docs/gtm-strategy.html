@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>Synapse AI — Стратегия вывода на рынок</title>
+<style>
+@page {
+  size: A4;
+  margin: 22mm 18mm 22mm 18mm;
+  @bottom-right {
+    content: counter(page);
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    font-size: 9pt;
+    color: #94a3b8;
+  }
+  @bottom-left {
+    content: 'Synapse AI — GTM Strategy';
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    font-size: 9pt;
+    color: #94a3b8;
+  }
+}
+@page :first {
+  margin: 0;
+  @bottom-right { content: ''; }
+  @bottom-left { content: ''; }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 11pt;
+  line-height: 1.55;
+  color: #0f172a;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cover page */
+.cover {
+  page-break-after: always;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+  color: #fff;
+  height: 297mm;
+  width: 210mm;
+  padding: 50mm 30mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+.cover__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 18pt;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.cover__logo-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22pt;
+  font-weight: 800;
+}
+.cover__title {
+  font-size: 40pt;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -1px;
+  margin: 0;
+}
+.cover__subtitle {
+  font-size: 16pt;
+  font-weight: 500;
+  opacity: 0.85;
+  margin: 12px 0 0 0;
+  max-width: 110mm;
+  line-height: 1.4;
+}
+.cover__meta {
+  font-size: 11pt;
+  opacity: 0.85;
+  display: flex;
+  gap: 32px;
+  border-top: 1px solid rgba(255,255,255,0.25);
+  padding-top: 20px;
+}
+.cover__meta-row { display: flex; flex-direction: column; gap: 4px; }
+.cover__meta-label { font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; }
+.cover__meta-value { font-size: 12pt; font-weight: 600; }
+
+/* Table of contents */
+.toc {
+  page-break-after: always;
+  padding-top: 12mm;
+}
+.toc h2 {
+  font-size: 24pt;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 24px 0;
+  letter-spacing: -0.5px;
+}
+.toc ul { list-style: none; padding: 0; margin: 0; }
+.toc ul ul { padding-left: 18px; margin-top: 4px; margin-bottom: 8px; }
+.toc li {
+  padding: 6px 0;
+  border-bottom: 1px dotted #cbd5e1;
+  font-size: 11pt;
+}
+.toc li:last-child { border-bottom: none; }
+.toc a {
+  color: #0f172a;
+  text-decoration: none;
+}
+.toc a:hover { color: #3b82f6; }
+.toc ul ul li { border-bottom: none; padding: 3px 0; font-size: 10pt; color: #475569; }
+
+/* Body */
+.content { padding-top: 4mm; }
+.content h1 {
+  font-size: 22pt;
+  font-weight: 800;
+  color: #0f172a;
+  border-bottom: 3px solid #3b82f6;
+  padding-bottom: 8px;
+  margin: 28px 0 16px;
+  letter-spacing: -0.5px;
+  page-break-after: avoid;
+}
+.content h2 {
+  font-size: 17pt;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin: 28px 0 12px;
+  letter-spacing: -0.3px;
+  page-break-after: avoid;
+}
+.content h3 {
+  font-size: 13pt;
+  font-weight: 700;
+  color: #3b82f6;
+  margin: 22px 0 8px;
+  page-break-after: avoid;
+}
+.content h4 {
+  font-size: 11.5pt;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin: 16px 0 6px;
+}
+.content p { margin: 0 0 10px; }
+.content ul, .content ol { margin: 0 0 14px; padding-left: 22px; }
+.content li { margin-bottom: 4px; }
+.content strong { color: #0f172a; font-weight: 700; }
+.content em { color: #475569; }
+.content code {
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  font-size: 9.5pt;
+  color: #be185d;
+}
+.content blockquote {
+  border-left: 4px solid #3b82f6;
+  background: #eff6ff;
+  margin: 14px 0;
+  padding: 12px 18px;
+  border-radius: 0 8px 8px 0;
+  color: #1e3a8a;
+  font-style: italic;
+}
+.content hr {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 32px 0;
+}
+
+/* Tables */
+.content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 14px 0 18px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+.content thead th {
+  background: #3b82f6;
+  color: #fff;
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 10pt;
+  border: 1px solid #2563eb;
+}
+.content tbody td {
+  padding: 9px 12px;
+  border: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+.content tbody tr:nth-child(even) td { background: #f8fafc; }
+.content tbody tr:hover td { background: #eff6ff; }
+
+/* Checkbox-style task lists from markdown */
+.content input[type="checkbox"] {
+  margin-right: 6px;
+  accent-color: #3b82f6;
+}
+
+/* Section spacing */
+.content > h1 { page-break-before: auto; }
+.content > h1:first-child { page-break-before: avoid; margin-top: 0; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover__logo">
+    <div class="cover__logo-mark">S</div>
+    Synapse AI
+  </div>
+  <div>
+    <h1 class="cover__title">Стратегия<br/>вывода на рынок</h1>
+    <p class="cover__subtitle">AI-native платформа управления проектами. План роста на 12 месяцев.</p>
+  </div>
+  <div class="cover__meta">
+    <div class="cover__meta-row">
+      <span class="cover__meta-label">Версия</span>
+      <span class="cover__meta-value">1.0</span>
+    </div>
+    <div class="cover__meta-row">
+      <span class="cover__meta-label">Дата</span>
+      <span class="cover__meta-value">Май 2026</span>
+    </div>
+    <div class="cover__meta-row">
+      <span class="cover__meta-label">Горизонт</span>
+      <span class="cover__meta-value">12 месяцев</span>
+    </div>
+  </div>
+</div>
+
+<div class="toc"><h2>Содержание</h2><div class="toc"><span class="toctitle">Содержание</span><ul>
+<li><a href="#1">1. Резюме</a></li>
+<li><a href="#2">2. Позиционирование</a><ul>
+<li><a href="#categorisation">Categorisation</a></li>
+<li><a href="#three-core-promises">Three core promises</a></li>
+</ul>
+</li>
+<li><a href="#3-icp-ideal-customer-profile">3. ICP — Ideal Customer Profile</a><ul>
+<li><a href="#primary-segment-525">Primary segment: Стартапы и продуктовые команды 5–25 человек</a></li>
+<li><a href="#secondary-segment-digital-25">Secondary segment: Соло-фаундеры и небольшие digital-агентства (2–5 чел)</a></li>
+<li><a href="#tertiary-6-mid-market-25100">Tertiary (через 6+ месяцев): Mid-market команды 25–100 человек</a></li>
+<li><a href="#negative-icp">Negative ICP (не наш клиент сейчас)</a></li>
+</ul>
+</li>
+<li><a href="#4-value-proposition">4. Value proposition по сегментам</a></li>
+<li><a href="#5">5. Цена и упаковка</a><ul>
+<li><a href="#tier-">Tier-структура</a></li>
+<li><a href="#_1">Логика</a></li>
+<li><a href="#6">Дополнительные источники монетизации (через 6 мес)</a></li>
+</ul>
+</li>
+<li><a href="#6_1">6. Каналы привлечения</a><ul>
+<li><a href="#1-product-hunt-launch-day-0">Канал 1: Product Hunt launch (Day 0)</a></li>
+<li><a href="#2-">Канал 2: Контент-маркетинг (постоянно)</a></li>
+<li><a href="#3-warm">Канал 3: Сообщества (warm)</a></li>
+<li><a href="#4-3">Канал 4: Партнёрства (через 3 мес)</a></li>
+<li><a href="#5-2">Канал 5: Платный трафик (через 2 мес, после фикса воронки)</a></li>
+<li><a href="#6-outbound-4">Канал 6: Outbound (через 4 мес)</a></li>
+</ul>
+</li>
+<li><a href="#7-90">7. План запуска (90 дней)</a><ul>
+<li><a href="#1-soft-launch-content-seed">Месяц 1: Soft launch + content seed</a></li>
+<li><a href="#2-product-hunt-community">Месяц 2: Product Hunt + community</a></li>
+<li><a href="#3">Месяц 3: Платный трафик + партнёрства</a></li>
+</ul>
+</li>
+<li><a href="#8-90">8. Контент-план (первые 90 дней)</a><ul>
+<li><a href="#_2">Образовательный контент</a></li>
+<li><a href="#_3">Сравнительный контент</a></li>
+<li><a href="#build-in-public">Build-in-public</a></li>
+<li><a href="#user-stories">User stories</a></li>
+<li><a href="#_4">Видео</a></li>
+</ul>
+</li>
+<li><a href="#9-kpi">9. Метрики и KPI</a><ul>
+<li><a href="#north-star">North Star</a></li>
+<li><a href="#_5">Воронка</a></li>
+<li><a href="#_6">Финансовые</a></li>
+<li><a href="#health-">Health-метрики</a></li>
+</ul>
+</li>
+<li><a href="#10-12">10. Бюджет (12 месяцев)</a></li>
+<li><a href="#11-mitigations">11. Риски и mitigations</a></li>
+<li><a href="#12-checklist">12. Что нужно подготовить до запуска (checklist)</a><ul>
+<li><a href="#_7">Продукт</a></li>
+<li><a href="#_8">Маркетинг</a></li>
+<li><a href="#_9">Юридика</a></li>
+<li><a href="#_10">Поддержка</a></li>
+</ul>
+</li>
+<li><a href="#13-2">13. Год 2 — направления роста</a></li>
+</ul>
+</div>
+</div>
+<div class="content">
+
+<p><strong>Версия:</strong> 1.0
+<strong>Дата:</strong> май 2026
+<strong>Горизонт:</strong> 12 месяцев</p>
+<hr />
+<h2 id="1">1. Резюме</h2>
+<p>Synapse AI — AI-native платформа управления проектами, объединяющая Kanban, Gantt, brainstorm-доску, документы и ИИ-агентов в одно рабочее пространство. Уникальное предложение: пользователь говорит голосом — система сама декомпозирует задачи, выстраивает зависимости, назначает исполнителей и ведёт протоколы встреч.</p>
+<p><strong>Целевая выручка через 12 месяцев:</strong> $50K MRR (примерно 600 платящих команд при ARPU $80).</p>
+<p><strong>Главный конкурентный ров:</strong> связка «voice → ИИ-декомпозиция → готовый план в Kanban+Gantt» за 30 секунд. Notion, Linear, Jira требуют ручной структуризации.</p>
+<hr />
+<h2 id="2">2. Позиционирование</h2>
+<blockquote>
+<p><strong>«От голоса до плана проекта за 30 секунд».</strong>
+Synapse AI превращает идею, брейншторм или протокол встречи в готовый структурированный план — без ручного создания задач.</p>
+</blockquote>
+<h3 id="categorisation">Categorisation</h3>
+<ul>
+<li><strong>Категория:</strong> AI-native project management.</li>
+<li><strong>Альтернативы:</strong> Notion AI, Linear, ClickUp, Asana, Motion, Reclaim.</li>
+<li><strong>Differentiator:</strong> мы не «AI feature на существующем PM», а PM-инструмент, построенный вокруг ИИ с нуля.</li>
+</ul>
+<h3 id="three-core-promises">Three core promises</h3>
+<ol>
+<li><strong>Скорость планирования</strong> — голос/брейншторм → задачи за секунды.</li>
+<li><strong>Автоматический оркестратор</strong> — ИИ балансирует нагрузку и зависимости в фоне.</li>
+<li><strong>Готовые протоколы</strong> — встречи превращаются в структурированный протокол + извлечённые задачи.</li>
+</ol>
+<hr />
+<h2 id="3-icp-ideal-customer-profile">3. ICP — Ideal Customer Profile</h2>
+<h3 id="primary-segment-525">Primary segment: Стартапы и продуктовые команды 5–25 человек</h3>
+<ul>
+<li><strong>Кто:</strong> Tech-стартапы серии Pre-seed / Seed, продуктовые команды внутри агентств, in-house продуктовые юниты.</li>
+<li><strong>Боль:</strong> Notion — слишком гибкий и медленный, Jira — overkill, Asana — устарел. PM-таск занимает 30% времени тимлида.</li>
+<li><strong>Бюджет на софт:</strong> $50–200 / месяц на инструмент управления.</li>
+<li><strong>Где сидят:</strong> Twitter (X), Product Hunt, Indie Hackers, dev.to, Hacker News, профильные Telegram-чаты.</li>
+</ul>
+<h3 id="secondary-segment-digital-25">Secondary segment: Соло-фаундеры и небольшие digital-агентства (2–5 чел)</h3>
+<ul>
+<li><strong>Кто:</strong> independent makers, фрилансеры с подрядчиками, mini-agencies.</li>
+<li><strong>Боль:</strong> нет времени структурировать — всё в голове и в Telegram.</li>
+<li><strong>Бюджет:</strong> $10–30 / месяц.</li>
+<li><strong>Где сидят:</strong> Indie Hackers, Maker communities, YouTube.</li>
+</ul>
+<h3 id="tertiary-6-mid-market-25100">Tertiary (через 6+ месяцев): Mid-market команды 25–100 человек</h3>
+<ul>
+<li>Требуют SSO, admin-controls, аудит-лог (у нас уже есть фундамент).</li>
+<li>Долгий sales cycle, выше LTV.</li>
+</ul>
+<h3 id="negative-icp">Negative ICP (не наш клиент сейчас)</h3>
+<ul>
+<li>Enterprise &gt; 500 человек (нужна compliance: SOC 2, ISO 27001).</li>
+<li>Регулируемые отрасли (banking, healthcare, gov) — пока нет нужных сертификатов.</li>
+<li>Команды, требующие 100% on-prem.</li>
+</ul>
+<hr />
+<h2 id="4-value-proposition">4. Value proposition по сегментам</h2>
+<table>
+<thead>
+<tr>
+<th>Сегмент</th>
+<th>Жизненный сценарий</th>
+<th>Главное обещание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tech-стартап</td>
+<td>Запись планёрки → ИИ извлёк 12 задач, разнёс по эпикам, назначил, построил Gantt</td>
+<td>«Час работы PM за 2 минуты»</td>
+</tr>
+<tr>
+<td>Соло-фаундер</td>
+<td>Записал голосом 5 идей → готовый Kanban на неделю</td>
+<td>«Личный chief-of-staff за $10/мес»</td>
+</tr>
+<tr>
+<td>Mid-market</td>
+<td>Workspace-аналитика, аудит-лог, super-admin панель</td>
+<td>«Контроль и прозрачность без бюрократии»</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5">5. Цена и упаковка</h2>
+<h3 id="tier-">Tier-структура</h3>
+<table>
+<thead>
+<tr>
+<th>План</th>
+<th>Цена</th>
+<th>Лимиты</th>
+<th>Целевой сегмент</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Free</strong></td>
+<td>$0</td>
+<td>1 workspace, до 3 пользователей, 100 задач, 50 AI-операций/мес</td>
+<td>Прибор для drive-by-trial</td>
+</tr>
+<tr>
+<td><strong>Pro</strong></td>
+<td>$12/user/мес (billed annually $10)</td>
+<td>Без лимитов на задачи, 500 AI-операций/мес/user, экспорт</td>
+<td>Команды 5–25</td>
+</tr>
+<tr>
+<td><strong>Team</strong></td>
+<td>$24/user/мес ($20 annual)</td>
+<td>Pro + workspace-аналитика, кастомные ИИ-промты, приоритетная поддержка</td>
+<td>Команды 25–100</td>
+</tr>
+<tr>
+<td><strong>Enterprise</strong></td>
+<td>от $50/user, по запросу</td>
+<td>Team + SSO, аудит-лог, SLA, дедикейтед onboarding</td>
+<td>100+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_1">Логика</h3>
+<ul>
+<li><strong>AI-операции</strong> — главный лимит и upsell-крючок. Free даёт почувствовать «магию», но 50 операций кончаются за 2 дня активного использования.</li>
+<li><strong>Annual discount 17%</strong> стимулирует длинные контракты и улучшает cash flow.</li>
+<li><strong>Per-user model</strong> — стандарт, конкуренты привыкли (Notion, Linear).</li>
+<li><strong>Free forever</strong> — критично для PLG-воронки: пользователь приводит команду, потом апгрейдит сам.</li>
+</ul>
+<h3 id="6">Дополнительные источники монетизации (через 6 мес)</h3>
+<ul>
+<li><strong>AI-credits pack</strong> — $20 за +1000 операций (для команд с нерегулярным пиком).</li>
+<li><strong>Workspace templates marketplace</strong> — 70/30 share с авторами.</li>
+</ul>
+<hr />
+<h2 id="6_1">6. Каналы привлечения</h2>
+<h3 id="1-product-hunt-launch-day-0">Канал 1: Product Hunt launch (Day 0)</h3>
+<ul>
+<li><strong>Цель:</strong> Top 5 of the day, 1000+ upvotes, 200 signups.</li>
+<li><strong>Что нужно:</strong> готовый продукт, демо-видео 60 сек, скриншоты, hunter с большим follower-base, армия первых поддержавших (≥ 50 человек warmed up).</li>
+<li><strong>Бюджет:</strong> $0 organic + опционально $500 на boosted social.</li>
+</ul>
+<h3 id="2-">Канал 2: Контент-маркетинг (постоянно)</h3>
+<ul>
+<li><strong>Блог Synapse AI:</strong> 2 поста в неделю, темы:</li>
+<li>«Как мы построили AI-оркестратор задач за 3 месяца» (engineering deep-dive).</li>
+<li>«5 промтов, которые превратят запись планёрки в готовый план».</li>
+<li>Сравнения: «Synapse vs Notion AI», «Synapse vs Linear для маленьких команд».</li>
+<li><strong>SEO target:</strong> «AI project management», «voice to tasks», «meeting to action items», «AI замена Notion».</li>
+<li><strong>YouTube:</strong> еженедельный 5-минутный туториал.</li>
+</ul>
+<h3 id="3-warm">Канал 3: Сообщества (warm)</h3>
+<ul>
+<li><strong>Indie Hackers</strong> — еженедельный update в основной ленте.</li>
+<li><strong>Reddit:</strong> r/SaaS, r/Entrepreneur, r/productivity, r/startups (без спама — отвечаем на вопросы, ссылаемся когда уместно).</li>
+<li><strong>Twitter/X</strong> — личный build-in-public аккаунт фаундера, daily updates, screenshots, metrics.</li>
+<li><strong>Telegram-чаты:</strong> русскоязычные продуктовые/индихакерские (Make Sense, ProductSense, Yet Another Closed Chat и пр.).</li>
+<li><strong>Dev.to / Hashnode</strong> — кросс-постинг блога.</li>
+</ul>
+<h3 id="4-3">Канал 4: Партнёрства (через 3 мес)</h3>
+<ul>
+<li><strong>Интеграция-партнёры:</strong> Slack-bot, Telegram-bot, Linear-importer, Notion-importer.</li>
+<li><strong>Influencer-партнёры:</strong> известные PM-блогеры (Lenny Rachitsky audience, MFM, Product Hunt founders).</li>
+<li><strong>Бoot-camp партнёрства:</strong> Y Combinator, Techstars, локальные акселераторы — free Team plan на 6 мес для портфельных.</li>
+</ul>
+<h3 id="5-2">Канал 5: Платный трафик (через 2 мес, после фикса воронки)</h3>
+<ul>
+<li><strong>Google Ads</strong> — long-tail keywords («ai meeting notes to tasks», «alternative to notion ai»).</li>
+<li><strong>LinkedIn Ads</strong> — targeting на «Product Manager / Engineering Manager» в командах 10–50.</li>
+<li><strong>Twitter Ads</strong> — promoted threads.</li>
+<li><strong>CAC target:</strong> $40 для Pro tier (LTV ≈ $360 → payback &lt; 4 мес).</li>
+</ul>
+<h3 id="6-outbound-4">Канал 6: Outbound (через 4 мес)</h3>
+<ul>
+<li>Personalised cold email to PM/EM of fast-growing startups (post Series A/B).</li>
+<li>Loom-демо в каждом email — показываем именно их workflow.</li>
+</ul>
+<hr />
+<h2 id="7-90">7. План запуска (90 дней)</h2>
+<h3 id="1-soft-launch-content-seed">Месяц 1: Soft launch + content seed</h3>
+<ul>
+<li><strong>Неделя 1:</strong> Beta-программа на 50 ранних пользователей (из Twitter / personal network).</li>
+<li><strong>Неделя 2:</strong> Сбор 10 кейсов / testimonials.</li>
+<li><strong>Неделя 3:</strong> Запуск блога — 8 опубликованных постов.</li>
+<li><strong>Неделя 4:</strong> Demo-видео, landing-page A/B-тесты.</li>
+<li><strong>KPI к концу месяца:</strong> 200 signups, 20 paying, $200 MRR.</li>
+</ul>
+<h3 id="2-product-hunt-community">Месяц 2: Product Hunt + community</h3>
+<ul>
+<li><strong>Неделя 5:</strong> Product Hunt launch (вторник, 00:01 PT).</li>
+<li><strong>Неделя 6:</strong> Hacker News «Show HN», Indie Hackers feature.</li>
+<li><strong>Неделя 7:</strong> Запуск referral-программы (даём 1 мес Pro за приведённую команду).</li>
+<li><strong>Неделя 8:</strong> YouTube-канал старт.</li>
+<li><strong>KPI:</strong> 1500 signups, 100 paying, $1.5K MRR.</li>
+</ul>
+<h3 id="3">Месяц 3: Платный трафик + партнёрства</h3>
+<ul>
+<li><strong>Неделя 9:</strong> Google Ads (бюджет $1500), LinkedIn Ads ($1000).</li>
+<li><strong>Неделя 10:</strong> Первая интеграция (Slack-bot).</li>
+<li><strong>Неделя 11:</strong> Partnerships outreach — YC, Indie Hackers, Lenny's Newsletter.</li>
+<li><strong>Неделя 12:</strong> Pricing experiment: A/B на цене Pro $12 vs $15.</li>
+<li><strong>KPI:</strong> 5K signups, 300 paying, $4K MRR.</li>
+</ul>
+<hr />
+<h2 id="8-90">8. Контент-план (первые 90 дней)</h2>
+<h3 id="_2">Образовательный контент</h3>
+<ol>
+<li>«Как ИИ-декомпозиция задач увеличивает скорость планирования в 10×» (data-driven).</li>
+<li>«5 ловушек Notion для растущей команды и как их избежать».</li>
+<li>«Voice-first project management: будущее уже здесь».</li>
+</ol>
+<h3 id="_3">Сравнительный контент</h3>
+<ol start="4">
+<li>«Synapse AI vs Notion AI: честное сравнение».</li>
+<li>«Synapse AI vs Linear для команд до 30 человек».</li>
+<li>«Когда стоит уйти с Jira (и куда)».</li>
+</ol>
+<h3 id="build-in-public">Build-in-public</h3>
+<ol start="7">
+<li>«Как мы выросли с 0 до $5K MRR за 90 дней» (на 90-й день).</li>
+<li>Weekly metric updates в Twitter (MRR, signups, churn).</li>
+</ol>
+<h3 id="user-stories">User stories</h3>
+<ol start="9">
+<li>5 case study от ранних клиентов (стартап / агентство / соло).</li>
+</ol>
+<h3 id="_4">Видео</h3>
+<ol start="10">
+<li>60-секундный demo для Product Hunt.</li>
+<li>5-минутный walkthrough «Создаём проект с нуля голосом».</li>
+<li>3-минутный «AI оркестратор в действии».</li>
+</ol>
+<hr />
+<h2 id="9-kpi">9. Метрики и KPI</h2>
+<h3 id="north-star">North Star</h3>
+<p><strong>Weekly Active Paid Workspaces</strong> — workspace считается активным, если в нём 3+ задачи создано за неделю и зашёл ≥1 пользователь.</p>
+<h3 id="_5">Воронка</h3>
+<table>
+<thead>
+<tr>
+<th>Этап</th>
+<th>Конверсия (цель)</th>
+<th>Метрика-индикатор</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Landing visit → signup</td>
+<td>8%</td>
+<td>bounce rate, time on page</td>
+</tr>
+<tr>
+<td>Signup → activated (создал ≥1 workspace + ≥3 задачи)</td>
+<td>60%</td>
+<td>onboarding completion</td>
+</tr>
+<tr>
+<td>Activated → invited team member</td>
+<td>35%</td>
+<td>seats / workspace</td>
+</tr>
+<tr>
+<td>Activated → paying (после 14-дневного triala)</td>
+<td>12%</td>
+<td>conversion event</td>
+</tr>
+<tr>
+<td>Paid → retained (M2)</td>
+<td>90%</td>
+<td>logo retention</td>
+</tr>
+<tr>
+<td>Paid → expansion (upgrade tier)</td>
+<td>8% / квартал</td>
+<td>NRR &gt; 110%</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">Финансовые</h3>
+<ul>
+<li><strong>MRR</strong> — главное число.</li>
+<li><strong>CAC</strong> по каналам.</li>
+<li><strong>LTV / CAC ratio</strong> — target &gt; 3.</li>
+<li><strong>Payback period</strong> — target &lt; 6 мес.</li>
+<li><strong>Churn</strong> — gross &lt; 5% / мес, net &lt; 0% (то есть expansion перекрывает).</li>
+</ul>
+<h3 id="health-">Health-метрики</h3>
+<ul>
+<li><strong>Activation rate</strong> (% signups, ставших activated за 7 дней).</li>
+<li><strong>NPS</strong> — измеряем после 30 дней использования.</li>
+<li><strong>Support response time</strong> — &lt; 4 часа в рабочее время.</li>
+</ul>
+<hr />
+<h2 id="10-12">10. Бюджет (12 месяцев)</h2>
+<table>
+<thead>
+<tr>
+<th>Категория</th>
+<th>Бюджет ($)</th>
+<th>%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Инфраструктура (Vercel, Supabase, OpenAI, Stripe fees)</td>
+<td>$18,000</td>
+<td>24%</td>
+</tr>
+<tr>
+<td>Платный трафик (Google, LinkedIn, Twitter, ретаргет)</td>
+<td>$24,000</td>
+<td>32%</td>
+</tr>
+<tr>
+<td>Контент (1 контент-маркетолог part-time + дизайнер)</td>
+<td>$18,000</td>
+<td>24%</td>
+</tr>
+<tr>
+<td>Tools (PostHog, Sentry, Slack, Loom, Notion, GA)</td>
+<td>$3,600</td>
+<td>5%</td>
+</tr>
+<tr>
+<td>Партнёрские/реферальные выплаты</td>
+<td>$6,000</td>
+<td>8%</td>
+</tr>
+<tr>
+<td>Запас / эксперименты</td>
+<td>$5,400</td>
+<td>7%</td>
+</tr>
+<tr>
+<td><strong>Итого</strong></td>
+<td><strong>$75,000</strong></td>
+<td>100%</td>
+</tr>
+</tbody>
+</table>
+<p>При CAC $40 и средней Pro-подписке $12/user × 5 users = $60 ARPU/мес:
+- $24K paid traffic ÷ $40 CAC = <strong>600 платящих команд</strong> через paid каналы.
+- + organic (Product Hunt, content, communities) ≈ ещё 400.
+- Total ~1000 платящих команд × $60 = <strong>$60K MRR</strong> к Mo 12 (оптимистично).</p>
+<hr />
+<h2 id="11-mitigations">11. Риски и mitigations</h2>
+<table>
+<thead>
+<tr>
+<th>Риск</th>
+<th>Вероятность</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenAI меняет цены / ограничивает API</td>
+<td>Средняя</td>
+<td>Multi-provider gateway (Anthropic + OpenAI), мониторим cost / AI op</td>
+</tr>
+<tr>
+<td>Notion / Linear выкатывают аналогичные voice-first фичи</td>
+<td>Высокая</td>
+<td>Фокусируемся на скорости итерации + community + AI-оркестратор (более глубокая фича)</td>
+</tr>
+<tr>
+<td>Не удаётся попасть в Top of PH</td>
+<td>Средняя</td>
+<td>Plan B — Hacker News «Show HN», IH Featured</td>
+</tr>
+<tr>
+<td>Высокий churn у Free-tier (никто не апгрейдится)</td>
+<td>Средняя</td>
+<td>A/B тестируем пейволлы, AI-операции лимит</td>
+</tr>
+<tr>
+<td>Юридические / privacy issues (Voice data)</td>
+<td>Низкая</td>
+<td>Отдельная privacy-страница, opt-out для обработки voice, без хранения raw audio</td>
+</tr>
+<tr>
+<td>Один super-admin (фаундер) — bus factor</td>
+<td>Высокая</td>
+<td>Code documentation, runbooks, hiring co-founder в Q2</td>
+</tr>
+<tr>
+<td>Стартапы массово сокращаются (recession)</td>
+<td>Низкая</td>
+<td>Free tier держим щедрым, фокус на solo-founders и agencies (менее cycle-sensitive)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-checklist">12. Что нужно подготовить до запуска (checklist)</h2>
+<h3 id="_7">Продукт</h3>
+<ul>
+<li>[ ] Onboarding tour (есть, доделать копирайт)</li>
+<li>[ ] Pricing page с calc-калькулятором</li>
+<li>[ ] Status page (status.synapse.ai)</li>
+<li>[ ] Public changelog</li>
+<li>[ ] Documentation / help center</li>
+<li>[ ] Stripe real keys (currently test mode)</li>
+<li>[ ] Sentry DSN в проде</li>
+<li>[ ] PostHog events на key conversion points</li>
+</ul>
+<h3 id="_8">Маркетинг</h3>
+<ul>
+<li>[ ] Landing page A/B tests setup</li>
+<li>[ ] Демо-видео 60 сек (для PH)</li>
+<li>[ ] Screenshots для PH gallery</li>
+<li>[ ] Blog setup + первые 8 постов</li>
+<li>[ ] YouTube channel branding</li>
+<li>[ ] Twitter aesthetic (header, pinned tweet)</li>
+<li>[ ] Email-нурчуринг последовательность (6 писем по 14 дням trial)</li>
+</ul>
+<h3 id="_9">Юридика</h3>
+<ul>
+<li>[ ] Terms of Service финализированы</li>
+<li>[ ] Privacy Policy финализирована (особенно про AI/voice)</li>
+<li>[ ] GDPR-compliance (data export, deletion)</li>
+<li>[ ] Cookie policy</li>
+</ul>
+<h3 id="_10">Поддержка</h3>
+<ul>
+<li>[ ] Intercom / Crisp на сайте</li>
+<li>[ ] FAQ</li>
+<li>[ ] Help center</li>
+<li>[ ] SLA для Pro/Team tier</li>
+</ul>
+<hr />
+<h2 id="13-2">13. Год 2 — направления роста</h2>
+<ul>
+<li><strong>API + Public marketplace интеграций</strong> — Zapier, Make, n8n connectors.</li>
+<li><strong>Mobile app</strong> — iOS / Android (сейчас mobile-web работает, но native — must-have для voice UX).</li>
+<li><strong>Enterprise</strong> — SOC 2 type II, SSO/SAML, custom AI-models per workspace.</li>
+<li><strong>Vertical templates</strong> — для product/marketing/engineering команд, free download + lock-in эффект.</li>
+</ul>
+<hr />
+<p><strong>Контакт автора стратегии:</strong> akimovsergey.m@gmail.com
+<strong>Версия документа:</strong> 1.0 (май 2026)</p>
+</div>
+</body>
+</html>
